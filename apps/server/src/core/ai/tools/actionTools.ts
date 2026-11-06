@@ -29,6 +29,7 @@ import crypto from 'crypto';
 import { FactuApi } from '../../plugins/FactuApi';
 import { ClientFactory } from '../../tenant/ClientFactory';
 import { DocumentRegistry } from '../../documents/DocumentRegistry';
+import { defaultLineTaxGroupId } from '../../tax/TaxEngine';
 import * as schema from '../../../db/schema';
 import { CHART_TYPES, resolveQueryWidget, validateWidgetQuery } from '../declarativeWidget';
 import { buildVisualTemplate, type DocType } from '@openfactu/pdf';
@@ -46,7 +47,7 @@ import {
 } from './documentTemplateTools';
 import { buildErpActionTools } from './erpEntityTools';
 
-const DOCUMENT_DOC_TYPE_IDS = TEMPLATE_DOC_TYPE_IDS; // mismos 6 tipos: SINV/PINV/SO/PO/SDN/PDN
+const DOCUMENT_DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN'] as const;
 
 export function buildActionTools(ctx: ChatToolContext) {
   return {
@@ -103,7 +104,7 @@ export function buildActionTools(ctx: ChatToolContext) {
         // ── Validar partner ──
         const [partner]: any[] = await sandboxQuery(
           ctx,
-          'SELECT id, name FROM "BusinessPartner" WHERE id = :id LIMIT 1',
+          'SELECT id, name, "defaultTaxGroupId" FROM "BusinessPartner" WHERE id = :id LIMIT 1',
           { id: input.partnerId },
         );
         if (!partner) {
@@ -117,18 +118,6 @@ export function buildActionTools(ctx: ChatToolContext) {
         }
 
         // ── Defaults de serie y periodo (los mismos que usaría la UI) ──
-        const [series]: any[] = await sandboxQuery(
-          ctx,
-          `SELECT id, prefix FROM "DocumentSeries"
-            WHERE "docType" = :docType
-            ORDER BY "isDefault" DESC
-            LIMIT 1`,
-          { docType: input.docType },
-        );
-        if (!series) {
-          return { ok: false, error: `No hay ninguna serie de "${config.label}" configurada` };
-        }
-
         const docDate = input.date || new Date().toISOString().slice(0, 10);
         const [period]: any[] = await sandboxQuery(
           ctx,
@@ -139,6 +128,19 @@ export function buildActionTools(ctx: ChatToolContext) {
           { d: docDate },
         );
         if (!period) return { ok: false, error: 'No hay ningún periodo contable abierto' };
+
+        // La serie es la de ese periodo: el motor no admite otra.
+        const [series]: any[] = await sandboxQuery(
+          ctx,
+          `SELECT id, prefix FROM "DocumentSeries"
+            WHERE "docType" = :docType AND "periodId" = :periodId
+            ORDER BY "isDefault" DESC
+            LIMIT 1`,
+          { docType: input.docType, periodId: period.id },
+        );
+        if (!series) {
+          return { ok: false, error: `No hay ninguna serie de "${config.label}" configurada` };
+        }
 
         // ── Resolver artículos (precio base + grupo de impuesto) ──
         const resolvedLines: any[] = [];
@@ -153,7 +155,7 @@ export function buildActionTools(ctx: ChatToolContext) {
             itemId: item.id,
             quantity: line.quantity,
             price: line.price ?? Number(item.basePrice ?? 0),
-            taxGroupId: item.taxGroupId ?? undefined,
+            taxGroupId: defaultLineTaxGroupId(partner, item) ?? undefined,
             description: line.description,
           });
         }

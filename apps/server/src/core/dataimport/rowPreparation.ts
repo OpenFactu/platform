@@ -124,7 +124,7 @@ export async function prepareRow(args: PrepareArgs): Promise<PreparedRow | Rejec
 
   // 3. Colisiones de clave única, ANTES de escribir.
   //
-  // Sin esto, un código o un NIF repetido solo se descubre cuando Postgres
+  // Sin esto, un código o una identificación fiscal repetido solo se descubre cuando Postgres
   // rechaza el INSERT — y entonces el simulacro habría dicho que todo iba
   // bien. En una migración es el error más habitual y el que más filas se
   // lleva por delante, así que merece detectarse por adelantado y con un

@@ -35,10 +35,11 @@ class Registry {
     return this.map.get(id) || null;
   }
 
-  list(): Array<Pick<ICarrierAdapter, 'id' | 'name' | 'credentialFields'>> {
+  list(): Array<Pick<ICarrierAdapter, 'id' | 'name' | 'credentialFields' | 'manual'>> {
     return [...this.map.values()].map((a) => ({
       id: a.id,
       name: a.name,
+      manual: !!a.manual,
       credentialFields: a.credentialFields,
     }));
   }

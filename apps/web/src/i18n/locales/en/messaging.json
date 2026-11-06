@@ -1,0 +1,312 @@
+{
+  "messaging": {
+    "nav": {
+      "label": "Messages",
+      "description": "Team chat: direct and group conversations, files and shared documents.",
+      "messages": "Messages",
+      "channels": "Channels",
+      "meetings": "Meetings"
+    },
+    "open": "Open messages",
+    "openWithUnread": "Open messages ({count} unread)",
+    "openFullPage": "Open full screen",
+    "unknownUser": "User",
+    "emptyGroup": "Group with no participants",
+    "loading": "Loading messages…",
+    "disabled": {
+      "title": "Messages not available",
+      "hint": "Messages are not enabled for this company or your user lacks permission. An administrator can enable them in Apps."
+    },
+    "error": {
+      "title": "Could not connect to messaging",
+      "hint": "The messaging service is not responding. Try again in a few seconds."
+    },
+    "retry": "Retry",
+    "newConversation": {
+      "button": "New conversation",
+      "title": "New conversation",
+      "direct": "With one person",
+      "group": "Group",
+      "person": "Person",
+      "personPlaceholder": "Find someone on the team",
+      "people": "Participants",
+      "peoplePlaceholder": "Choose who to add",
+      "groupTitle": "Group name",
+      "groupTitlePlaceholder": "E.g. Sales team",
+      "create": "Start",
+      "noMembers": "There is nobody else in this company."
+    },
+    "documents": {
+      "types": {
+        "SINV": "Invoice",
+        "PINV": "Purchase invoice",
+        "SO": "Sales order",
+        "PO": "Purchase order",
+        "SDN": "Delivery note",
+        "PDN": "Purchase delivery note"
+      },
+      "shared": "Shared document",
+      "share": "Share document",
+      "shareTitle": "Share a document",
+      "searchPlaceholder": "Number or customer…",
+      "minChars": "Type at least two characters.",
+      "noResults": "No matching documents.",
+      "open": "Open",
+      "restricted": "No access"
+    },
+    "members": {
+      "button": "Participants",
+      "title": "Group participants",
+      "rename": "Group name",
+      "add": "Add people",
+      "addPlaceholder": "Choose who to add",
+      "remove": "Remove",
+      "leave": "Leave group",
+      "save": "Save",
+      "owner": "Owner",
+      "you": "You"
+    },
+    "errors": {
+      "generic": "The action could not be completed.",
+      "message_empty": "The message is empty.",
+      "message_too_long": "The message is too long.",
+      "invalid_payload": "The message content is not valid.",
+      "direct_needs_one_peer": "Choose one person.",
+      "group_needs_peers": "Add at least one other person to the group.",
+      "too_many_participants": "Too many participants.",
+      "title_too_long": "The group name is too long.",
+      "participants_not_in_tenant": "Some of those people are not in this company.",
+      "only_owner_can_remove": "Only the group owner can remove others.",
+      "only_author": "You can only change your own messages.",
+      "not_editable": "This message cannot be edited.",
+      "read_only": "Your user can only read messages.",
+      "reply_not_found": "The message you are replying to is gone.",
+      "conversation_not_found": "That conversation no longer exists or you have left it.",
+      "message_not_found": "That message no longer exists.",
+      "invalid_token": "Telegram doesn't recognise that token. Copy it again from @BotFather.",
+      "provider_unreachable": "Could not reach Telegram. Try again in a moment.",
+      "manage_required": "Only an administrator can connect channels.",
+      "customers_required": "You are not allowed to handle customers.",
+      "unsupported_by_channel": "This channel doesn't support that kind of message.",
+      "conversation_not_editable": "This conversation cannot be modified.",
+      "contact_not_found": "That customer no longer exists.",
+      "invalid_meeting": "Check the meeting details: subject, time and link.",
+      "unknown_meeting_provider": "That kind of meeting isn't available.",
+      "only_organizer": "Only the organiser can change the meeting.",
+      "meeting_cancelled": "The meeting is already cancelled.",
+      "meeting_not_found": "That meeting no longer exists.",
+      "calls_required": "You do not have permission for video calls.",
+      "calls_not_supported": "Customer conversations do not support calls.",
+      "video_unavailable": "The video service is unavailable.",
+      "invite_not_found": "That link no longer exists.",
+      "call_not_found": "The call has already ended."
+    },
+    "channels": {
+      "title": "Customer channels",
+      "hint": "Connect the channels your customers write to you on. Conversations arrive in Messages and are handled by anyone with the “Customer messages” permission.",
+      "names": {
+        "internal": "Team",
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
+      },
+      "status": {
+        "active": "Connected",
+        "error": "Having problems",
+        "disabled": "Disabled"
+      },
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect the bot?",
+      "disconnectHint": "New Telegram messages will stop arriving. Existing conversations are kept.",
+      "adminOnly": "Only an administrator can connect the company bot.",
+      "notDelivered": "Could not be delivered through the channel",
+      "telegram": {
+        "description": "Customers write to the company bot and the team replies from Messages.",
+        "step1": "In Telegram, open @BotFather and send it /newbot.",
+        "step2": "Give it the company name and a username ending in “bot”.",
+        "step3": "Copy the token it gives you and paste it here.",
+        "token": "Bot token",
+        "connectedAs": "Connected as {name}",
+        "openBot": "Open the bot",
+        "shareHint": "Share the bot link with your customers (on your website, invoices, emails) so they can write to you there."
+      }
+    },
+    "contacts": {
+      "linkTitle": "Link to a business partner",
+      "linkHint": "So you know which ERP customer this is and can open their record from the conversation.",
+      "partner": "Business partner",
+      "partnerPlaceholder": "Search by name, code or tax ID",
+      "noPartners": "No matching business partners.",
+      "link": "Link",
+      "unlink": "Unlink",
+      "openPartner": "Open record"
+    },
+    "meetings": {
+      "schedule": "Schedule meeting",
+      "scheduleTitle": "Schedule a meeting",
+      "rescheduleTitle": "Reschedule the meeting",
+      "save": "Save changes",
+      "titleLabel": "Subject",
+      "titlePlaceholder": "Order review, demo, call…",
+      "date": "Day",
+      "time": "Time",
+      "duration": "Duration",
+      "minutes": "{n} min",
+      "link": "Meeting link",
+      "linkHint": "Paste the link from Meet, Teams, Zoom or whatever tool you use.",
+      "problems": {
+        "title": "Give it a subject.",
+        "when": "Pick a day and time.",
+        "past": "That time has already passed.",
+        "url": "It must be a link starting with https://.",
+        "conversation": "Choose at least one person.",
+        "customerAlone": "A customer goes alone: they cannot join a team group."
+      },
+      "text": "Meeting",
+      "cancelledText": "Meeting cancelled",
+      "phase": {
+        "upcoming": "Upcoming",
+        "live": "Now",
+        "ended": "Ended",
+        "cancelled": "Cancelled"
+      },
+      "join": "Join",
+      "addToCalendar": "Add to calendar",
+      "reschedule": "Reschedule",
+      "cancel": "Cancel meeting",
+      "cancelTitle": "Cancel the meeting?",
+      "cancelMessage": "“{title}” will be cancelled for everyone in the conversation.",
+      "cancelConfirm": "Cancel meeting",
+      "calendar": {
+        "title": "Meetings",
+        "empty": "No meetings on these dates. Click a slot to schedule one.",
+        "conversation": "Participants",
+        "conversationPlaceholder": "People, groups or a customer…",
+        "viewConversation": "View conversation",
+        "loadError": "The meetings could not be loaded.",
+        "newGroupHint": "A group named after the meeting subject will be created."
+      },
+      "providers": {
+        "keirost": "Keirost room",
+        "link": "External link"
+      }
+    },
+    "calls": {
+      "title": "Video call",
+      "start": "Video call",
+      "joinOngoing": "Join the ongoing call",
+      "connecting": "Connecting…",
+      "previewTitle": "Before you join",
+      "join": "Join",
+      "mic": "Microphone",
+      "camera": "Camera",
+      "defaultDevice": "Default",
+      "device": {
+        "audioinput": "Microphone",
+        "videoinput": "Camera"
+      },
+      "muteMic": "Mute microphone",
+      "unmuteMic": "Unmute microphone",
+      "camOff": "Turn camera off",
+      "camOn": "Turn camera on",
+      "share": "Share screen",
+      "stopShare": "Stop sharing",
+      "hangUp": "Hang up",
+      "minimize": "Minimize",
+      "expand": "Expand",
+      "muted": "Muted",
+      "screenOf": "{name}'s screen",
+      "incoming": "{name} is calling you",
+      "accept": "Answer",
+      "decline": "Ignore",
+      "peopleInside": "In the call: {n}",
+      "nobodyInside": "Nobody has joined yet.",
+      "ended": "Video call · {duration}",
+      "lessThanMinute": "under 1 min",
+      "minutes": "{n} min",
+      "hours": "{h} h {m} min",
+      "problems": {
+        "insecure": "Browsers only allow the camera and microphone over HTTPS.",
+        "permission": "The browser has no permission to use the camera or microphone.",
+        "no_device": "No camera or microphone was found.",
+        "device_busy": "Another application is using the camera or microphone.",
+        "connection_failed": "The video could not connect. Your network may be blocking UDP: tell whoever runs Keirost.",
+        "connection_lost": "The connection was lost and you left the call.",
+        "call_full": "The call is full.",
+        "call_not_found": "The call has already ended.",
+        "calls_required": "You do not have permission for video calls.",
+        "video_unavailable": "The video service is unavailable.",
+        "generic": "Could not join the call."
+      },
+      "diag": {
+        "title": "Video calls",
+        "up": "The video service is running.",
+        "down": "The video service could not open its UDP port. Check the messaging log.",
+        "https": "This page is on HTTPS: the browser will allow camera and microphone.",
+        "noHttps": "This page is not on HTTPS: the browser will not allow camera or microphone.",
+        "publicIp": "Announcing {address} (set in MESSAGING_RTC_PUBLIC_IP).",
+        "localIp": "Announcing {address}, detected: works inside this network. With Docker or for outside users, set MESSAGING_RTC_PUBLIC_IP.",
+        "turn": "TURN is active, for networks that block UDP.",
+        "noTurn": "No TURN: networks that block UDP will not be able to connect."
+      },
+      "inCourse": "Call in progress",
+      "chat": "Chat",
+      "settings": "View and quality",
+      "pin": "Pin",
+      "unpin": "Unpin",
+      "current": "Current",
+      "layouts": {
+        "grid": "Grid",
+        "speaker": "Speaker",
+        "sidebar": "Sidebar"
+      },
+      "quality": {
+        "auto": "Automatic quality",
+        "medium": "Medium quality",
+        "low": "Low quality (saves data)"
+      },
+      "you": "You",
+      "chatHint": "Only people in the call can see this, and it is erased when the call ends.",
+      "chatPlaceholder": "Message the call…",
+      "chatSend": "Send",
+      "guestName": "{name} (guest)"
+    },
+    "guest": {
+      "title": "Join the video call",
+      "name": "Your name",
+      "ask": "Ask to join",
+      "waitingTitle": "Waiting",
+      "waitingHint": "Someone in the call has to let you in.",
+      "rejected": {
+        "title": "You could not join",
+        "hint": "You were declined or the link is no longer valid."
+      },
+      "invalid": {
+        "title": "This link is not valid",
+        "hint": "It has expired or was revoked. Ask whoever invited you for a new one."
+      },
+      "full": {
+        "title": "Too many people are waiting",
+        "hint": "Try again in a while."
+      },
+      "ended": {
+        "title": "The call has ended",
+        "hint": "You can close this page."
+      },
+      "invite": "Invite",
+      "inviteTitle": "Invite people from outside",
+      "inviteCallHint": "Anyone with the link can ask to join without an account, and someone inside has to let them in. They only see the call and its chat. The link stops working when the call ends.",
+      "inviteMeetingHint": "Anyone with the link can ask to join without an account, and someone inside has to let them in. They only see the call and its chat. It is valid until the meeting ends.",
+      "createLink": "Create link",
+      "link": "Link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "activeLinks": "Active links",
+      "expires": "Expires on {date}",
+      "revoke": "Revoke",
+      "wantsIn": "{name} wants to join",
+      "admit": "Let in",
+      "reject": "Decline"
+    }
+  }
+}

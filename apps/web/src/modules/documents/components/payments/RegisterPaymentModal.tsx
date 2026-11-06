@@ -1,3 +1,6 @@
+import { bankAccountsApi } from '@/modules/banking/api/bankingApi';
+import type { BankAccountOption } from '@/modules/banking/domain/banking';
+import { useFormat } from '@/hooks/useFormat';
 import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
@@ -16,6 +19,8 @@ interface Props {
   invoiceCode: string;
   /** Total menos lo ya pagado — el importe sugerido para cerrar la factura. */
   remaining: number;
+  /** Devolver el saldo de un abono: el importe se escribe en positivo y viaja en negativo. */
+  refund?: boolean;
   onSuccess?: () => void;
 }
 
@@ -30,10 +35,12 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   invoiceId,
   invoiceCode,
   remaining,
+  refund,
   onSuccess,
 }) => {
   const { t } = useI18n();
   const toast = useToast();
+  const fmt = useFormat();
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState(() => String(Math.max(0, remaining).toFixed(2)));
@@ -41,7 +48,14 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   const [notes, setNotes] = useState('');
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [methodId, setMethodId] = useState('');
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
+  const [bankAccountId, setBankAccountId] = useState('');
   const [saving, setSaving] = useState(false);
+  const heading = refund
+    ? t('doc.creditNote.refund')
+    : kind === 'sales'
+      ? t('invoice.registerPayment')
+      : t('invoice.registerPaymentPurchase');
 
   useEffect(() => {
     if (!open) return;
@@ -54,8 +68,18 @@ export const RegisterPaymentModal: React.FC<Props> = ({
         if (rows && rows.length > 0 && !methodId) setMethodId(rows[0].id);
       })
       .catch(() => setMethods([]));
+    bankAccountsApi
+      .options()
+      .then((rows) => {
+        setBankAccounts(rows);
+        setBankAccountId((current) => current || rows.find((row) => row.isDefault)?.id || '');
+      })
+      .catch(() => setBankAccounts([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // En céntimos, como el servidor: se propone lo que queda redondeado.
+  const tooMuch = Math.round(Number(amount) * 100) > Math.round(remaining * 100);
 
   const submit = async () => {
     const amt = Number(amount);
@@ -63,6 +87,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
       toast.error(t('payment.amount') + ' > 0');
       return;
     }
+    if (tooMuch) return;
     if (!reference.trim()) {
       toast.error(t('payment.referenceRequired'));
       return;
@@ -71,22 +96,17 @@ export const RegisterPaymentModal: React.FC<Props> = ({
     try {
       const body: any = {
         date,
-        amount: amt,
+        amount: refund ? -amt : amt,
         reference: reference.trim(),
         notes: notes.trim() || null,
         paymentMethodId: methodId || null,
+        bankAccountId: bankAccountId || null,
       };
       if (kind === 'sales') body.salesInvoiceId = invoiceId;
       else body.purchaseInvoiceId = invoiceId;
 
       const data = await paymentsApi.create(body);
-      toast.success(
-        kind === 'sales'
-          ? t('invoice.registerPayment') + ' · ' + t(`invoice.paymentStatus.${data.paymentStatus}`)
-          : t('invoice.registerPaymentPurchase') +
-              ' · ' +
-              t(`invoice.paymentStatus.${data.paymentStatus}`),
-      );
+      toast.success(`${heading} · ${t(`invoice.paymentStatus.${data.paymentStatus}`)}`);
       onSuccess?.();
       onClose();
     } catch (e: any) {
@@ -97,22 +117,14 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal
-      isOpen={open}
-      onClose={onClose}
-      title={kind === 'sales' ? t('invoice.registerPayment') : t('invoice.registerPaymentPurchase')}
-    >
+    <Modal isOpen={open} onClose={onClose} title={heading}>
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">
             <CreditCard size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
-              {kind === 'sales'
-                ? t('invoice.registerPayment')
-                : t('invoice.registerPaymentPurchase')}
-            </h2>
+            <h2 className="text-lg font-bold text-fg-default font-display">{heading}</h2>
             <p className="text-xs text-ink-500 dark:text-ink-400 font-mono">{invoiceCode}</p>
           </div>
         </div>
@@ -134,6 +146,10 @@ export const RegisterPaymentModal: React.FC<Props> = ({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
+              helperText={t('payment.remainingHint', { amount: fmt.money(remaining) })}
+              error={
+                tooMuch ? t('payment.overRemaining', { amount: fmt.money(remaining) }) : undefined
+              }
             />
           </div>
           <div>
@@ -148,23 +164,36 @@ export const RegisterPaymentModal: React.FC<Props> = ({
               clearable
             />
           </div>
+          {bankAccounts.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1.5">
+                {t('banking.payment.bankAccount')}
+              </label>
+              <SearchableSelect
+                value={bankAccountId}
+                onChange={setBankAccountId}
+                options={bankAccounts.map((account) => ({
+                  value: account.id,
+                  label: account.name,
+                }))}
+                placeholder={t('banking.payment.noBankAccount')}
+                clearable
+              />
+            </div>
+          )}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-              {t('payment.reference')} <span className="text-rose-600 font-black">*</span>
+              {t('payment.reference')} <span className="text-danger font-black">*</span>
             </label>
             <Input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               placeholder={t('payment.referencePlaceholder')}
               required
-              className={
-                !reference.trim()
-                  ? 'border-rose-400 dark:border-rose-500/60 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                  : ''
-              }
+              className={!reference.trim() ? 'border-danger focus:border-danger' : ''}
             />
             {!reference.trim() && (
-              <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+              <p className="mt-1 text-[11px] text-danger font-medium">
                 {t('payment.requiredField')}
               </p>
             )}
@@ -182,7 +211,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit} disabled={saving || !reference.trim()}>
+          <Button onClick={submit} disabled={saving || tooMuch || !reference.trim()}>
             {saving ? t('common.loading') : t('common.confirm')}
           </Button>
         </div>

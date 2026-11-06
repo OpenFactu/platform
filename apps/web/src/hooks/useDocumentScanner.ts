@@ -1,6 +1,8 @@
 import React from 'react';
 import { useToast } from '@openfactu/ui';
 import { useBarcodeScanner } from './useBarcodeScanner';
+import { lineTaxGroupId } from '@/modules/documents/domain/lineTax';
+import type { useDocument } from '@/modules/documents/hooks/useDocument';
 import { t } from '@/i18n/i18n';
 
 /**
@@ -17,7 +19,7 @@ import { t } from '@/i18n/i18n';
  * @param doc  El objeto devuelto por `useDocument(...)`
  * @param enabled  Se ignora si el editor no está en modo creación/edición
  */
-export function useDocumentScanner(doc: any, enabled = true): void {
+export function useDocumentScanner(doc: ReturnType<typeof useDocument>, enabled = true): void {
   const toast = useToast();
 
   const handler = React.useCallback(
@@ -28,8 +30,8 @@ export function useDocumentScanner(doc: any, enabled = true): void {
       const items = doc?.masters?.items || [];
       // Busca por barcode primero (exact), luego por código interno
       const item =
-        items.find((i: any) => (i.barcode || '') === trimmed) ||
-        items.find((i: any) => (i.code || '') === trimmed);
+        items.find((i) => (i.barcode || '') === trimmed) ||
+        items.find((i) => (i.code || '') === trimmed);
 
       if (!item) {
         toast.error(t('app.scanner.itemNotFound', { code: trimmed }));
@@ -37,13 +39,14 @@ export function useDocumentScanner(doc: any, enabled = true): void {
       }
 
       const currentLines = doc?.state?.lines || [];
-      const prices = doc?.state?.mappedPrices || {};
+      // `useDocument` aún no expone `mappedPrices`: por ahora el escáner cae siempre al precio base.
+      const prices = (doc?.state as { mappedPrices?: Record<string, number> })?.mappedPrices || {};
 
       // Si ya hay una línea con este artículo, incrementa su cantidad en 1.
       // El código de barras del artículo no transporta info de almacén ni de
       // lote, por eso nos quedamos con el primer match por itemId — si el
       // usuario quiere separar por almacén/lote/serie, lo hace manualmente.
-      const existingIdx = currentLines.findIndex((l: any) => l.itemId === item.id);
+      const existingIdx = currentLines.findIndex((l) => l.itemId === item.id);
 
       if (existingIdx >= 0) {
         const updated = [...currentLines];
@@ -59,7 +62,10 @@ export function useDocumentScanner(doc: any, enabled = true): void {
         itemId: item.id,
         quantity: 1,
         price: Number(prices[item.id] ?? item.basePrice) || 0,
-        taxGroupId: item.taxGroupId || '',
+        taxGroupId: lineTaxGroupId(
+          (doc?.masters?.partners || []).find((p) => p.id === doc?.state?.partnerId),
+          item,
+        ),
         uomId: item.uomId || '',
         uomFactor: 1,
         warehouseId: doc?.state?.warehouseId || '',

@@ -4,9 +4,9 @@ export interface Payroll {
   periodYear: number;
   periodMonth: number;
   gross: string;
-  irpfAmount: string;
-  ssEmployee: string;
-  ssEmployer: string;
+  incomeTaxTotal: string;
+  socialEmployeeTotal: string;
+  socialEmployerTotal: string;
   netPay: string;
   status: 'draft' | 'approved' | 'paid';
   journalEntryId: string | null;
@@ -31,8 +31,9 @@ export interface PayrollConcept {
   code: string;
   name: string;
   kind: 'devengo' | 'deduccion' | 'aportacion_empresa';
-  taxableIrpf: boolean;
-  taxableSs: boolean;
+  category: 'income_tax' | 'social_employee' | 'social_employer' | null;
+  taxableIncomeTax: boolean;
+  taxableSocial: boolean;
   calculation: 'fixed' | 'percent_of_base' | 'per_hour';
   defaultAmount: string | null;
   defaultPercent: string | null;

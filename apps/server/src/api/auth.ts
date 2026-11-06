@@ -4,11 +4,61 @@ import { AuthService } from '../core/auth/AuthService';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import { eq, or, and, gt } from 'drizzle-orm';
-import { verifyTwoFactor } from './twofa';
+import bcrypt from 'bcrypt';
 import { hashCode } from '../core/auth/totpCrypto';
 import { enqueueMail } from '../core/email/MailQueue';
+import {
+  createSession,
+  issueToken,
+  revokeAllForUser,
+  setSessionTenant,
+} from '../core/auth/sessions';
+import { clientInfo } from '../core/auth/clientInfo';
+import {
+  PASSWORD_MESSAGES,
+  passwordProblem,
+  policyGate,
+  readPolicy,
+  sessionLimits,
+  strictestPasswordRules,
+  userHasMfa,
+} from '../core/auth/policy';
+import sessionRoutes, { requireSession } from './auth/sessionRoutes';
+import eventRoutes from './auth/eventRoutes';
+import { recordAuthEvent } from '../core/auth/authEvents';
+import passkeyRoutes from './auth/passkeyRoutes';
+import handoffRoutes from './auth/handoffRoutes';
+import emailCodeRoutes from './auth/emailCodeRoutes';
+import methodsRoutes from './auth/methodsRoutes';
+import ssoRoutes from './auth/ssoRoutes';
+import identityRoutes from './auth/identityRoutes';
+import mfaRoutes, { startMfaOrComplete } from './auth/mfaRoutes';
+import { completeLogin, rejectByPolicy } from './auth/completeLogin';
+import {
+  checkThrottle,
+  normalizeAccount,
+  recordAttempt,
+  sendThrottled,
+} from '../core/auth/throttle';
+import { internalError } from './auth/internalError';
 
 const router = Router();
+
+// logout, refresh y sesiones abiertas.
+router.use(sessionRoutes);
+router.use(eventRoutes);
+// Segundo factor con reto.
+router.use(mfaRoutes);
+// Passkeys (WebAuthn).
+router.use(passkeyRoutes);
+// Entrega de login entre dispositivos.
+router.use(handoffRoutes);
+// Código y enlace por correo, y las formas de entrar disponibles.
+router.use(emailCodeRoutes);
+router.use(methodsRoutes);
+// Google, Microsoft y OIDC, y las cuentas enlazadas del propio usuario.
+router.use(ssoRoutes);
+router.use(identityRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
@@ -55,13 +105,25 @@ router.get('/tenants', async (req, res) => {
   }
 });
 
+// Hash fijo para gastar el mismo tiempo con un usuario que no existe.
+const DUMMY_HASH = bcrypt.hashSync('keirost-sin-usuario', 10);
+
+const BAD_CREDENTIALS = { error: 'Credenciales inválidas' };
+
 /**
  * POST /api/auth/login
  */
 router.post('/login', async (req, res) => {
-  const { email, password, selectedTenantId, totpCode } = req.body;
+  const { email, password, selectedTenantId } = req.body || {};
 
   try {
+    const account = normalizeAccount(String(email ?? ''));
+    const keys = { account: account || undefined, ip: clientInfo(req).ip };
+
+    // Primero el freno: bloqueado no se comprueba nada ni se apunta nada.
+    const gate = await checkThrottle('login', keys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
+
     const db = ClientFactory.getClient('public');
 
     // Buscar usuario por email o username
@@ -70,125 +132,29 @@ router.post('/login', async (req, res) => {
       .from(schema.globalUsers)
       .where(or(eq(schema.globalUsers.email, email), eq(schema.globalUsers.username, email)));
 
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    const isMatch = await AuthService.verifyPassword(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    // ── Segundo factor (2FA/TOTP) ──────────────────────────────────────────
-    // Si el usuario lo tiene activo, exigimos el código antes de emitir el JWT.
-    if (user.totpEnabled) {
-      if (!totpCode) {
-        // Contraseña correcta pero falta el 2FA: no emitimos token todavía.
-        return res.json({ twoFactorRequired: true });
+    // Con o sin usuario se hace una comparación de bcrypt, y la respuesta es idéntica.
+    const isMatch = user
+      ? await AuthService.verifyPassword(password, user.password)
+      : (await bcrypt.compare(String(password ?? ''), DUMMY_HASH), false);
+    if (!user || !isMatch) {
+      await recordAttempt('login', keys, false);
+      if (user) {
+        // Sin esperar: con cuenta o sin ella la respuesta tarda lo mismo.
+        void recordAuthEvent({
+          userId: user.id,
+          kind: 'login',
+          ok: false,
+          method: 'password',
+          client: clientInfo(req),
+        });
       }
-      const check = verifyTwoFactor(String(totpCode), user.totpSecret, user.totpBackupCodes);
-      if (!check.ok) {
-        return res.status(401).json({ error: 'Código 2FA inválido' });
-      }
-      // Si se consumió un código de respaldo, persistimos la lista restante.
-      if (check.usedBackup) {
-        await db
-          .update(schema.globalUsers)
-          .set({
-            totpBackupCodes: JSON.stringify(check.remainingBackups || []),
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.globalUsers.id, user.id));
-      }
+      return res.status(401).json(BAD_CREDENTIALS);
     }
+    await recordAttempt('login', keys, true);
 
-    // Resolución de tenant/rol/permisos en 3 niveles
-    let finalRole = user.role;
-    let finalTenantId: string | null = null;
-    let finalPermissions: string | null = null;
-
-    if (user.role === 'SUPERUSER') {
-      // SUPERUSER bypassa memberships: accede a cualquier tenant
-      finalTenantId = selectedTenantId || null;
-    } else {
-      // Nivel 1: buscar membership exacta para el tenant seleccionado
-      if (selectedTenantId) {
-        const [membership] = await db
-          .select()
-          .from(schema.userTenantMemberships)
-          .where(
-            and(
-              eq(schema.userTenantMemberships.userId, user.id),
-              eq(schema.userTenantMemberships.tenantId, selectedTenantId),
-            ),
-          );
-
-        if (membership) {
-          finalTenantId = membership.tenantId;
-          finalRole = membership.role;
-          finalPermissions = membership.permissions;
-        } else if (user.tenantId === selectedTenantId) {
-          // Nivel 2: fallback legacy — el usuario tiene ese tenant asignado directamente
-          finalTenantId = user.tenantId;
-          finalPermissions = user.permissions;
-        } else {
-          return res.status(403).json({ error: 'No tienes acceso a esta empresa' });
-        }
-      } else {
-        // Sin selectedTenantId: usar tenantId legacy
-        finalTenantId = user.tenantId;
-        finalPermissions = user.permissions;
-      }
-    }
-
-    let tenantName = null;
-    if (finalTenantId) {
-      const [t] = await db
-        .select()
-        .from(schema.tenants)
-        .where(eq(schema.tenants.id, finalTenantId));
-      tenantName = t?.name;
-    }
-
-    // ADMIN y SUPERUSER ignoran siempre permissions granulares — tienen acceso
-    // total, y eso es lo que significa `null`.
-    //
-    // Un usuario normal SIN permisos configurados recibe `{}`, no `null`: son
-    // dos cosas distintas y confundirlas es peligroso. Antes ambos casos
-    // devolvían `null`, y bastaba con que alguien escribiera
-    // `if (permissions === null) → acceso total` para regalarle la empresa
-    // entera a un usuario recién creado.
-    const effectivePermissions =
-      finalRole === 'SUPERUSER' || finalRole === 'ADMIN'
-        ? null
-        : finalPermissions
-          ? JSON.parse(finalPermissions)
-          : {};
-
-    const token = AuthService.generateToken({
-      userId: user.id,
-      email: user.email,
-      username: user.username,
-      role: finalRole,
-      tenantId: finalTenantId,
-    });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: finalRole,
-        tenantId: finalTenantId,
-        tenantName,
-        permissions: effectivePermissions,
-        avatarImageUrl: user.avatarImageUrl,
-        locale: user.locale ?? null,
-      },
-    });
+    await startMfaOrComplete(req, res, user, { method: 'password', tenantId: selectedTenantId });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /login', error);
   }
 });
 
@@ -197,14 +163,10 @@ router.post('/login', async (req, res) => {
  * Cambia el tenant activo del usuario autenticado y devuelve un JWT nuevo.
  */
 router.post('/switch-tenant', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
+  const session = await requireSession(req, res);
+  if (!session) return;
 
   try {
-    const token = authHeader.split(' ')[1];
-    const payload: any = AuthService.verifyToken(token);
-    if (!payload) return res.status(401).json({ error: 'Token inválido' });
-
     const { tenantId } = req.body || {};
     if (!tenantId) return res.status(400).json({ error: 'tenantId es obligatorio' });
 
@@ -212,7 +174,7 @@ router.post('/switch-tenant', async (req, res) => {
     const [user] = await db
       .select()
       .from(schema.globalUsers)
-      .where(eq(schema.globalUsers.id, payload.userId));
+      .where(eq(schema.globalUsers.id, session.userId));
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     let finalRole = user.role;
@@ -244,12 +206,28 @@ router.post('/switch-tenant', async (req, res) => {
     const [t] = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId));
     if (!t) return res.status(404).json({ error: 'Empresa no encontrada' });
 
-    const newToken = AuthService.generateToken({
-      userId: user.id,
+    // Misma sesión (mismo sid), otra empresa activa.
+    // La política de la empresa a la que se pasa: si exige 2FA y no lo tiene, queda restringida;
+    // si no, se levanta la restricción de la anterior. Además fija la duración de la sesión.
+    const policy = await readPolicy(tenantId);
+    const gate = policyGate(
+      policy,
+      { role: finalRole, hasMfa: await userHasMfa(user) },
+      session.method,
+    );
+    if (!gate.allowed) {
+      return rejectByPolicy(req, res, user, session.method, gate.code!);
+    }
+    const limits = sessionLimits(policy);
+    const updated = await setSessionTenant(session.id, tenantId, gate.restricted, {
+      idleHours: limits.slidingHours,
+      maxDays: limits.maxDays,
+    });
+    const newToken = issueToken(updated, {
+      id: user.id,
       email: user.email,
       username: user.username,
       role: finalRole,
-      tenantId,
     });
 
     // Igual que en el login: `null` es "admin, acceso total"; un usuario sin
@@ -273,10 +251,13 @@ router.post('/switch-tenant', async (req, res) => {
         permissions: effectivePermissions,
         avatarImageUrl: user.avatarImageUrl,
         locale: user.locale ?? null,
+        themePreset: user.themePreset ?? null,
+        themeMode: user.themeMode ?? null,
+        restricted: updated.restricted ?? null,
       },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /switch-tenant', error);
   }
 });
 
@@ -284,23 +265,22 @@ router.post('/switch-tenant', async (req, res) => {
  * GET /api/auth/me
  */
 router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
+  const session = await requireSession(req, res);
+  if (!session) return;
 
   try {
-    const token = authHeader.split(' ')[1];
-    const payload: any = AuthService.verifyToken(token);
-    if (!payload) return res.status(401).json({ error: 'Token inválido' });
-
     const db = ClientFactory.getClient('public');
     const [user] = await db
       .select()
       .from(schema.globalUsers)
-      .where(eq(schema.globalUsers.id, payload.userId));
+      .where(eq(schema.globalUsers.id, session.userId));
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const activeTenantId = payload.tenantId || user.tenantId;
+    // La empresa de la sesión: es la que la web manda en `x-tenant-id`, y otra distinta daría
+    // 403 SWITCH_TENANT_REQUIRED. Solo un SUPERUSER cae a la heredada.
+    const activeTenantId =
+      user.role === 'SUPERUSER' ? session.tenantId || user.tenantId : session.tenantId;
     // El rol global debe salir SIEMPRE de la BD, no del JWT — si promueves a
     // alguien a SUPERUSER a mano, el JWT viejo todavía dice ADMIN y lo
     // estaríamos propagando indefinidamente hasta que cerrase sesión.
@@ -340,9 +320,7 @@ router.get('/me', async (req, res) => {
     // `null` solo para admins. Un usuario normal sin nada configurado va con
     // `{}`, que es "no puede nada" y no "puede todo".
     const effectivePermissions =
-      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN'
-        ? null
-        : (resolvedPermissions ?? {});
+      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN' ? null : (resolvedPermissions ?? {});
 
     res.json({
       id: user.id,
@@ -354,6 +332,9 @@ router.get('/me', async (req, res) => {
       permissions: effectivePermissions,
       avatarImageUrl: user.avatarImageUrl,
       locale: user.locale ?? null,
+      themePreset: user.themePreset ?? null,
+      themeMode: user.themeMode ?? null,
+      restricted: session.restricted ?? null,
     });
   } catch (e) {
     res.status(401).json({ error: 'No autorizado' });
@@ -386,6 +367,13 @@ router.post('/forgot-password', async (req, res) => {
 
   try {
     if (!email) return ok();
+    // Cada petición cuenta como un fallo: la respuesta es siempre la misma, así que lo
+    // único que limita el correo que se puede mandar a una cuenta es el ritmo.
+    const account = normalizeAccount(String(email));
+    const keys = { account: account || undefined, ip: clientInfo(req).ip };
+    const gate = await checkThrottle('forgot', keys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
+    await recordAttempt('forgot', keys, false);
     const db = ClientFactory.getClient('public');
     const [user] = await db
       .select()
@@ -402,11 +390,18 @@ router.post('/forgot-password', async (req, res) => {
       .set({ resetTokenHash: tokenHash, resetTokenExpiresAt: expiresAt, updatedAt: new Date() })
       .where(eq(schema.globalUsers.id, user.id));
 
-    // Construye el enlace hacia el frontend.
+    // El enlace sale SOLO de WEB_ORIGIN, nunca de la petición: con la cabecera `Origin` un
+    // atacante haría llegar a la víctima un enlace a su dominio con el token dentro. En
+    // desarrollo, sin WEB_ORIGIN, la web local.
     const origin =
       process.env.WEB_ORIGIN ||
-      (req.headers.origin as string) ||
-      `http://localhost:${process.env.WEB_PORT || 8080}`;
+      (process.env.NODE_ENV === 'development'
+        ? `http://localhost:${process.env.WEB_PORT || 8080}`
+        : '');
+    if (!origin) {
+      console.warn('[auth] Sin WEB_ORIGIN: no se envía el enlace de recuperación.');
+      return ok();
+    }
     const link = `${origin.replace(/\/$/, '')}/reset-password?token=${token}`;
 
     // Intenta enviar el correo con el SMTP de la empresa del usuario. Si no hay
@@ -471,6 +466,10 @@ router.post('/reset-password', async (req, res) => {
     if (String(newPassword).length < 6) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
+    // Adivinar el enlace se frena solo por IP: no hay cuenta que atribuir.
+    const ipKeys = { ip: clientInfo(req).ip };
+    const gate = await checkThrottle('reset', ipKeys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
     const db = ClientFactory.getClient('public');
     const tokenHash = hashCode(token);
     const [user] = await db
@@ -483,10 +482,21 @@ router.post('/reset-password', async (req, res) => {
         ),
       );
     if (!user) {
+      await recordAttempt('reset', ipKeys, false);
       return res.status(400).json({ error: 'El enlace no es válido o ha caducado' });
     }
 
+    const problem = passwordProblem(newPassword, await strictestPasswordRules(user.id));
+    if (problem) {
+      return res.status(400).json({ error: PASSWORD_MESSAGES[problem], code: problem });
+    }
+
     const hashed = await AuthService.hashPassword(newPassword);
+
+    // Primero las sesiones: si esto falla no se cambia la contraseña, y nunca queda la
+    // nueva con sesiones viejas vivas.
+    await revokeAllForUser(user.id, 'password_change');
+
     await db
       .update(schema.globalUsers)
       .set({
@@ -497,9 +507,17 @@ router.post('/reset-password', async (req, res) => {
       })
       .where(eq(schema.globalUsers.id, user.id));
 
+    await recordAuthEvent({
+      userId: user.id,
+      kind: 'password_change',
+      ok: true,
+      method: 'reset',
+      client: clientInfo(req),
+    });
+
     res.json({ ok: true });
   } catch (error: any) {
-    res.status(500).json({ error: error?.message || 'Error' });
+    internalError(res, 'POST /reset-password', error);
   }
 });
 

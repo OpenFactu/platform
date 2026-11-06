@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -32,14 +33,16 @@ export const FormPreview: React.FC = () => {
     <div className="min-h-full p-4" style={themeStyle(form.theme)}>
       <div className="mx-auto w-full max-w-2xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(`/forms/${form.id}`)}
-          >
-            <ArrowLeft size={14} /> {t('forms.preview.backToEditor')}
-          </Button>
+          <PageBack onBack={() => navigate(`/forms/${form.id}`)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(`/forms/${form.id}`)}
+            >
+              <ArrowLeft size={14} /> {t('forms.preview.backToEditor')}
+            </Button>
+          </PageBack>
           <span className="text-xs text-fg-muted">{t('forms.preview.notice')}</span>
         </div>
         <FormRunner

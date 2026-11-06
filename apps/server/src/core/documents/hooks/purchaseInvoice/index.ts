@@ -1,3 +1,4 @@
+import { statusError } from '../../documentRules';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import * as schema from '../../../../db/schema';
 import type { DocumentBeforeCreateHookContext, DocumentHooks } from '../../DocumentEngine';
@@ -12,7 +13,7 @@ import { assertSerialUniqueness, assertZoneRequired } from '../shared';
 async function assertSupplierReference({ tx, request }: DocumentBeforeCreateHookContext) {
   const ref = String((request as any).externalRef ?? '').trim();
   if (!ref) {
-    throw new Error('Indica el número de factura del proveedor (referencia del proveedor).');
+    throw statusError(400, 'Indica el número de factura del proveedor (referencia del proveedor).');
   }
   const [dup] = await tx
     .select({ id: schema.purchaseInvoices.id })
@@ -26,7 +27,7 @@ async function assertSupplierReference({ tx, request }: DocumentBeforeCreateHook
     )
     .limit(1);
   if (dup) {
-    throw new Error(`Ya hay una factura de este proveedor con la referencia «${ref}».`);
+    throw statusError(409, `Ya hay una factura de este proveedor con la referencia «${ref}».`);
   }
 }
 

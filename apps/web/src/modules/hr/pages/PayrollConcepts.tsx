@@ -52,8 +52,9 @@ const empty = (): Partial<Concept> => ({
   code: '',
   name: '',
   kind: 'devengo',
-  taxableIrpf: true,
-  taxableSs: true,
+  category: null,
+  taxableIncomeTax: true,
+  taxableSocial: true,
   calculation: 'fixed',
   defaultAmount: null,
   defaultPercent: null,
@@ -143,12 +144,12 @@ export const PayrollConcepts: React.FC = () => {
       cell: (r: Concept) => t(CALC_LABELS[r.calculation]),
     },
     {
-      header: 'IRPF',
-      cell: (r: Concept) => (r.taxableIrpf ? t('hr.common.yes') : t('hr.common.no')),
+      header: t('hrPayroll.concepts.taxableIrpf'),
+      cell: (r: Concept) => (r.taxableIncomeTax ? t('hr.common.yes') : t('hr.common.no')),
     },
     {
-      header: 'SS',
-      cell: (r: Concept) => (r.taxableSs ? t('hr.common.yes') : t('hr.common.no')),
+      header: t('hrPayroll.concepts.taxableSs'),
+      cell: (r: Concept) => (r.taxableSocial ? t('hr.common.yes') : t('hr.common.no')),
     },
     {
       header: t('hr.common.active'),
@@ -259,20 +260,33 @@ export const PayrollConcepts: React.FC = () => {
                 value={editing.defaultPercent ?? ''}
                 onChange={(e) => setEditing({ ...editing, defaultPercent: e.target.value || null })}
               />
+              <Select
+                label={t('app.localization.category')}
+                value={editing.category ?? ''}
+                onChange={(value) =>
+                  setEditing({ ...editing, category: (value || null) as Concept['category'] })
+                }
+                options={[
+                  { value: '', label: t('app.localization.categoryOther') },
+                  { value: 'income_tax', label: t('app.localization.categoryIncomeTax') },
+                  { value: 'social_employee', label: t('app.localization.categorySocialEmployee') },
+                  { value: 'social_employer', label: t('app.localization.categorySocialEmployer') },
+                ]}
+              />
               {/* Campos de formulario (se persisten al guardar) → Checkbox, que
                   no tiene prop `label`: se conserva el <label> envolvente. */}
               <div className="flex items-end gap-3 pb-2">
                 <label className="text-sm flex items-center gap-2 select-none">
                   <Checkbox
-                    checked={!!editing.taxableIrpf}
-                    onChange={(checked) => setEditing({ ...editing, taxableIrpf: checked })}
+                    checked={!!editing.taxableIncomeTax}
+                    onChange={(checked) => setEditing({ ...editing, taxableIncomeTax: checked })}
                   />
                   {t('hrPayroll.concepts.taxableIrpf')}
                 </label>
                 <label className="text-sm flex items-center gap-2 select-none">
                   <Checkbox
-                    checked={!!editing.taxableSs}
-                    onChange={(checked) => setEditing({ ...editing, taxableSs: checked })}
+                    checked={!!editing.taxableSocial}
+                    onChange={(checked) => setEditing({ ...editing, taxableSocial: checked })}
                   />
                   {t('hrPayroll.concepts.taxableSs')}
                 </label>

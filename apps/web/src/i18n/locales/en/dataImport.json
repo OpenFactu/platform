@@ -143,7 +143,7 @@
       "introBefore": "Run a ",
       "introStrong": "simulation",
       "introAfter": " first: it goes through the whole file without writing anything and tells you which rows won't make it in.",
-      "simulationNote": "The simulation checks the file: types, required fields, references that don't exist and duplicate keys. The module's own rules (an invalid Tax ID (NIF) format, a credit limit, the numbering series) are applied by {object} when writing, so new errors may appear in the real import.",
+      "simulationNote": "The simulation checks the file: types, required fields, references that don't exist and duplicate keys. The module's own rules (an invalid Tax ID format, a credit limit, the numbering series) are applied by {object} when writing, so new errors may appear in the real import.",
       "simulate": "Simulate",
       "import": "Import",
       "simulationBadge": "Simulation",

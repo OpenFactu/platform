@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Card,
   Button,
   Input,
@@ -9,6 +10,7 @@ import {
   NumberInput,
   PageHeader,
   Select,
+  Switch,
   Tabs,
   Loader,
   useToast,
@@ -80,7 +82,7 @@ const EMPTY: CompanyConfig = {
   address: '',
   city: '',
   zipCode: '',
-  country: 'ES',
+  country: '',
   regionId: '',
   subRegionId: '',
   localityId: '',
@@ -209,6 +211,7 @@ export const CompanySettings: React.FC = () => {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const {
     branding,
+    userTheme,
     format,
     flags,
     update: updateTheme,
@@ -578,6 +581,9 @@ export const CompanySettings: React.FC = () => {
 
       {activeTab === 'branding' && (
         <div className="space-y-6">
+          {!branding.enforceTheme && (userTheme.preset || userTheme.mode) && (
+            <Alert tone="info">{t('settingsCompany.page.personalThemeNotice')}</Alert>
+          )}
           <Card>
             <div className="p-6 space-y-4">
               <div className="flex items-end justify-between gap-4">
@@ -586,7 +592,9 @@ export const CompanySettings: React.FC = () => {
                     {t('settingsCompany.page.themePresets')}
                   </h2>
                   <p className="text-[12px] text-[var(--k-ink-500)] mt-1">
-                    {t('settingsCompany.page.themePresetsHelp')}
+                    {branding.enforceTheme
+                      ? t('settingsCompany.page.themePresetsHelpEnforced')
+                      : t('settingsCompany.page.themePresetsHelp')}
                   </p>
                 </div>
                 {activePresetId === 'custom' && (
@@ -604,6 +612,22 @@ export const CompanySettings: React.FC = () => {
                     onSelect={() => applyPreset(p.id)}
                   />
                 ))}
+              </div>
+              <div className="pt-4 border-t border-border-subtle space-y-1">
+                {/* Se guarda al momento, como los presets de arriba. */}
+                <Switch
+                  label={t('settingsCompany.page.enforceTheme')}
+                  checked={branding.enforceTheme}
+                  disabled={!isAdmin}
+                  onChange={(enforceTheme) =>
+                    updateTheme('branding', { enforceTheme }).catch(() =>
+                      toast.error(t('settingsCompany.page.saveError')),
+                    )
+                  }
+                />
+                <p className="text-[12px] text-fg-muted">
+                  {t('settingsCompany.page.enforceThemeHelp')}
+                </p>
               </div>
             </div>
           </Card>
@@ -680,11 +704,14 @@ export const CompanySettings: React.FC = () => {
                   {/* Opciones derivadas de FONT_OPTIONS (6 entradas) → Select. */}
                   <Select
                     label={t('settingsCompany.page.fontFamily')}
-                    options={FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
+                    options={[
+                      { value: '', label: t('settingsCompany.page.fromTheme') },
+                      ...FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label })),
+                    ]}
                     value={brandingDraft.fontFamily}
                     onChange={(v) => setBrandingDraft({ ...brandingDraft, fontFamily: v })}
                   />
-                  <FontPreview fontId={brandingDraft.fontFamily} />
+                  {brandingDraft.fontFamily && <FontPreview fontId={brandingDraft.fontFamily} />}
                 </div>
                 <Select
                   label={t('settingsCompany.page.mode')}

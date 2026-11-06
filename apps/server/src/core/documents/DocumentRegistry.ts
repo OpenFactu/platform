@@ -67,9 +67,14 @@ export interface DocumentTypeConfig {
 
   /** Acción de stock que realiza este documento */
   stockAction: StockAction;
+  /** El stock se mueve al asentar, no al crear: un borrador todavía no ha pasado. */
+  stockOnPost?: boolean;
 
   /** Si true, cierra los documentos base al crear desde ellos */
   closeBaseDocuments: boolean;
+
+  /** Crearlo puede añadir deuda de cliente: pasa por el límite de crédito. */
+  checksCredit?: boolean;
 
   /** Puntos de extensión propios de este tipo (auto-FIFO, validaciones, fulfillment parcial de pedidos, ...) — ver `DocumentEngine.ts`. */
   hooks?: DocumentHooks;

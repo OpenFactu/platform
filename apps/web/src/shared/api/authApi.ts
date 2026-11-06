@@ -10,13 +10,29 @@ export interface AuthUser {
   permissions?: Record<string, { read: boolean; write: boolean; delete: boolean }>;
   avatarImageUrl?: string | null;
   /** Idioma elegido en su perfil; null = el del navegador. */
-  locale?: 'es' | 'en' | null;
+  locale?: string | null;
+  /** Tema personal; null = el de la empresa. */
+  themePreset?: string | null;
+  themeMode?: 'light' | 'dark' | null;
+  /** `mfa_setup`: la empresa exige el 2FA y esta sesión aún no lo tiene. */
+  restricted?: 'mfa_setup' | null;
 }
 
 export const authApi = {
   me: () => apiClient.get<AuthUser>('/api/auth/me'),
   switchTenant: (tenantId: string) =>
     apiClient.post<{ token: string; user: AuthUser }>('/api/auth/switch-tenant', { tenantId }),
+  /** Revoca la sesión actual en el servidor. Un 401 aquí no vuelve a cerrar sesión. */
+  logout: () =>
+    apiClient.post<void>('/api/auth/logout', undefined, { skipUnauthorizedHandler: true }),
+  /** Misma sesión, token nuevo: la caducidad del servidor se desliza. */
+  refresh: () =>
+    apiClient.post<{ token: string }>('/api/auth/refresh', undefined, {
+      skipUnauthorizedHandler: true,
+    }),
   /** Guarda el idioma de la interfaz en el perfil del usuario. */
-  saveLocale: (locale: 'es' | 'en') => apiClient.patch('/api/profile/me', { locale }),
+  saveLocale: (locale: string) => apiClient.patch('/api/profile/me', { locale }),
+  /** Guarda el tema personal; con los dos a null vuelve el de la empresa. */
+  saveTheme: (theme: { themePreset: string | null; themeMode: 'light' | 'dark' | null }) =>
+    apiClient.patch('/api/profile/me', theme),
 };

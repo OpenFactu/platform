@@ -5,6 +5,7 @@ import { Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle2, ShieldAlert } from
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
 import { useI18n } from '@/i18n/I18nContext';
+import { passwordErrorKey } from '@/modules/settings/security/policyModel';
 
 /**
  * Página pública para fijar una nueva contraseña a partir del token recibido
@@ -52,7 +53,10 @@ export const ResetPassword: React.FC = () => {
       setTimeout(() => navigate('/login'), 2500);
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        setError(((err.body as any)?.error as string) || t('app.reset.invalidLink'));
+        const pwKey = passwordErrorKey(err.body);
+        setError(
+          pwKey ? t(pwKey) : ((err.body as any)?.error as string) || t('app.reset.invalidLink'),
+        );
       } else {
         setError(t('app.login.connectionError'));
       }

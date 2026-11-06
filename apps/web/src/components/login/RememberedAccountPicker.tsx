@@ -1,6 +1,6 @@
 import React from 'react';
-import { Avatar, Button, List, ListItem } from '@openfactu/ui';
-import { UserPlus, X } from 'lucide-react';
+import { Avatar, List, ListItem } from '@openfactu/ui';
+import { UserPlus } from 'lucide-react';
 import type { RememberedAccount } from './rememberedAccounts';
 import { useI18n } from '@/i18n/I18nContext';
 
@@ -11,18 +11,12 @@ import { useI18n } from '@/i18n/I18nContext';
 export const RememberedAccountPicker: React.FC<{
   accounts: RememberedAccount[];
   onPick: (account: RememberedAccount) => void;
-  onForget: (account: RememberedAccount) => void;
   onOtherAccount: () => void;
-}> = ({ accounts, onPick, onForget, onOtherAccount }) => {
+}> = ({ accounts, onPick, onOtherAccount }) => {
   const { t } = useI18n();
   return (
-    <div className="space-y-3">
-      {/* ListItem enseña sus acciones solo al pasar el ratón; en pantallas
-        táctiles la X de «olvidar» sería invisible, así que allí siempre se ve. */}
-      <List
-        aria-label={t('app.login.rememberedAccounts')}
-        className="[@media(hover:none)]:[&_.opacity-0]:opacity-100"
-      >
+    <div>
+      <List aria-label={t('app.login.rememberedAccounts')}>
         {accounts.map((a) => (
           <ListItem
             key={`${a.login}|${a.tenantId}`}
@@ -32,23 +26,19 @@ export const RememberedAccountPicker: React.FC<{
               .filter(Boolean)
               .join(' · ')}
             onClick={() => onPick(a)}
-            actions={[
-              {
-                key: 'forget',
-                icon: <X size={14} />,
-                label: t('app.login.forgetAccount', { name: a.name }),
-                onClick: (e) => {
-                  e.stopPropagation();
-                  onForget(a);
-                },
-              },
-            ]}
           />
         ))}
+        {/* Otra cuenta es una fila más, no un botón suelto: se elige igual que las demás. */}
+        <ListItem
+          avatar={
+            <span className="flex size-8 items-center justify-center rounded-full border border-dashed border-border-strong text-fg-muted">
+              <UserPlus size={15} />
+            </span>
+          }
+          title={t('app.login.useOtherAccount')}
+          onClick={onOtherAccount}
+        />
       </List>
-      <Button type="button" variant="ghost" size="sm" className="gap-2" onClick={onOtherAccount}>
-        <UserPlus size={14} /> {t('app.login.useOtherAccount')}
-      </Button>
     </div>
   );
 };

@@ -8,7 +8,17 @@ export interface AuditLogOptions {
   userId?: string;
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'POST' | 'REVERSE' | 'CLOSE';
+  action:
+    | 'CREATE'
+    | 'UPDATE'
+    | 'DELETE'
+    | 'APPROVE'
+    | 'POST'
+    | 'REVERSE'
+    | 'CLOSE'
+    | 'OVERRIDE'
+    | 'CANCEL'
+    | 'RETURN';
   oldValue?: any;
   newValue?: any;
 }

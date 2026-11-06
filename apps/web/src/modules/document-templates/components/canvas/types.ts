@@ -97,6 +97,8 @@ export interface ElementStyle {
   padding?: number;
   /** Radio de esquina en px (lo usa sobre todo la Caja/Contenedor). */
   borderRadius?: number;
+  /** Dónde queda el texto si la caja es más alta que él. Por defecto, centrado. */
+  verticalAlign?: 'top' | 'center' | 'bottom';
 }
 
 /** Base compartida por todos los elementos. Coordenadas en mm respecto al origen de la banda. */
@@ -108,6 +110,11 @@ export interface BaseElement {
   w: number;
   /** Alto en mm. */
   h: number;
+  /**
+   * Crece con su contenido y empuja lo que venga detrás, como la tabla de líneas, en lugar
+   * de recortarse en su caja. Su alto solo cuenta en el diseñador cuando no tiene contenido.
+   */
+  flow?: boolean;
   style?: ElementStyle;
   /**
    * Clase(s) CSS extra para el nodo raíz del elemento. Permite apuntar a este
@@ -176,7 +183,7 @@ export interface SpacerElement extends BaseElement {
 export interface FieldElement extends BaseElement {
   kind: 'field';
   path: string;
-  format?: 'currency' | 'date' | 'number' | 'percent' | 'address';
+  format?: 'currency' | 'date' | 'number' | 'percent' | 'percentRaw' | 'discount' | 'address';
   /** Literal a anteponer ("Nº Factura: "). Si `rich`, puede contener HTML. */
   prefix?: string;
   /** Literal a añadir al final. Si `rich`, puede contener HTML. */
@@ -201,6 +208,10 @@ export interface LinesTableColumn {
   /** Alineación del contenido. */
   align?: 'left' | 'center' | 'right';
   format?: FieldElement['format'];
+  /** Dato en una segunda línea más pequeña debajo del principal, si tiene valor. */
+  detailPath?: string;
+  /** La columna solo sale si este dato del documento tiene valor (p.ej. "hasDiscounts"). */
+  onlyIf?: string;
   /** Estilo tipográfico aplicado a las celdas de esta columna (y a su cabecera). */
   style?: ElementStyle;
   /** Estilo específico de la cabecera. Si se omite, se hereda de `style`. */
@@ -221,7 +232,7 @@ export interface LinesTableElement extends BaseElement {
   /** Fuente de iteración. `'lines'` (default) o `'query:NOMBRE'`. */
   source?: string;
   /** Preset visual de la tabla. Default `'default'`. */
-  tableStyle?: 'default' | 'bordered' | 'striped' | 'compact' | 'borderless';
+  tableStyle?: 'default' | 'bordered' | 'striped' | 'compact' | 'borderless' | 'neutral';
   /** Fondo de la fila de cabecera (override del preset). */
   headerBg?: string;
   /** Padding de celda en px (override del preset). */
@@ -244,9 +255,11 @@ export interface TotalsElement extends BaseElement {
   showSubtotal?: boolean;
   showTaxBreakdown?: boolean;
   showTotal?: boolean;
+  /** Aspecto del formato estándar: cada impuesto dice sobre qué base se aplica. */
+  variant?: 'neutral';
 }
 
-/** Código QR. `value` es una expresión tipo campo (p.ej. "verifactu.qrPayload"). */
+/** Código QR. `value` es una expresión tipo campo (p.ej. "qrPayload"). */
 export interface QRElement extends BaseElement {
   kind: 'qr';
   value: string;
@@ -434,6 +447,14 @@ export interface CanvasLayout {
   pageSize: PageSize;
   margins: Margins;
   bands: Band[];
+  /** Tipografía de todo el documento. Sin ella, la del sistema. */
+  fontFamily?: string;
+  /** Interlineado de todo el documento. Sin él, el del navegador. */
+  lineHeight?: number;
+  /** Los colores elegidos en el formulario para el formato estándar. Sin ellos, negro. */
+  documentColors?: { accent: string; ink: string; text: string; muted: string };
+  /** Formato sin color: la numeración de páginas también sale en negro. */
+  style?: 'neutral';
   /** Marca de agua (opcional). Ausente equivale a desactivada. */
   watermark?: Watermark;
   /** Numeración de páginas (opcional). */

@@ -32,8 +32,16 @@ const SALIDA = path.join(raizServidor, 'sql', 'public-schema.sql');
  */
 const TABLAS_PUBLICAS = [
   'Tenant',
+  'ShipmentToken',
   'GlobalUser',
   'UserTenantMembership',
+  'UserSession',
+  'AuthThrottle',
+  'AuthChallenge',
+  'AuthEvent',
+  'UserPasskey',
+  'AuthProvider',
+  'UserIdentity',
   'AuditLog',
   'PluginField',
   'PluginTable',
@@ -89,6 +97,12 @@ function idempotente(sentencia, tabla) {
   // «constraint already exists» y se llevaba por delante el resto del fichero.
   if (/ADD CONSTRAINT/i.test(sentencia)) {
     return [protegida(sentencia)];
+  }
+
+  // Un índice suelto se aplica en cada arranque: sin IF NOT EXISTS, la segunda
+  // vez fallaría y deshacería el fichero entero.
+  if (/^\s*CREATE (UNIQUE )?INDEX\s+"/i.test(sentencia)) {
+    return [sentencia.replace(/^\s*CREATE (UNIQUE )?INDEX\s+"/i, 'CREATE $1INDEX IF NOT EXISTS "')];
   }
 
   const cuerpo = sentencia.match(/CREATE TABLE "[^"]+" \(([\s\S]*)\)\s*$/);

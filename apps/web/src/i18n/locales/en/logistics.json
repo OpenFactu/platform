@@ -1,12 +1,21 @@
 {
   "logistics": {
+    "returnFollowUp": {
+      "alreadyReturned": "These goods already came back with a credit note: no other receipt was created.",
+      "create": "Create the credit note",
+      "draft": "Invoice {code} is still a draft. As the goods came back, cancel it if it no longer applies.",
+      "issued": "The goods come back with their receipt, but invoice {code} is still whole. It needs a credit note, which corrects the money without adding the stock again.",
+      "later": "Not now",
+      "title": "Return registered"
+    },
     "nav": {
       "label": "Logistics",
       "description": "Shipments, delivery routes and real-time tracking.",
       "hub": "Logistics hub",
       "carriers": "Carriers",
       "shipment": "Shipment",
-      "myRoute": "My route"
+      "myRoute": "My route",
+      "settings": "Settings"
     },
     "hub": {
       "title": "Logistics hub",
@@ -19,7 +28,11 @@
         "vehicles": "Vehicles",
         "packages": "Packages",
         "staging": "Staging areas",
-        "platforms": "Platforms"
+        "platforms": "Platforms",
+        "today": "Today",
+        "reports": "Reports",
+        "flow": "How to deliver",
+        "appReports": "App reports"
       }
     },
     "driverLayout": {
@@ -73,18 +86,20 @@
       "placeholder": "Search address…",
       "clear": "Clear",
       "houseNumber": "No. {n}",
-      "noResultsFor": "No results for"
+      "noResultsFor": "No results for",
+      "typeToSearch": "Type the address to search for it",
+      "useText": "Use “{term}”"
     },
     "pod": {
-      "validationToast": "Enter the ID number (DNI/NIF) or a signature",
+      "validationToast": "Enter the ID number or a signature",
       "title": "Proof of delivery",
       "subtitle": "Recipient details",
       "missingTitle": "Proof of delivery missing.",
-      "missingBefore": "Enter the recipient's ID number (DNI/NIF)",
+      "missingBefore": "Enter the recipient's ID number",
       "missingOr": "or",
       "missingAfter": "capture their signature below.",
       "recipientName": "Recipient name",
-      "document": "ID number (DNI / NIF)",
+      "document": "ID number",
       "required": "(required)",
       "signature": "Signature",
       "signatureHint": "Recipient's signature",
@@ -121,6 +136,7 @@
       "markResolved": "Mark resolved",
       "clientReported": "Reported by customers",
       "clientReportedHint": "via tracking chat · last 30 days",
+      "clientIncidentReason": "Incident reported by the customer",
       "customer": "Customer",
       "escalatedBadge": "Escalated",
       "shipment": "Shipment",
@@ -187,7 +203,21 @@
       "boxShipped": "The box has already left — its contents cannot be changed.",
       "emptyBox": "Empty box.",
       "totalLines": "Total lines:",
-      "totalUnits": "Total units:"
+      "totalUnits": "Total units:",
+      "columns": {
+        "box": "Box and weight",
+        "code": "Code",
+        "shipment": "Shipment",
+        "status": "Status"
+      },
+      "label": "Print label",
+      "status": {
+        "open": "Open",
+        "sealed": "Sealed",
+        "shipped": "Out for delivery",
+        "delivered": "Delivered",
+        "returned": "Returned"
+      }
     },
     "picking": {
       "markedMissing": "Marked as unavailable",
@@ -214,7 +244,16 @@
       "current": "current",
       "serialNumber": "Serial no.",
       "batch": "Batch",
-      "notes": "Notes"
+      "notes": "Notes",
+      "missingTitle": "Mark as missing",
+      "missingMessage": "{missing} of {requested} are missing. The delivery note will be corrected and stock adjusted. This cannot be undone.",
+      "status": {
+        "pending": "Pending",
+        "partial": "Partial",
+        "done": "Done",
+        "missing": "Missing",
+        "cancelled": "Cancelled"
+      }
     },
     "platforms": {
       "nameRequired": "Name is required.",
@@ -300,7 +339,8 @@
       "updated": "Route updated",
       "created": "Route created",
       "deleteTitle": "Delete route",
-      "deleteMessage": "Delete the route? Its stops will be deleted too.",
+      "deleteMessage": "A route with activity is archived and keeps its stops and proofs of delivery.",
+      "archived": "(archived)",
       "new": "New route",
       "empty": "No routes.",
       "driver": "Driver:",
@@ -312,10 +352,25 @@
       "unassigned": "— unassigned —",
       "driverHint": "All active employees are listed. Those marked with ⚠ have no user account and won't be able to log in to the driver app.",
       "vehicle": "Vehicle",
-      "archived": "(archived)",
       "registeredPlate": "Registered plate:",
       "statusLabel": "Status",
-      "sketch": "Sketch — shipments without a route"
+      "sketch": "Sketch — shipments without a route",
+      "archive": "Archive",
+      "columns": {
+        "code": "Code",
+        "date": "Date",
+        "driver": "Driver",
+        "progress": "Progress"
+      },
+      "driverBusy": "That driver already has that day: {routes}",
+      "finish": "Finish route",
+      "finishTitle": "Finish the route",
+      "finishMessage": "{count} stops are still open. They will be postponed and their shipments can be planned again.",
+      "noStops": "No stops",
+      "overCapacity": "Carrying {load} kg and the vehicle takes {capacity} kg",
+      "sheet": "Route sheet",
+      "stopsProgress": "{closed} of {total} stops",
+      "showArchived": "Show archived"
     },
     "vehicles": {
       "status": {
@@ -359,9 +414,10 @@
       "pickupAddressRequired": "Pickup address is required.",
       "destinationAddressRequired": "Destination address is required.",
       "returnWarehouseRequired": "Select the warehouse the return goes to.",
-      "created": "Shipment created (token {token}…)",
+      "created": "Shipment {code} created",
       "deleteTitle": "Delete shipment",
-      "deleteMessage": "The shipment and its tracking will be deleted. This action cannot be undone.",
+      "deleteMessage": "A shipment with history is archived and keeps its tracking. If it is under way, cancel it first.",
+      "archived": "Shipment archived: it keeps its history and tracking link.",
       "emailQueued": "Email queued",
       "sendError": "Could not send",
       "ownFleet": "Own (in-house fleet)",
@@ -372,7 +428,13 @@
         "carrier": "Carrier",
         "driver": "Driver",
         "destination": "Destination",
-        "lastPosition": "Last position"
+        "lastPosition": "Last position",
+        "counterparty": "Customer",
+        "direction": "Type",
+        "document": "Delivery note",
+        "estimated": "Expected",
+        "number": "Number",
+        "route": "Route"
       },
       "liveHint": "Reporting position now",
       "actions": {
@@ -420,8 +482,19 @@
         "additionalDetails": "Additional details",
         "estimatedDelivery": "Estimated delivery date",
         "internalNotes": "Internal notes",
-        "notesPlaceholder": "Instructions for the driver, remarks, etc."
-      }
+        "notesPlaceholder": "Instructions for the driver, remarks, etc.",
+        "windowFrom": "Available from",
+        "windowTo": "Available until"
+      },
+      "archivedFilter": "Archived",
+      "direction": {
+        "out": "Outgoing",
+        "in": "Incoming",
+        "pickup": "Pickup"
+      },
+      "from": "From",
+      "to": "To",
+      "includeArchived": "Include archived"
     },
     "staging": {
       "updated": "Staging area updated",
@@ -545,13 +618,13 @@
       "accountCreated": "Account created",
       "deleteAccountTitle": "Delete account",
       "deleteAccountMessage": "Delete the carrier account?",
-      "testOk": "OK — test tracking: {tracking}",
+      "testOk": "Connection OK",
       "none": "(none)",
       "testManual": "Manual carrier — no connection to test",
       "testFailed": "Test failed",
       "noAdapter": "— no adapter (manual) —",
       "title": "Carriers",
-      "subtitle": "Add any carrier. If the core has an adapter for it you can connect it; otherwise it is managed manually.",
+      "subtitle": "Add any carrier. If an integration is installed you can connect it; otherwise you will enter its number by hand when dispatching.",
       "new": "New",
       "empty": "No carriers. Create the first one — it can be from any company.",
       "inactive": "Inactive",
@@ -631,7 +704,7 @@
       },
       "backToHub": "Back to logistics hub",
       "driverLabel": "Driver: {name}",
-      "carrierLabel": "Carrier: {name}",
+      "carrierLabel": "Carrier label",
       "trackingLabel": "Tracking: {code}",
       "moreActions": "More actions",
       "noPinTitle": "No destination pin.",
@@ -687,7 +760,134 @@
         "returnWarehouse": "Return warehouse",
         "autoWarehouse": "Automatic (source delivery note's warehouse)",
         "chooseWarehouse": "— choose warehouse —"
-      }
+      },
+      "actions": {
+        "dispatch": "Put on a route",
+        "ready": "Mark as ready",
+        "deliver": "Mark as delivered",
+        "postpone": "Postpone",
+        "incident": "Report an incident",
+        "resolve": "Resolve incident",
+        "return": "Return",
+        "pickup": "Schedule pickup",
+        "cancel": "Cancel shipment",
+        "receive": "Confirm receipt",
+        "carrier": "Send with a carrier"
+      },
+      "archivedNotice": "This shipment is archived: it no longer shows in the lists.",
+      "copyPositionUrl": "Copy position address",
+      "copyTrackingLink": "Copy customer link",
+      "done": {
+        "deliver": "Shipment delivered",
+        "ready": "Shipment ready to go",
+        "receive": "Receipt confirmed",
+        "resolve": "Incident resolved",
+        "dispatch": "Shipment put on a route",
+        "postpone": "Shipment postponed",
+        "incident": "Incident recorded",
+        "return": "Return recorded",
+        "pickup": "Pickup scheduled: add it to a route",
+        "cancel": "Shipment cancelled",
+        "carrier": "Shipment handed to the carrier",
+        "carrierRefresh": "Status checked"
+      },
+      "eventKind": {
+        "note": "Note",
+        "incident": "Customer incident",
+        "shortage": "Shortage when picking",
+        "photo": "Photo",
+        "status_change": "Status change"
+      },
+      "facts": {
+        "carrier": "Transport",
+        "customer": "Customer",
+        "document": "Delivery note",
+        "driver": "Driver",
+        "email": "Email",
+        "estimated": "Expected date",
+        "notes": "Notes",
+        "phone": "Phone",
+        "route": "Route",
+        "supplier": "Supplier",
+        "trackingNumber": "Carrier number",
+        "vehicle": "Vehicle",
+        "window": "Time window"
+      },
+      "history": "History",
+      "labels": "Labels",
+      "modals": {
+        "cancel": {
+          "title": "Cancel shipment",
+          "subtitle": "The shipment stops being active and leaves its route."
+        },
+        "dispatch": {
+          "title": "Put on a route",
+          "subtitle": "Choose the route it will go on. For a retry, a new stop is created.",
+          "choose": "Choose a route"
+        },
+        "incident": {
+          "title": "Report an incident",
+          "subtitle": "Say what happened: it stays in the history."
+        },
+        "pickup": {
+          "title": "Schedule pickup",
+          "subtitle": "The driver will go to that address to collect the package."
+        },
+        "postpone": {
+          "title": "Postpone",
+          "subtitle": "The shipment waits to be planned again."
+        },
+        "return": {
+          "title": "Return shipment",
+          "subtitle": "A draft receipt is created with what comes back to the warehouse."
+        },
+        "carrier": {
+          "title": "Send with a carrier",
+          "subtitle": "If it is integrated, the shipment is created there and its number and label are saved.",
+          "account": "Account",
+          "trackingNumber": "Tracking number",
+          "manualHint": "This carrier is not integrated: enter the number it gave you.",
+          "noAccounts": "There are no carrier accounts. Create them in Settings → Carriers."
+        }
+      },
+      "moveHint": "Tap the new destination on the map.",
+      "movePin": "Move pin",
+      "noPackages": "This shipment has no packages yet.",
+      "packages_one": "{count} package",
+      "packages_other": "{count} packages",
+      "packingList": "Packing list",
+      "pod": {
+        "at": "Delivered on",
+        "document": "Document",
+        "notes": "Remarks",
+        "photo": "Photo",
+        "receivedBy": "Received by",
+        "signature": "Signature",
+        "handover": "Left with"
+      },
+      "progress": {
+        "preparing": "Preparing",
+        "ready": "Ready",
+        "in_transit": "On the way",
+        "out_for_delivery": "Out for delivery",
+        "delivered": "Delivered",
+        "pickedUp": "Collected",
+        "receiving": "Receiving",
+        "received": "Received"
+      },
+      "restore": "Restore",
+      "routes": "Routes",
+      "stopStatus": {
+        "pending": "Pending",
+        "en_route": "On the way",
+        "arrived": "Arrived",
+        "delivered": "Delivered",
+        "postponed": "Postponed",
+        "exception": "Incident",
+        "cancelled": "Cancelled"
+      },
+      "technical": "Technical data",
+      "carrierRefresh": "Check with the carrier"
     },
     "driver": {
       "stopStatus": {
@@ -700,7 +900,8 @@
         "cancelled": "Cancelled"
       },
       "noGeolocation": "This device does not support geolocation",
-      "gpsError": "GPS: {message}",
+      "gpsDenied": "No location permission: turn it on so the customer can see where you are",
+      "gpsUnavailable": "The GPS cannot be read right now. It will keep trying",
       "qrUnrecognized": "QR code not recognised",
       "packageReadError": "Could not read the package",
       "qrInvalidArea": "QR code is not valid for a staging area",
@@ -750,7 +951,8 @@
         "middle_other": "pending stops as",
         "arrived": "arrived",
         "after": "with the current time.",
-        "confirm": "Mark as arrived"
+        "confirm": "Mark as arrived",
+        "message": "{count} stops will be marked as \"arrived\"."
       },
       "postponeModal": {
         "title": "Postpone delivery",
@@ -817,7 +1019,294 @@
       "arrived": "Arrived",
       "collectedAction": "Collected",
       "deliveredAction": "Delivered",
-      "incident": "Incident"
+      "incident": "Incident",
+      "eta": "Around {time}",
+      "window": "Window {window}",
+      "progress": "{done} of {total} delivered",
+      "outbox": {
+        "full": "Could not save on this phone. Try again when you have signal.",
+        "pending": "No signal: {count} actions waiting to be sent. They will go on their own.",
+        "rejected": "The server rejected {count} saved actions. Check the route.",
+        "saved": "No signal: saved, and it will be sent on its own.",
+        "sent": "Sent {count} saved actions."
+      },
+      "settings": "Settings",
+      "more": "More options",
+      "views": "Route views",
+      "now": "Now",
+      "stops_one": "{count} stop",
+      "stops_other": "{count} stops",
+      "map": "Map",
+      "stopOf": "Stop {n} of {total}",
+      "packagesCount_one": "{count} package",
+      "packagesCount_other": "{count} packages",
+      "howToGet": "Directions",
+      "deliverNow": "Deliver",
+      "collectNow": "Collect",
+      "cantDeliver": "Can’t do it",
+      "cantCollect": "Can’t do it",
+      "doneStops": "Done ({count})",
+      "goToStop": "Go to this stop",
+      "allDoneTitle": "You have finished your stops",
+      "allDoneHint": "Finish the route to close it.",
+      "routeClosedTitle": "This route is already closed",
+      "setupTitle": "Before you leave",
+      "settingsModal": {
+        "language": "Language",
+        "shareLocation": "Share my location with the customer",
+        "fullscreen": "Full screen",
+        "installHint": "To always use it without the browser bar, add it to your phone’s home screen.",
+        "backToErp": "Back to Keirost"
+      },
+      "problems": {
+        "title": "What happened?",
+        "nobody": "Nobody is there",
+        "otherDay": "The customer wants another day",
+        "noTime": "I have no time today",
+        "wrongAddress": "The address is wrong",
+        "refused": "The customer refuses it",
+        "damaged": "Damaged package",
+        "missingPackage": "A package is missing",
+        "other": "Another reason",
+        "otherPlaceholder": "Say it in a few words",
+        "confirm": "Confirm"
+      },
+      "loadOut": {
+        "progress": "{done} of {total} packages loaded",
+        "noArea": "No staging area",
+        "scan": "Scan packages",
+        "missing_one": "{count} package left to load",
+        "missing_other": "{count} packages left to load",
+        "notHere": "This package is not on this route"
+      },
+      "drop": {
+        "title": "Leave packages at a staging area",
+        "titleFinishing": "Where are you leaving the rest?",
+        "hint": "What you leave stays postponed and can be put on a route again.",
+        "area": "Staging area",
+        "confirm_one": "Leave {count} shipment",
+        "confirm_other": "Leave {count} shipments",
+        "skip": "Continue without leaving them",
+        "done": "Packages left at the staging area",
+        "noAreas": "There are no staging areas. Ask the office."
+      }
+    },
+    "today": {
+      "allClear": "All in order: nothing needs looking at.",
+      "deliveredToday": "Delivered today",
+      "incidents": "Incidents",
+      "incidentsTitle": "Incidents ({count})",
+      "late": "Running late ({count})",
+      "loadError": "Could not load the summary of the day.",
+      "onRoute": "Out for delivery",
+      "readyForRoute": "To plan",
+      "readyTitle": "To plan ({count})",
+      "review": "Review",
+      "staleRoutes_one": "{count} route from another day is still open",
+      "staleRoutes_other": "{count} routes from other days are still open",
+      "toPrepare": "To prepare"
+    },
+    "reports": {
+      "period": "Period",
+      "deliveries": "Deliveries",
+      "onTimeRate": "On time",
+      "onTime": "On time",
+      "late": "Late",
+      "unknown": "No promised date",
+      "noPromise": "No delivery had a promised date",
+      "byDriver": "Work by driver",
+      "byCause": "Issues by cause",
+      "driver": "Driver",
+      "stops": "Stops",
+      "delivered": "Delivered",
+      "postponed": "Postponed",
+      "incidents": "Issues",
+      "cause": "Cause",
+      "count": "Times",
+      "noDriver": "No driver",
+      "noCause": "Not stated",
+      "noData": "No routes in these dates",
+      "noIncidents": "No issues in these dates"
+    },
+    "wizard": {
+      "stepOf": "Step {n} of {total}",
+      "back": "Back",
+      "next": "Next",
+      "discard": {
+        "title": "Leave this delivery?",
+        "message": "What you have entered so far will be lost.",
+        "confirm": "Leave"
+      },
+      "packages": {
+        "title": "Check the packages",
+        "titlePickup": "Check what you collect",
+        "all": "All here",
+        "allPickup": "All here",
+        "missing": "A package is missing",
+        "scan": "Scan packages"
+      },
+      "recipient": {
+        "title": "Who receives it?",
+        "titlePickup": "Who hands it over?",
+        "other": "Someone else",
+        "name": "Name"
+      },
+      "signature": {
+        "title": "Sign here",
+        "redo": "Sign again",
+        "cantSign": "Can’t sign",
+        "canSign": "Can sign",
+        "skip": "Continue without signature"
+      },
+      "photo": {
+        "title": "Take a photo",
+        "skip": "Continue without photo",
+        "again": "Retake the photo",
+        "error": "The photo could not be read",
+        "required": "Your company asks for a photo for this delivery."
+      },
+      "confirm": {
+        "title": "Review and confirm",
+        "packages": "Packages",
+        "recipient": "Received by",
+        "recipientPickup": "Handed over by",
+        "submit": "Confirm delivery",
+        "submitPickup": "Confirm collection",
+        "sending": "Sending…"
+      },
+      "done": {
+        "title": "Delivered!",
+        "titlePickup": "Collected!",
+        "next": "Next stop",
+        "last": "That was the last stop",
+        "navigate": "Go to the next one",
+        "backToRoute": "Back to the route"
+      },
+      "handover": {
+        "other": "Someone else",
+        "concierge": "Concierge",
+        "neighbor": "A neighbour",
+        "safePlace": "Safe place",
+        "safePlaceHint": "No signature needed, but take a photo of where you leave it."
+      }
+    },
+    "appReports": {
+      "newTitle": "Report a problem with the app",
+      "newHint": "For what fails in the application. Delivery issues go on each stop.",
+      "category": {
+        "bug": "Something does not work",
+        "idea": "I have an idea",
+        "other": "Something else"
+      },
+      "message": "Tell us what happened",
+      "messagePlaceholder": "What you were doing and what happened",
+      "addPhoto": "Add a screenshot",
+      "send": "Send",
+      "sent": "Report sent. Thank you.",
+      "sendError": "The report could not be sent",
+      "empty": "No reports",
+      "filterOpen": "Open",
+      "filterAll": "All",
+      "statusOpen": "Open",
+      "statusResolved": "Resolved",
+      "resolve": "Mark as resolved",
+      "reopen": "Reopen",
+      "details": "Details",
+      "unknownUser": "Unknown user",
+      "context": {
+        "path": "Screen",
+        "screen": "Size",
+        "userAgent": "Device",
+        "locale": "Language",
+        "online": "Online",
+        "routeId": "Route"
+      },
+      "yes": "Yes",
+      "no": "No"
+    },
+    "flow": {
+      "save": "Save",
+      "saved": "Settings saved",
+      "saveError": "Could not save",
+      "intro": "What this company asks of the driver. It applies from their next delivery.",
+      "off": "Don’t ask",
+      "check": "Tick",
+      "scan": "Scan",
+      "optional": "Optional",
+      "required": "Required",
+      "sectionLoad": "Before leaving",
+      "loadOut": "Load the packages at the staging area",
+      "loadOutHint": "Scan requires reading the label of each package.",
+      "loadOutRequired": "Don’t allow leaving until all are loaded",
+      "sectionDeliver": "When delivering",
+      "packageCheck": "Check the packages at the door",
+      "arrive": "Offer the “Arrived” button",
+      "handover": "Who or where it can be left",
+      "handoverOptions": {
+        "customer": "With the customer",
+        "other": "With someone else",
+        "concierge": "With the concierge",
+        "neighbor": "With a neighbour",
+        "safePlace": "In a safe place, with a photo"
+      },
+      "signature": "Signature",
+      "allowDocument": "If they can’t sign, their ID is enough",
+      "photo": "Delivery photo",
+      "sectionProblems": "When it can’t be delivered",
+      "problemsHint": "Postponing leaves the order pending; an issue alerts the office.",
+      "postpone": "Postpones",
+      "incident": "Issue",
+      "addReason": "Add a reason",
+      "reasonLabel": "Reason",
+      "reasonKind": "What it does",
+      "add": "Add",
+      "remove": "Remove",
+      "sectionStaging": "Staging areas",
+      "stagingDrop": "Allow leaving packages at a staging area during or at the end of the route",
+      "sectionMap": "Maps",
+      "provider": "Map in use",
+      "providers": {
+        "standard": "Normal",
+        "light": "Light",
+        "dark": "Dark",
+        "mono": "Black and white",
+        "custom": "External provider or own server"
+      },
+      "mapPreset": "Provider",
+      "mapPresetOwn": "Other or own server",
+      "tileUrl": "Map address",
+      "tileUrlHint": "With https and {z}, {x} and {y}. If it needs a key, put {key} where it goes. For example: https://maps.example.com/{z}/{x}/{y}.png?key={key}",
+      "apiKey": "API key",
+      "apiKeyHint": "You get it from the provider's dashboard. It goes in the address, where {key} is.",
+      "apiKeyWarning": "The key reaches the browser of anyone viewing the map, including on the public tracking page. Restrict it to your domain in the provider's dashboard.",
+      "satelliteUrl": "Satellite view address",
+      "satelliteUrlHint": "Optional. If empty, the default one is used.",
+      "maxZoom": "Maximum zoom",
+      "maxZoomHint": "Optional. If maps go blank when you zoom in, enter how far the provider goes.",
+      "mapErrors": {
+        "tileUrl": "The map address must start with https:// and contain {z}, {x} and {y}",
+        "satelliteUrl": "The satellite address must start with https:// and contain {z}, {x} and {y}",
+        "apiKey": "This address contains {key}: the API key is missing",
+        "keyHole": "You entered an API key, but no address contains {key}"
+      },
+      "attribution": "Attribution required by the provider",
+      "satellite": "Offer the satellite view",
+      "defaultStyle": "Maps open with",
+      "styles": {
+        "standard": "Map",
+        "satellite": "Satellite"
+      },
+      "navigationApp": "The driver navigates with",
+      "apps": {
+        "google": "Google Maps",
+        "waze": "Waze",
+        "apple": "Apple Maps"
+      },
+      "navigationHint": "Waze and Apple Maps don’t support several stops: navigating the route goes to the next one."
+    },
+    "settingsPage": {
+      "title": "Logistics settings",
+      "subtitle": "How to deliver, vehicles, staging areas, platforms and what drivers report about the application."
     }
   }
 }

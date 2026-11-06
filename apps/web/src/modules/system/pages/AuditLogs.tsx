@@ -23,7 +23,7 @@ interface AuditLog {
   tenantId: string;
   entityType: string;
   entityId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'OVERRIDE' | 'CANCEL' | 'RETURN';
   userId: string | null;
   oldValue: any;
   newValue: any;
@@ -37,6 +37,9 @@ const ACTION_CONFIG: Record<AuditLog['action'], { label: string; variant: BadgeP
     CREATE: { label: 'system.audit.actions.CREATE', variant: 'success' },
     UPDATE: { label: 'system.audit.actions.UPDATE', variant: 'info' },
     DELETE: { label: 'system.audit.actions.DELETE', variant: 'error' },
+    OVERRIDE: { label: 'system.audit.actions.OVERRIDE', variant: 'warning' },
+    CANCEL: { label: 'system.audit.actions.CANCEL', variant: 'warning' },
+    RETURN: { label: 'system.audit.actions.RETURN', variant: 'warning' },
   };
 
 // Las opciones del filtro salen de ACTION_CONFIG para no repetir los valores;

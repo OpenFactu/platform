@@ -12,10 +12,21 @@
  */
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { apiClient, ApiError } from '@/shared/http';
-import React, { useState } from 'react';
+import { login as loginRequest, type LoginResult } from './login/loginApi';
+import { MfaStepContainer } from './login/LoginMfaStep';
+import { LoginHandoffWait } from './login/LoginHandoffWait';
+import { LoginSsoButtons } from './login/LoginSsoButtons';
+import { LoginDivider } from './login/LoginDivider';
+import { readQueryParam, ssoErrorKey, stripQueryParams } from './login/ssoModel';
+import { useSsoLogin } from './login/useSsoLogin';
+import { useCanOpenSystemBrowser } from '@/shared/auth/openExternal';
+import { EmailCodeContainer } from './login/LoginEmailCodeStep';
+import { useLoginMethods } from './login/useLoginMethods';
+import { usePasskeyLogin } from './login/usePasskeyLogin';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Avatar, Badge, Button, Input, PasswordInput, Select } from '@openfactu/ui';
-import { ArrowLeft, ArrowRight, Building, Mail, ShieldCheck } from 'lucide-react';
+import { Alert, Avatar, Button, Input, PasswordInput, Select } from '@openfactu/ui';
+import { ArrowLeft, ArrowRight, Building, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
@@ -29,6 +40,11 @@ import {
 } from '../components/login/rememberedAccounts';
 import { useI18n } from '@/i18n/I18nContext';
 
+const loginErrorMessage = (body: unknown): string | undefined =>
+  typeof (body as { error?: unknown } | null)?.error === 'string'
+    ? (body as { error: string }).error
+    : undefined;
+
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +53,21 @@ export const Login: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState('');
   const [loginAvatarUrl, setLoginAvatarUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
-  const [totpCode, setTotpCode] = useState('');
+  // Reto del segundo paso: cuando existe, se pinta el formulario del código.
+  const [mfa, setMfa] = useState<{
+    challenge: string;
+    methods: string[];
+    passkeyElsewhere?: boolean;
+    passkeyRpIds?: string[];
+    user: { name?: string; email?: string; avatarImageUrl?: string | null };
+  } | null>(null);
+  const twoFactorRequired = !!mfa;
+  // Código con el que el servidor devolvió de un proveedor de acceso único (`?ssoError=`).
+  const [ssoErrorCode] = useState(() => readQueryParam('ssoError'));
+  const [ssoErrorShown, setSsoErrorShown] = useState(true);
+  useEffect(() => stripQueryParams('ssoError'), []);
+  // Entrar con un código por correo: el usuario ya está escrito y se pasa a su paso.
+  const [emailCodeFor, setEmailCodeFor] = useState<string | null>(null);
 
   // Acceso rápido: cuentas que ya entraron en este navegador. Elegir una
   // rellena usuario y empresa; la contraseña (y el 2FA) se siguen pidiendo.
@@ -56,6 +85,13 @@ export const Login: React.FC = () => {
     setPassword('');
     setError(null);
   };
+  // Olvidar se hace con la cuenta ya elegida, no con una X en la lista: es raro y fácil de tocar sin querer.
+  const forgetPickedAccount = () => {
+    if (!picked) return;
+    forgetAccount(picked);
+    setRemembered(loadRememberedAccounts());
+    leavePickedAccount();
+  };
   const leavePickedAccount = () => {
     setPicked(null);
     setEmail('');
@@ -67,6 +103,7 @@ export const Login: React.FC = () => {
   };
 
   const { login } = useAuth();
+  const methods = useLoginMethods(selectedTenant);
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -103,6 +140,74 @@ export const Login: React.FC = () => {
     }
   };
 
+  // Sesión conseguida (con o sin segundo paso): recordar la cuenta y entrar.
+  const finishLogin = (data: LoginResult) => {
+    // Recordar la cuenta para el acceso rápido (sin contraseña ni token).
+    const tenantId = selectedTenant || data.user?.tenantId;
+    // Con passkey no se escribió el usuario: se recuerda por el que devuelve el servidor.
+    const accountLogin = email.trim() || data.user?.username || '';
+    if (tenantId && accountLogin) {
+      rememberAccount({
+        login: accountLogin,
+        name: data.user?.username || accountLogin,
+        avatarUrl: data.user?.avatarImageUrl ?? loginAvatarUrl,
+        tenantId,
+        tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
+      });
+    }
+    if (!data.token) {
+      setError(t('app.login.connectionError'));
+      return;
+    }
+    login(data.token, data.user as unknown as Parameters<typeof login>[1]);
+    navigate('/');
+  };
+
+  // Si la respuesta es un reto del segundo paso, lo abre y devuelve true.
+  const openMfaIfNeeded = (data: LoginResult): boolean => {
+    if (!data.challenge) return false;
+    setMfa({
+      challenge: data.challenge,
+      methods: data.methods ?? ['totp'],
+      passkeyElsewhere: data.passkeyElsewhere,
+      passkeyRpIds: data.passkeyRpIds,
+      user: data.user ?? { email },
+    });
+    return true;
+  };
+
+  const passkeyLogin = usePasskeyLogin((data) => {
+    if (!openMfaIfNeeded(data)) finishLogin(data);
+  });
+
+  // En el escritorio, el SSO solo si la app sabe abrir el navegador del sistema.
+  const canOpenBrowser = useCanOpenSystemBrowser();
+  const sso = useSsoLogin({
+    onDone: (data) => {
+      if (!openMfaIfNeeded(data)) finishLogin(data);
+    },
+  });
+
+  const startEmailCode = () => {
+    if (!email.trim()) {
+      setError(t('auth.email.needEmail'));
+      return;
+    }
+    if (tenants.length > 1 && !selectedTenant) {
+      setError(t('app.login.pickCompanyError'));
+      return;
+    }
+    setError(null);
+    setEmailCodeFor(email.trim());
+  };
+
+  const handleMfaExpired = useCallback(() => {
+    setMfa(null);
+    setEmailCodeFor(null);
+    setPassword('');
+    setError(t('auth.mfa.expired'));
+  }, [t]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (tenants.length > 1 && !selectedTenant) {
@@ -113,43 +218,18 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      const data = await apiClient.post<any>(
-        '/api/auth/login',
-        {
-          email,
-          password,
-          selectedTenantId: selectedTenant,
-          ...(twoFactorRequired ? { totpCode: totpCode.trim() } : {}),
-        },
-        { auth: false },
-      );
+      const data = await loginRequest({ email, password, selectedTenantId: selectedTenant });
 
       // La contraseña es correcta pero el usuario tiene 2FA: pedimos el código.
-      if (data.twoFactorRequired) {
-        setTwoFactorRequired(true);
+      if (openMfaIfNeeded(data)) {
         setIsSubmitting(false);
         return;
       }
 
-      // Recordar la cuenta para el acceso rápido (sin contraseña ni token).
-      const tenantId = selectedTenant || data.user?.tenantId;
-      if (tenantId) {
-        rememberAccount({
-          login: email.trim(),
-          name: data.user?.username || email.trim(),
-          avatarUrl: data.user?.avatarImageUrl ?? loginAvatarUrl,
-          tenantId,
-          tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
-        });
-      }
-      login(data.token, data.user);
-      navigate('/');
+      finishLogin(data);
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        setError(
-          ((err.body as any)?.error as string) ||
-            (twoFactorRequired ? t('app.login.invalid2fa') : t('app.login.invalidCredentials')),
-        );
+        setError(loginErrorMessage(err.body) || t('app.login.invalidCredentials'));
       } else {
         setError(t('app.login.connectionError'));
       }
@@ -160,10 +240,17 @@ export const Login: React.FC = () => {
 
   const tenantName = tenants.length === 1 ? tenants[0].name : null;
 
+  // Otras formas de entrar, bajo una línea «o»: no dependen de la cuenta de arriba.
+  const onMainStep = !mfa && !emailCodeFor && !sso.handoff;
+  const showEmailCode = onMainStep && !showPicker && !!methods.emailCode;
+  const showPasskey = onMainStep && passkeyLogin.supported;
+  const ssoProviders = onMainStep && canOpenBrowser ? methods.sso : [];
+  const hasAlternatives = showEmailCode || showPasskey || ssoProviders.length > 0;
+
   return (
     <div className="min-h-dvh w-full flex bg-bg-app">
       {/* ── Formulario ── */}
-      <main className="flex-1 lg:flex-none lg:w-[480px] flex flex-col bg-bg-card lg:border-r border-border-default">
+      <main className="min-w-0 flex-1 lg:flex-none lg:w-[480px] flex flex-col bg-bg-card lg:border-r border-border-default">
         <header className="flex items-center gap-2.5 px-6 pt-6 sm:px-10 sm:pt-8">
           <KeirostLogo size={28} className="text-fg-default" />
           <span className="font-display text-base font-bold tracking-tight text-fg-default">
@@ -180,22 +267,40 @@ export const Login: React.FC = () => {
             <div className="space-y-1.5">
               <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-fg-default">
                 {twoFactorRequired
-                  ? t('app.login.twoFactorTitle')
-                  : showPicker
-                    ? t('app.login.pickAccountTitle')
-                    : picked
-                      ? t('app.login.hello', { name: picked.name })
-                      : t('app.login.title')}
+                  ? t('auth.mfa.title')
+                  : emailCodeFor
+                    ? t('auth.email.title')
+                    : showPicker
+                      ? t('app.login.pickAccountTitle')
+                      : picked
+                        ? t('app.login.hello', { name: picked.name })
+                        : t('app.login.title')}
               </h1>
-              <p className="text-sm text-fg-muted">
-                {twoFactorRequired
-                  ? t('app.login.twoFactorHint')
-                  : showPicker
+              {!twoFactorRequired && !emailCodeFor && (
+                <p className="text-sm text-fg-muted">
+                  {showPicker
                     ? t('app.login.pickAccountHint')
                     : picked
                       ? t('app.login.passwordHint')
                       : t('app.login.subtitle')}
-              </p>
+                </p>
+              )}
+              {otherAccount &&
+                !picked &&
+                remembered.length > 0 &&
+                !twoFactorRequired &&
+                !emailCodeFor && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="gap-1 px-0"
+                    onClick={() => setOtherAccount(false)}
+                  >
+                    <ArrowLeft size={14} />
+                    {t('app.login.backToAccounts')}
+                  </Button>
+                )}
             </div>
 
             {error && (
@@ -204,41 +309,57 @@ export const Login: React.FC = () => {
               </Alert>
             )}
 
-            {twoFactorRequired ? (
-              <div className="space-y-4">
-                <Input
-                  label={t('app.login.verificationCode')}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value)}
-                  placeholder="123456"
-                  prefix={<ShieldCheck size={16} />}
-                  className="tracking-widest"
+            {ssoErrorCode && ssoErrorShown && !error && (
+              <Alert tone="danger" role="alert" onDismiss={() => setSsoErrorShown(false)}>
+                {t(ssoErrorKey(ssoErrorCode))}
+              </Alert>
+            )}
+
+            {sso.handoff ? (
+              <>
+                {sso.error && (
+                  <Alert tone="danger" role="alert">
+                    {sso.error}
+                  </Alert>
+                )}
+                <LoginHandoffWait
+                  confirmCode={sso.handoff.confirmCode}
+                  description={t('auth.sso.desktopHint')}
+                  onCancel={sso.cancel}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 -ml-2"
-                  onClick={() => {
-                    setTwoFactorRequired(false);
-                    setTotpCode('');
-                    setError(null);
-                  }}
-                >
-                  <ArrowLeft size={14} /> {t('app.common.back')}
-                </Button>
-              </div>
+              </>
+            ) : mfa ? (
+              <MfaStepContainer
+                challenge={mfa.challenge}
+                methods={mfa.methods}
+                passkeyElsewhere={mfa.passkeyElsewhere}
+                passkeyRpIds={mfa.passkeyRpIds}
+                user={mfa.user}
+                onDone={finishLogin}
+                onExpired={handleMfaExpired}
+                onNotYou={() => {
+                  setMfa(null);
+                  setEmailCodeFor(null);
+                  setPassword('');
+                  setError(null);
+                }}
+              />
+            ) : emailCodeFor ? (
+              <EmailCodeContainer
+                email={emailCodeFor}
+                tenantId={selectedTenant}
+                onDone={(data) => {
+                  if (!openMfaIfNeeded(data)) finishLogin(data);
+                }}
+                onBack={() => {
+                  setEmailCodeFor(null);
+                  setError(null);
+                }}
+              />
             ) : showPicker ? (
               <RememberedAccountPicker
                 accounts={remembered}
                 onPick={pickAccount}
-                onForget={(a) => {
-                  forgetAccount(a);
-                  setRemembered(loadRememberedAccounts());
-                }}
                 onOtherAccount={() => setOtherAccount(true)}
               />
             ) : (
@@ -292,9 +413,15 @@ export const Login: React.FC = () => {
                   </div>
                 )}
                 {tenantName && !picked && (
-                  <Badge variant="neutral" className="gap-1.5">
-                    <Building size={12} /> {tenantName}
-                  </Badge>
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--k-radius-md)] bg-bg-muted text-fg-muted">
+                      <Building size={16} />
+                    </span>
+                    <p className="min-w-0 truncate text-fg-muted">
+                      {t('app.login.enteringCompany')}{' '}
+                      <span className="font-medium text-fg-default">{tenantName}</span>
+                    </p>
+                  </div>
                 )}
 
                 <div className="space-y-1.5">
@@ -307,7 +434,20 @@ export const Login: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                   />
-                  <div className="flex justify-end">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    {picked ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="px-0 text-fg-muted"
+                        onClick={forgetPickedAccount}
+                      >
+                        {t('app.login.forgetThisAccount')}
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
                     <Button
                       type="button"
                       variant="link"
@@ -321,7 +461,7 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {!showPicker && (
+            {!showPicker && !mfa && !emailCodeFor && !sso.handoff && (
               <Button
                 type="submit"
                 size="lg"
@@ -329,9 +469,58 @@ export const Login: React.FC = () => {
                 isLoading={isSubmitting}
                 disabled={isSubmitting}
               >
-                {twoFactorRequired ? t('app.login.verify') : t('app.login.enter')}
+                {t('app.login.enter')}
                 {!isSubmitting && <ArrowRight size={16} />}
               </Button>
+            )}
+
+            {hasAlternatives && (
+              <div className="space-y-3">
+                <LoginDivider
+                  label={showPicker ? t('app.login.orWithoutAccount') : t('app.login.or')}
+                />
+                {showEmailCode && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full gap-2"
+                    disabled={isSubmitting}
+                    onClick={startEmailCode}
+                  >
+                    <Mail size={16} />
+                    {t('auth.email.button')}
+                  </Button>
+                )}
+                {showPasskey && (
+                  <>
+                    {passkeyLogin.error && (
+                      <Alert tone="danger" role="alert">
+                        {passkeyLogin.error}
+                      </Alert>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="lg"
+                      className="w-full gap-2"
+                      isLoading={passkeyLogin.busy}
+                      disabled={passkeyLogin.busy || isSubmitting}
+                      onClick={() => void passkeyLogin.start(selectedTenant)}
+                    >
+                      {!passkeyLogin.busy && <KeyRound size={16} />}
+                      {t('auth.passkey.signIn')}
+                    </Button>
+                  </>
+                )}
+                <LoginSsoButtons
+                  providers={ssoProviders}
+                  busyId={sso.busyId}
+                  disabled={isSubmitting || passkeyLogin.busy}
+                  error={sso.error}
+                  onStart={(p) => void sso.start(p)}
+                />
+              </div>
             )}
           </form>
         </div>

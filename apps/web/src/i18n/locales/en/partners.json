@@ -12,7 +12,7 @@
       "nameTooShort": "The name is too short",
       "nameTooLong": "The name can be at most 200 characters",
       "nifFormat": "The {label} does not match the format of {country}",
-      "nif": "Tax ID (NIF)",
+      "nif": "Tax ID",
       "thisCountry": "this country",
       "example": "(e.g.: {example})",
       "emailInvalid": "The email is not valid",
@@ -24,7 +24,7 @@
     },
     "duplicates": {
       "reason": {
-        "nif": "same Tax ID (NIF)",
+        "nif": "same Tax ID",
         "email": "same email",
         "name": "same name"
       },
@@ -40,7 +40,7 @@
     "wizard": {
       "steps": {
         "general": "General details",
-        "generalHint": "Name, group, country and Tax ID (NIF). The code is assigned automatically on creation.",
+        "generalHint": "Name, group, country and Tax ID. The code is assigned automatically on creation.",
         "contact": "Contact",
         "contactHint": "The company's phone, email and website.",
         "addresses": "Addresses",
@@ -55,7 +55,7 @@
       "nameMissing": "Name is missing",
       "streetMissing": "Street is missing",
       "withholdingRange": "Withholding must be between 0 and 100",
-      "nifExists": "«{name}» already exists with this Tax ID (NIF)",
+      "nifExists": "«{name}» already exists with this Tax ID",
       "billingCount_one": "{count} billing",
       "billingCount_other": "{count} billing",
       "shippingCount_one": "{count} shipping",
@@ -93,6 +93,8 @@
       "documentType": "Document type",
       "paymentMethodLong": "Payment method",
       "withholding": "Withholding %",
+      "defaultTax": "Default {tax}",
+      "defaultTaxHelp": "Takes priority over the item's when adding lines.",
       "bank": "Bank",
       "name": "Name",
       "type": "Type"
@@ -136,7 +138,7 @@
       "loadError": "Error loading business partners",
       "code": "Code",
       "legalName": "Company Name",
-      "nifVat": "Tax ID/VAT",
+      "nifVat": "{taxId}",
       "new": "New Business Partner",
       "noMatch": "No business partner matches “{search}”.",
       "empty": "No business partners yet.",
@@ -183,6 +185,21 @@
       "codePlaceholder": "Code (e.g. VIP)",
       "namePlaceholder": "Group Name",
       "prefixPlaceholder": "Prefix (e.g. V)"
+    },
+    "credit": {
+      "title": "Credit and reminders",
+      "hint": "How much this customer can owe, and what they owe now.",
+      "limit": "Credit limit",
+      "limitHint": "Empty: no limit. Zero: nothing on credit.",
+      "limitNoPermission": "Changing it requires the permission to exceed the credit limit.",
+      "usedOf": "{used} of {limit}",
+      "invoices": "Unpaid invoices",
+      "deliveryNotes": "Uninvoiced delivery notes",
+      "orders": "Orders to fulfil",
+      "balance": "Balance in their favour",
+      "used": "Used",
+      "available": "Available",
+      "excluded": "Do not chase overdue invoices for this customer"
     }
   }
 }

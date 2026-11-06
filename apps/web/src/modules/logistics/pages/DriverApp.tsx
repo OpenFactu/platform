@@ -1,1509 +1,372 @@
-import { packagesApi, routesApi, shipmentsApi, stagingAreasApi } from '../api';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Card,
-  Button,
-  Badge,
-  Loader,
-  Modal,
-  Input,
-  DatePicker,
-  EmptyState,
-  PageHeader,
-  useToast,
-} from '@openfactu/ui';
-import {
-  MapPin,
-  Play,
-  Square,
-  Navigation,
-  CheckCircle2,
-  Route as RouteIcon,
-  ChevronDown,
-  ChevronUp,
-  Maximize2,
-  QrCode,
-  X as XIcon,
-  AlertTriangle,
-  Truck as TruckIconLucide,
-  Warehouse,
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Alert, Button, ConfirmDialog, EmptyState, Spinner } from '@openfactu/ui';
+import { CheckCircle2, Play, QrCode, Square } from 'lucide-react';
 import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
-import { DeliveryProofModal } from '../components/DeliveryProofModal';
-import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
-import { BaseMap, type BaseMapHandle } from '../components/maps/BaseMap';
 import { useAuth } from '@/context/AuthContext';
-import { useFormat } from '@/hooks/useFormat';
-import { ApiError } from '@/shared/http';
+import { useTabs } from '@/context/TabsContext';
 import { useI18n } from '@/i18n/I18nContext';
-import type { Route, RouteDetail, RouteStop } from '../domain/route';
-import type { Shipment } from '../domain/shipment';
-
-/** Pin numerado — muestra la secuencia dentro de la ruta. */
-function NumberedPin({ n, done }: { n: number; done: boolean }) {
-  const bg = done ? '#10b981' : '#0D9488';
-  return (
-    <div
-      style={{
-        background: bg,
-        color: '#fff',
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 900,
-        fontSize: 13,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        border: '2px solid white',
-      }}
-    >
-      {n}
-    </div>
-  );
-}
-
-const STOP_LABEL: Record<string, string> = {
-  pending: 'logistics.driver.stopStatus.pending',
-  en_route: 'logistics.driver.stopStatus.en_route',
-  arrived: 'logistics.driver.stopStatus.arrived',
-  delivered: 'logistics.driver.stopStatus.delivered',
-  postponed: 'logistics.driver.stopStatus.postponed',
-  exception: 'logistics.driver.stopStatus.exception',
-  cancelled: 'logistics.driver.stopStatus.cancelled',
-};
-
-const SHIP_LABEL: Record<string, string> = {
-  pending: 'logistics.status.shipment.pending',
-  picking: 'logistics.status.shipment.picking',
-  packed: 'logistics.status.shipment.packed',
-  ready: 'logistics.status.shipment.ready',
-  dispatched: 'logistics.status.shipment.dispatched',
-  in_transit: 'logistics.status.shipment.in_transit',
-  out_for_delivery: 'logistics.status.shipment.out_for_delivery',
-  postponed: 'logistics.status.shipment.postponed',
-  delivered: 'logistics.status.shipment.delivered',
-  exception: 'logistics.status.shipment.exception',
-  returned: 'logistics.status.shipment.returned',
-  cancelled: 'logistics.status.shipment.cancelled',
-};
+import { AppReportModal } from '../components/driver/AppReportModal';
+import { DriverNextStop } from '../components/driver/DriverNextStop';
+import { DriverRouteHeader, type DriverView } from '../components/driver/DriverRouteHeader';
+import { DriverRouteList } from '../components/driver/DriverRouteList';
+import { DriverRouteSetup } from '../components/driver/DriverRouteSetup';
+import {
+  DriverScanModals,
+  type AreaScan,
+  type PackageScan,
+} from '../components/driver/DriverScanModals';
+import { DriverScreen } from '../components/driver/DriverScreen';
+import { DriverSettingsModal } from '../components/driver/DriverSettingsModal';
+import { DriverStopActions } from '../components/driver/DriverStopActions';
+import { DriverStopList } from '../components/driver/DriverStopList';
+import { DriverStopsMap } from '../components/driver/DriverStopsMap';
+import { StagingDropModal } from '../components/driver/StagingDropModal';
+import { StopProblemModal } from '../components/driver/StopProblemModal';
+import { DeliveryWizard } from '../components/driver/wizard/DeliveryWizard';
+import { fullRouteUrl, leftoverStops, nextOpenStop, stopAddress } from '../domain/driverRoute';
+import { MISSING_PACKAGE } from '../domain/stopProblems';
+import { useDriverApp } from '../hooks/useDriverApp';
+import { usePackageScanner } from '../hooks/usePackageScanner';
 
 /**
- * Construye una URL `wa.me` a partir de un teléfono libre. Quita espacios,
- * paréntesis y guiones; si no empieza por `+` ni por código país, asume
- * España (34). Incluye el mensaje inicial ya URL-encoded.
- */
-function buildWhatsAppUrl(phone: string, message: string): string {
-  const cleaned = phone.replace(/[^\d+]/g, '');
-  let intl = cleaned;
-  if (!intl.startsWith('+')) {
-    // Si empieza por 6/7/8/9 (móvil español) y tiene 9 dígitos, asumimos +34.
-    if (/^[6789]\d{8}$/.test(intl)) intl = `+34${intl}`;
-  }
-  // wa.me espera el número sin el `+` (formato E.164 sin prefijo internacional).
-  const waPhone = intl.replace(/^\+/, '');
-  return `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
-}
-
-/** Devuelve [lat,lng] o null fusionando stop+ship. */
-function resolveCoords(stop: RouteStop, ship: Shipment | undefined): [number, number] | null {
-  if (stop.lat != null && stop.lng != null) return [stop.lat, stop.lng];
-  if (ship?.destinationLat != null && ship?.destinationLng != null)
-    return [ship.destinationLat, ship.destinationLng];
-  return null;
-}
-
-/** Dirección textual efectiva para la parada. */
-function resolveAddress(stop: RouteStop, ship: Shipment | undefined): string {
-  return stop.address || ship?.destinationAddress || '';
-}
-
-/** URL de Google Maps para navegar hacia un destino. Preferimos la dirección
- *  TEXTUAL: el geocodificador de Google es mejor que el nuestro (MapTiler/
- *  Photon/Nominatim) y nuestras coords a veces apuntan a un sitio equivocado.
- *  Las coords propias solo se usan si no hay dirección escrita. */
-function mapsUrl(stop: RouteStop, ship: Shipment | undefined) {
-  const addr = resolveAddress(stop, ship);
-  if (addr) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}&travelmode=driving`;
-  }
-  const coords = resolveCoords(stop, ship);
-  if (!coords) return null;
-  return `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=driving`;
-}
-
-/** URL de Maps con la ruta COMPLETA: el origen es la ubicación actual del
- *  navegador ("current location"), los waypoints son las paradas intermedias,
- *  y la última parada es el destino. */
-function routeUrl(stops: RouteStop[], shipmentsById: Map<string, Shipment>) {
-  const active = stops
-    .filter((s) => s.status !== 'delivered' && s.status !== 'cancelled')
-    .map((s) => {
-      const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
-      // Dirección textual primero — mismo motivo que en mapsUrl.
-      const a = resolveAddress(s, ship);
-      if (a) return encodeURIComponent(a);
-      const c = resolveCoords(s, ship);
-      return c ? `${c[0]},${c[1]}` : null;
-    })
-    .filter((x): x is string => !!x);
-  if (active.length === 0) return null;
-  const destination = active[active.length - 1];
-  const waypoints = active.slice(0, -1);
-  const params = new URLSearchParams();
-  params.set('api', '1');
-  params.set('destination', destination);
-  if (waypoints.length) params.set('waypoints', waypoints.join('|'));
-  params.set('travelmode', 'driving');
-  return `https://www.google.com/maps/dir/?${params.toString()}`.replace(/%7C/g, '|');
-}
-
-/** Fecha local yyyy-mm-dd (sin depender de toISOString, que va en UTC). */
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/**
- * App del conductor — mobile-first, sin menú lateral.
+ * App del conductor: a toda la pantalla, sin el menú del ERP. Lo normal es no salir de
+ * la vista "Ahora": la parada que toca arriba y, abajo, el botón de entregar. Lo que se
+ * le pide en cada paso lo decide su empresa (`DeliveryFlow`).
  */
 export const DriverApp: React.FC = () => {
-  const { token, user } = useAuth();
-  const fmt = useFormat();
-  const toast = useToast();
+  const { user } = useAuth();
+  const { openTab } = useTabs();
   const { t } = useI18n();
-  const [routes, setRoutes] = useState<Route[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<RouteDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tracking, setTracking] = useState(false);
-  const [lastFix, setLastFix] = useState<{ lat: number; lng: number; at: number } | null>(null);
-  const [mapOpen, setMapOpen] = useState(true);
-  const [mapFullscreen, setMapFullscreen] = useState(false);
-  const [openPopupStopId, setOpenPopupStopId] = useState<string | null>(null);
-  const [scanOpen, setScanOpen] = useState(false);
-  /** Petición de iniciar/finalizar ruta en vuelo — evita doble tap. */
-  const [routeBusy, setRouteBusy] = useState(false);
-  const [finishConfirm, setFinishConfirm] = useState(false);
-  /** Filtro de fecha de la lista de rutas — por defecto hoy; '' = todas. */
-  const [dateFilter, setDateFilter] = useState<string>(todayStr());
-  const [podFor, setPodFor] = useState<{
-    stopId: string;
-    shipmentId: string | null;
-    label: string;
-  } | null>(null);
-  const [postponeFor, setPostponeFor] = useState<{
-    stopId: string;
-    shipmentId: string | null;
-    reason: string;
-  } | null>(null);
-  const [exceptionFor, setExceptionFor] = useState<{
-    stopId: string;
-    shipmentId: string | null;
-    reason: string;
-  } | null>(null);
-  const [confirmBulkArrive, setConfirmBulkArrive] = useState<number | null>(null);
-  const [packageScan, setPackageScan] = useState<null | {
-    code: string;
-    status: string;
-    weightKg: number | null;
-    trackingNumber: string | null;
-    destinationAddress: string | null;
-    shipmentStatus: string | null;
-  }>(null);
-  const [scanResult, setScanResult] = useState<null | {
-    ownership: 'mine' | 'other' | 'unassigned';
-    stagingName: string;
-    stagingCode: string;
-    myRoutes?: { id: string; code: string; name: string }[];
-    otherDriver?: string;
-    otherRouteCode?: string;
-    packagesCount: number;
-  }>(null);
-  const watchId = useRef<number | null>(null);
-  const mapRef = useRef<BaseMapHandle | null>(null);
-  const mapRefFull = useRef<BaseMapHandle | null>(null);
+  const app = useDriverApp(user?.tenantId);
+  const [view, setView] = useState<DriverView>('now');
+  const [scanning, setScanning] = useState(false);
+  const [packageScan, setPackageScan] = useState<PackageScan | null>(null);
+  const [areaScan, setAreaScan] = useState<AreaScan | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [deliveringId, setDeliveringId] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ stopId: string; preset: string | null } | null>(null);
+  const [drop, setDrop] = useState<{ finishing: boolean } | null>(null);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [confirmArriveAll, setConfirmArriveAll] = useState(false);
 
-  const loadRoutes = async () => {
-    setLoading(true);
-    try {
-      const d = await routesApi.myRoutes();
-      setRoutes(Array.isArray(d) ? d : []);
-    } catch {
-      setRoutes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const loadDetail = async (id: string) => {
-    try {
-      const d = await routesApi.myRouteDetail(id);
-      setDetail(d);
-    } catch {
-      setDetail(null);
-    }
-  };
-  useEffect(() => {
-    if (user?.tenantId) loadRoutes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.tenantId]);
-
-  useEffect(() => {
-    if (selectedId) loadDetail(selectedId);
-    else setDetail(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
-
-  const startGps = () => {
-    if (!navigator.geolocation) {
-      toast.error(t('logistics.driver.noGeolocation'));
-      return;
-    }
-    if (!detail) return;
-    setTracking(true);
-    watchId.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { latitude, longitude, speed, heading, accuracy } = pos.coords;
-        setLastFix({ lat: latitude, lng: longitude, at: Date.now() });
-        const active = detail.shipments.filter(
-          (s) => s.status !== 'delivered' && s.status !== 'cancelled',
-        );
-        await Promise.all(
-          active.map((s) =>
-            shipmentsApi
-              .reportPosition(s.reportToken, {
-                lat: latitude,
-                lng: longitude,
-                speedKmh: speed != null ? speed * 3.6 : null,
-                heading,
-                accuracyMeters: accuracy,
-              })
-              .catch(() => null),
-          ),
-        );
-      },
-      (err) => toast.error(t('logistics.driver.gpsError', { message: err.message })),
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
-    );
-  };
-
-  const stopGps = () => {
-    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    watchId.current = null;
-    setTracking(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    };
-  }, []);
-
-  // Auto-start del GPS solo cuando la ruta está ACTIVA: al pulsar "Iniciar
-  // ruta" (el status pasa a active y este efecto dispara) o al reabrir la app
-  // a mitad de reparto. Con la ruta aún planificada no reportamos posición.
-  useEffect(() => {
-    if (detail && !tracking && detail.route.status === 'active') {
-      startGps();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail?.route?.id, detail?.route?.status]);
-
-  const handleScan = async (raw: string) => {
-    setScanOpen(false);
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      toast.error(t('logistics.driver.qrUnrecognized'));
-      return;
-    }
-
-    // QR de un paquete individual (impreso como etiqueta): { v:1, type:'package', id, code }
-    if (parsed?.v === 1 && parsed.type === 'package' && parsed.id) {
-      try {
-        const pkg = await packagesApi.get(parsed.id);
-        let ship: Shipment | null = null;
-        if (pkg.shipmentId) {
-          ship = await shipmentsApi.get(pkg.shipmentId).catch(() => null);
-        }
-        setPackageScan({
-          code: pkg.code,
-          status: pkg.status,
-          weightKg: pkg.weightKg,
-          trackingNumber: ship?.trackingNumber || null,
-          destinationAddress: ship?.destinationAddress || null,
-          shipmentStatus: ship?.status || null,
-        });
-        if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
-      } catch {
-        toast.error(t('logistics.driver.packageReadError'));
-      }
-      return;
-    }
-
-    if (!parsed || parsed.v !== 1 || !parsed.s) {
-      toast.error(t('logistics.driver.qrInvalidArea'));
-      return;
-    }
-    if (parsed.t && user?.tenantId && parsed.t !== user.tenantId) {
-      toast.error(t('logistics.driver.areaOtherCompany'));
-      return;
-    }
-    try {
-      const payload = await stagingAreasApi.payload(parsed.s);
-      const myRouteIds = new Set(routes.map((x) => x.id));
-      const hits = (payload.routes || []).filter((pr: any) => myRouteIds.has(pr.id));
-      if (hits.length > 0) {
-        setScanResult({
-          ownership: 'mine',
-          stagingName: payload.staging?.name || '',
-          stagingCode: payload.staging?.code || '',
-          myRoutes: hits.map((h: any) => ({ id: h.id, code: h.code, name: h.name })),
-          packagesCount: payload.packages?.length || 0,
-        });
-      } else if ((payload.routes || []).length > 0) {
-        const other = payload.routes[0];
-        setScanResult({
-          ownership: 'other',
-          stagingName: payload.staging?.name || '',
-          stagingCode: payload.staging?.code || '',
-          otherDriver: other.driverName || '—',
-          otherRouteCode: other.code,
-          packagesCount: payload.packages?.length || 0,
-        });
-      } else {
-        setScanResult({
-          ownership: 'unassigned',
-          stagingName: payload.staging?.name || '',
-          stagingCode: payload.staging?.code || '',
-          packagesCount: payload.packages?.length || 0,
-        });
-      }
-      if (navigator.vibrate) navigator.vibrate(hits.length > 0 ? [80, 40, 80] : 200);
-    } catch (e) {
-      toast.error(t('logistics.driver.areaLoadError'));
-    }
-  };
-
-  const openMyRouteFromScan = (routeId: string) => {
-    setSelectedId(routeId);
-    setScanResult(null);
-  };
-
-  /**
-   * Marca TODAS las paradas pendientes como `arrived` de golpe. Útil cuando
-   * el repartidor ya está en la primera parada y no quiere ir pulsando
-   * "Llegué" en cada una. Las que ya estén en otro estado (arrived/en_route
-   * /delivered) las deja tal cual.
-   */
-  const markAllArrived = () => {
-    if (!selectedId || !detail) return;
-    const pending = detail.stops.filter((s) => s.status === 'pending');
-    if (pending.length === 0) {
-      toast.error(t('logistics.driver.noPendingStops'));
-      return;
-    }
-    setConfirmBulkArrive(pending.length);
-  };
-
-  const confirmMarkAllArrived = async () => {
-    if (!selectedId || !detail) return;
-    const pending = detail.stops.filter((s) => s.status === 'pending' || s.status === 'en_route');
-    const now = new Date().toISOString();
-    await Promise.all(
-      pending.map((s) =>
-        routesApi.updateStop(selectedId, s.id, { status: 'arrived', arrivedAt: now }),
-      ),
-    );
-    setConfirmBulkArrive(null);
-    loadDetail(selectedId);
-    toast.success(t('logistics.driver.markedArrived', { count: pending.length }));
-  };
-
-  /**
-   * Inicio explícito de la ruta: el server pone la ruta en `active`, los
-   * envíos pasan a "en camino" (con email al cliente) y la primera parada
-   * arranca en reparto. El GPS se enciende solo vía el efecto de arriba
-   * cuando el detalle recargado llega con status active.
-   */
-  const startRoute = async () => {
-    if (!selectedId || routeBusy) return;
-    setRouteBusy(true);
-    try {
-      await routesApi.start(selectedId);
-      toast.success(t('logistics.driver.routeStarted'));
-      await loadDetail(selectedId);
-    } catch (err) {
-      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || t('logistics.driver.routeStartError'));
-    } finally {
-      setRouteBusy(false);
-    }
-  };
-
-  /** Cierra la ruta aunque queden paradas: las pendientes vuelven aplazadas. */
-  const finishRoute = async () => {
-    if (!selectedId || routeBusy) return;
-    setRouteBusy(true);
-    try {
-      await routesApi.finish(selectedId);
-      toast.success(t('logistics.driver.routeFinished'));
-      setFinishConfirm(false);
-      stopGps();
-      setSelectedId(null);
-      loadRoutes();
-    } catch (err) {
-      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || t('logistics.driver.routeFinishError'));
-    } finally {
-      setRouteBusy(false);
-    }
-  };
-
-  const markArrived = async (stopId: string) => {
-    if (!selectedId) return;
-    await routesApi.updateStop(selectedId, stopId, {
-      status: 'arrived',
-      arrivedAt: new Date().toISOString(),
-    });
-    loadDetail(selectedId);
-  };
-
-  /** Abre el modal de prueba de entrega; la entrega efectiva se hace en onConfirm. */
-  /**
-   * Aplazar la entrega — típicamente porque no había nadie para recibirlo.
-   * Marca el stop como `postponed`, propaga el estado al shipment y añade
-   * una entrada `shipmentEvent` con el motivo que teclee el conductor.
-   */
-  const markPostponed = (stopId: string, shipmentId: string | null) => {
-    setPostponeFor({ stopId, shipmentId, reason: t('logistics.driver.postponeDefaultReason') });
-  };
-
-  const submitPostpone = async () => {
-    if (!selectedId || !postponeFor) return;
-    const { stopId, shipmentId, reason } = postponeFor;
-    await routesApi.updateStop(selectedId, stopId, {
-      status: 'postponed',
-      arrivedAt: new Date().toISOString(),
-      podNotes: reason.trim() || null,
-    });
-    if (shipmentId) {
-      await shipmentsApi.update(shipmentId, { status: 'postponed', reason: reason.trim() || null });
-    }
-    setPostponeFor(null);
-    loadDetail(selectedId);
-    toast.success(t('logistics.driver.postponed'));
-  };
-
-  /** Reporta una incidencia: el stop queda `exception`, el shipment también. */
-  const reportException = (stopId: string, shipmentId: string | null) => {
-    setExceptionFor({ stopId, shipmentId, reason: '' });
-  };
-
-  const submitException = async () => {
-    if (!selectedId || !exceptionFor) return;
-    const { stopId, shipmentId, reason } = exceptionFor;
-    if (!reason.trim()) {
-      toast.error(t('logistics.driver.exceptionRequired'));
-      return;
-    }
-    await routesApi.updateStop(selectedId, stopId, {
-      status: 'exception',
-      arrivedAt: new Date().toISOString(),
-      podNotes: reason.trim(),
-    });
-    if (shipmentId) {
-      await shipmentsApi.update(shipmentId, { status: 'exception', reason: reason.trim() });
-    }
-    setExceptionFor(null);
-    loadDetail(selectedId);
-    toast.success(t('logistics.driver.exceptionReported'));
-  };
-
-  const markDelivered = (stopId: string, shipmentId: string | null) => {
-    if (!selectedId) return;
-    const stop = detail?.stops.find((s) => s.id === stopId);
-    const ship = stop?.shipmentId ? shipmentsById.get(stop.shipmentId) : undefined;
-    const label = stop
-      ? resolveAddress(stop, ship) || t('logistics.driver.stopN', { n: stop.sequence })
-      : t('logistics.driver.stop');
-    setPodFor({ stopId, shipmentId, label });
-  };
-
-  const confirmDelivery = async (pod: {
-    recipientName: string;
-    recipientDocument: string;
-    signatureImage: string | null;
-    photoImage: string | null;
-    podNotes: string;
-  }) => {
-    if (!podFor || !selectedId) return;
-    try {
-      await routesApi.updateStop(selectedId, podFor.stopId, {
-        status: 'delivered',
-        departedAt: new Date().toISOString(),
-        recipientName: pod.recipientName || null,
-        recipientDocument: pod.recipientDocument || null,
-        signatureImage: pod.signatureImage,
-        photoImage: pod.photoImage,
-        podNotes: pod.podNotes || null,
-      });
-    } catch (err) {
-      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      const status = err instanceof ApiError ? err.status : undefined;
-      toast.error(
-        t('logistics.driver.deliverError', {
-          detail: msg || t('logistics.driver.errorStatus', { status: String(status) }),
-        }),
-      );
-      return;
-    }
-    if (podFor.shipmentId) {
-      await shipmentsApi.update(podFor.shipmentId, { status: 'delivered' });
-    }
-    await loadDetail(selectedId);
-    setPodFor(null);
-    toast.success(t('logistics.driver.delivered'));
-  };
-
-  const shipmentsById = useMemo(
-    () => new Map((detail?.shipments || []).map((s) => [s.id, s] as const)),
-    [detail],
+  const { flow } = app;
+  const packages = (app.detail?.packages ?? []).filter((pkg) => pkg.status !== 'delivered');
+  const loadScanner = usePackageScanner(
+    packages,
+    (pkg) => !!pkg.loadedAt,
+    (pkg) => app.setPackageLoaded(pkg.id, true),
   );
 
-  // Puntos con coordenadas resueltas (para el mapa mini).
-  const mapPoints = useMemo(() => {
-    if (!detail) return [] as Array<{ stop: RouteStop; coords: [number, number] }>;
-    return detail.stops
-      .map((s) => {
-        const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
-        const coords = resolveCoords(s, ship);
-        return coords ? { stop: s, coords } : null;
-      })
-      .filter((x): x is { stop: RouteStop; coords: [number, number] } => !!x);
-  }, [detail, shipmentsById]);
+  const openRoute = (routeId: string | null) => {
+    setView('now');
+    app.setSelectedId(routeId);
+  };
+  const exit = user?.role === 'DRIVER' ? undefined : () => openTab('/');
+  const active = app.detail?.route.status === 'active';
 
-  const renderScanModals = () => (
+  const shared = (
     <>
-      <Modal
-        isOpen={!!packageScan}
-        onClose={() => setPackageScan(null)}
-        title={t('logistics.driver.scan.packageTitle')}
-        maxWidth="sm"
-      >
-        {packageScan && (
-          <div className="pt-2 space-y-3">
-            <div className="flex items-center gap-2">
-              <code className="px-2 py-1 bg-slate-900 text-white rounded font-mono text-xs">
-                {packageScan.code}
-              </code>
-              <Badge variant={packageScan.status === 'delivered' ? 'success' : 'info'}>
-                {packageScan.status}
-              </Badge>
-              {packageScan.weightKg != null && (
-                <span className="text-xs text-slate-500">{packageScan.weightKg} kg</span>
-              )}
-            </div>
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1">
-                {t('logistics.driver.deliverTo')}
-              </div>
-              <div className="text-base font-bold text-fg-default leading-snug">
-                {packageScan.destinationAddress || t('logistics.driver.scan.noAddress')}
-              </div>
-            </div>
-            {packageScan.trackingNumber && (
-              <div className="text-xs text-slate-500">
-                {t('logistics.driver.scan.shipment')}{' '}
-                <code className="font-mono">{packageScan.trackingNumber}</code>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-      <DeliveryProofModal
-        open={!!podFor}
-        onClose={() => setPodFor(null)}
-        onConfirm={confirmDelivery}
-        stopLabel={podFor?.label}
+      <DriverScanModals
+        scanning={scanning}
+        onCloseScanner={() => setScanning(false)}
+        tenantId={user?.tenantId}
+        routes={app.routes}
+        packageScan={packageScan}
+        areaScan={areaScan}
+        onPackageScan={setPackageScan}
+        onAreaScan={setAreaScan}
+        onOpenRoute={openRoute}
       />
-      <BarcodeCameraModal open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleScan} />
-      <Modal
-        isOpen={!!scanResult}
-        onClose={() => setScanResult(null)}
-        title={t('logistics.driver.scan.areaTitle')}
-        maxWidth="sm"
-      >
-        {scanResult && (
-          <div className="pt-2">
-            {scanResult.ownership === 'mine' && (
-              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border-2 border-emerald-500 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 size={28} className="text-emerald-500" strokeWidth={2.5} />
-                  <div className="text-lg font-black text-emerald-700 dark:text-emerald-300">
-                    {t('logistics.driver.scan.mine')}
-                  </div>
-                </div>
-                <div className="text-sm text-fg-body">
-                  {t('logistics.driver.scan.area')} <b>{scanResult.stagingName}</b> (
-                  {scanResult.stagingCode}) —{' '}
-                  {t('logistics.driver.scan.packages', { count: scanResult.packagesCount })}
-                </div>
-                {scanResult.myRoutes && scanResult.myRoutes.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      {scanResult.myRoutes.length > 1
-                        ? t('logistics.driver.scan.yourRoutes')
-                        : t('logistics.driver.scan.yourRoute')}
-                    </div>
-                    {/* Fila clicable (tarjeta de ruta), no un control: se queda
-                        como <button> crudo — es estructura y además un objetivo
-                        táctil grande a propósito. */}
-                    {scanResult.myRoutes.map((r) => (
-                      <button
-                        key={r.id}
-                        onClick={() => openMyRouteFromScan(r.id)}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-card border border-emerald-300 dark:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] transition"
-                      >
-                        <code className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-[11px] font-mono rounded">
-                          {r.code}
-                        </code>
-                        <span className="flex-1 text-left text-sm font-semibold text-fg-default truncate">
-                          {r.name || '—'}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold">
-                          {t('logistics.driver.scan.open')} →
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {scanResult.ownership === 'other' && (
-              <div className="rounded-lg bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <XIcon size={28} className="text-rose-500" strokeWidth={2.5} />
-                  <div className="text-lg font-black text-rose-700 dark:text-rose-300">
-                    {t('logistics.driver.scan.notMine')}
-                  </div>
-                </div>
-                <div className="text-sm text-fg-body">
-                  {t('logistics.driver.scan.assignedTo')} <b>{scanResult.otherDriver}</b>
-                  {scanResult.otherRouteCode && (
-                    <>
-                      {' '}
-                      ({t('logistics.driver.scan.route')}{' '}
-                      <code className="font-mono">{scanResult.otherRouteCode}</code>)
-                    </>
-                  )}
-                  .
-                </div>
-                <div className="text-xs text-slate-500 mt-2">
-                  {t('logistics.driver.scan.dontLoad')}
-                </div>
-              </div>
-            )}
-            {scanResult.ownership === 'unassigned' && (
-              <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle size={28} className="text-amber-500" strokeWidth={2.5} />
-                  <div className="text-lg font-black text-amber-700 dark:text-amber-300">
-                    {t('logistics.driver.scan.unassigned')}
-                  </div>
-                </div>
-                <div className="text-sm text-fg-body">
-                  {t('logistics.driver.scan.unassignedBefore')} <b>{scanResult.stagingName}</b>{' '}
-                  {t('logistics.driver.scan.unassignedAfter')}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* Confirmar llegada masiva */}
-      <Modal
-        isOpen={confirmBulkArrive !== null}
-        onClose={() => setConfirmBulkArrive(null)}
-        title={t('logistics.driver.bulk.title')}
-        maxWidth="sm"
-      >
-        <div className="pt-2 space-y-4">
-          <p className="text-sm text-fg-body">
-            {t('logistics.driver.bulk.before')} <b>{confirmBulkArrive}</b>{' '}
-            {t('logistics.driver.bulk.middle', { count: confirmBulkArrive ?? 0 })}{' '}
-            <b>{t('logistics.driver.bulk.arrived')}</b> {t('logistics.driver.bulk.after')}
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setConfirmBulkArrive(null)}>
-              {t('logistics.common.cancel')}
-            </Button>
-            <Button onClick={confirmMarkAllArrived}>{t('logistics.driver.bulk.confirm')}</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Aplazar entrega */}
-      <Modal
-        isOpen={!!postponeFor}
-        onClose={() => setPostponeFor(null)}
-        title={t('logistics.driver.postponeModal.title')}
-        subtitle={t('logistics.driver.postponeModal.subtitle')}
-        maxWidth="sm"
-      >
-        {postponeFor && (
-          <div className="pt-2 space-y-4">
-            <Input
-              label={t('logistics.driver.postponeModal.reason')}
-              value={postponeFor.reason}
-              onChange={(e) => setPostponeFor({ ...postponeFor, reason: e.target.value })}
-              placeholder={t('logistics.driver.postponeDefaultReason')}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setPostponeFor(null)}>
-                {t('logistics.common.cancel')}
-              </Button>
-              <Button onClick={submitPostpone} className="!bg-amber-600 hover:!bg-amber-700">
-                ⏸ {t('logistics.driver.postpone')}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Reportar incidencia */}
-      <Modal
-        isOpen={!!exceptionFor}
-        onClose={() => setExceptionFor(null)}
-        title={t('logistics.driver.exceptionModal.title')}
-        subtitle={t('logistics.driver.exceptionModal.subtitle')}
-        maxWidth="sm"
-      >
-        {exceptionFor && (
-          <div className="pt-2 space-y-4">
-            {/* Obligatorio: `submitException` ya avisa con toast si viene vacío. */}
-            <Input
-              label={t('logistics.driver.exceptionModal.description')}
-              requiredMark
-              value={exceptionFor.reason}
-              onChange={(e) => setExceptionFor({ ...exceptionFor, reason: e.target.value })}
-              placeholder={t('logistics.driver.exceptionModal.placeholder')}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setExceptionFor(null)}>
-                {t('logistics.common.cancel')}
-              </Button>
-              <Button onClick={submitException} className="!bg-rose-600 hover:!bg-rose-700">
-                ⚠ {t('logistics.driver.exceptionModal.report')}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <DriverSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        gps={
+          active
+            ? {
+                tracking: app.tracking,
+                onToggle: () => (app.tracking ? app.stopGps() : app.startGps()),
+              }
+            : undefined
+        }
+        onReport={() => {
+          setSettingsOpen(false);
+          setReportOpen(true);
+        }}
+        onExit={exit}
+      />
+      {reportOpen && (
+        <AppReportModal routeId={app.selectedId} onClose={() => setReportOpen(false)} />
+      )}
     </>
   );
 
-  const visibleRoutes = dateFilter
-    ? routes.filter((r) => String(r.plannedDate || '').slice(0, 10) === dateFilter)
-    : routes;
-
-  if (!selectedId) {
+  if (!app.selectedId) {
     return (
-      <div className="min-h-screen bg-bg-muted p-3">
-        <PageHeader
-          title={t('logistics.driver.greeting', { name: user?.username ?? '' })}
-          subtitle={t('logistics.driver.assignedRoutes')}
-          size="sm"
-          className="mb-3"
-          actions={
-            /* Botón táctil grande: se conservan flex-col y el relleno original
-               para no perder superficie de toque en móvil. */
-            <Button
-              type="button"
-              onClick={() => setScanOpen(true)}
-              className="flex-col gap-0.5 px-4 py-2 rounded-lg shadow-md active:scale-95"
-              title={t('logistics.driver.scanArea')}
-            >
-              <QrCode size={22} />
-              <span className="text-[10px] font-bold tracking-wide">
-                {t('logistics.driver.scanButton')}
-              </span>
-            </Button>
-          }
+      <>
+        <DriverRouteList
+          userName={user?.username ?? ''}
+          loading={app.loading}
+          hasRoutes={app.routes.length > 0}
+          routes={app.visibleRoutes}
+          dateFilter={app.dateFilter}
+          onDateFilter={app.setDateFilter}
+          onOpen={openRoute}
+          onScan={() => setScanning(true)}
+          onSettings={() => setSettingsOpen(true)}
+          onExit={exit}
         />
-        {renderScanModals()}
-
-        {/* Filtro de fecha — por defecto solo las rutas de hoy. */}
-        <div className="flex items-center gap-2 mb-3">
-          {/* `h-8 px-3` se mantiene: son los chips de filtro de la app móvil. */}
-          <Button
-            type="button"
-            size="sm"
-            variant={dateFilter === todayStr() ? 'primary' : 'outline'}
-            onClick={() => setDateFilter(todayStr())}
-            className="h-8 px-3 rounded-lg"
-          >
-            {t('logistics.driver.today')}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={!dateFilter ? 'primary' : 'outline'}
-            onClick={() => setDateFilter('')}
-            className="h-8 px-3 rounded-lg"
-          >
-            {t('logistics.driver.all')}
-          </Button>
-          {/* '' = todas las fechas, de ahí el `|| null` / `?? ''`. */}
-          <DatePicker
-            value={dateFilter || null}
-            onChange={(v) => setDateFilter(v ?? '')}
-            clearable
-            className="ml-auto w-auto"
-          />
-        </div>
-
-        {loading ? (
-          <div className="py-20 flex justify-center">
-            <Loader />
-          </div>
-        ) : routes.length === 0 ? (
-          <Card bodyClassName="py-10">
-            <EmptyState icon={<RouteIcon size={18} />} title={t('logistics.driver.noRoutes')} />
-          </Card>
-        ) : visibleRoutes.length === 0 ? (
-          <Card bodyClassName="py-10">
-            <EmptyState
-              icon={<RouteIcon size={18} />}
-              title={
-                dateFilter === todayStr()
-                  ? t('logistics.driver.noRoutesToday')
-                  : t('logistics.driver.noRoutesThatDay')
-              }
-              hint={t('logistics.driver.noRoutesHint')}
-              action={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setDateFilter('')}
-                >
-                  {t('logistics.driver.viewAll')}
-                </Button>
-              }
-            />
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {/* Tarjeta de ruta completa: estructura clicable, no un botón de
-                acción. Se queda cruda para conservar el área táctil del móvil. */}
-            {visibleRoutes.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedId(r.id)}
-                className="w-full text-left bg-bg-card border border-border-default rounded-lg p-4 active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={r.status === 'active' ? 'info' : 'neutral'}>{r.status}</Badge>
-                  <code className="text-[10px] font-mono">{r.code}</code>
-                </div>
-                <div className="font-bold text-fg-default">{r.name}</div>
-                <div className="text-[11px] text-slate-500 mt-1">
-                  {r.plannedDate} · {r.vehiclePlate || '—'}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        {shared}
+      </>
     );
   }
 
+  const { detail, currentStop } = app;
   if (!detail) {
     return (
-      <div className="py-20 flex justify-center">
-        <Loader />
-      </div>
+      <DriverScreen>
+        <div className="flex justify-center py-32">
+          <Spinner size="lg" />
+        </div>
+      </DriverScreen>
     );
   }
 
-  const fullRouteMapsUrl = routeUrl(detail.stops, shipmentsById);
-
-  // Centro del mapa: última posición del conductor si hay GPS, si no primera parada.
-  const [mapCenterLat, mapCenterLng] = lastFix
-    ? [lastFix.lat, lastFix.lng]
-    : mapPoints[0]?.coords || [40.4168, -3.7038];
-
-  // Polyline de paradas en GeoJSON (maplibre = [lng, lat]).
-  const stopsPolylineGeoJSON =
-    mapPoints.length >= 2
-      ? {
-          type: 'Feature' as const,
-          geometry: {
-            type: 'LineString' as const,
-            coordinates: mapPoints.map((p) => [p.coords[1], p.coords[0]] as [number, number]),
-          },
-          properties: {},
-        }
-      : null;
-
-  // Centra el mapa indicado (el mini-mapa o el del modal ampliado) en mi GPS
-  // si lo tengo; si no, en la 1ª parada.
-  const centerMap = (ref: React.RefObject<BaseMapHandle | null>) => {
-    if (lastFix) {
-      ref.current?.flyTo({ longitude: lastFix.lng, latitude: lastFix.lat, zoom: 15 });
-      return;
-    }
-    const first = mapPoints[0];
-    if (first) {
-      ref.current?.flyTo({ longitude: first.coords[1], latitude: first.coords[0], zoom: 14 });
-    }
-  };
-
-  // Marcadores/popup/polyline compartidos entre el mini-mapa y el mapa
-  // ampliado del modal — cada uno vive en su propia instancia de <BaseMap>.
-  const renderMapMarkers = () => (
-    <>
-      {lastFix && (
-        <Marker longitude={lastFix.lng} latitude={lastFix.lat} anchor="center">
-          <div
-            title={t('logistics.driver.yourLocation')}
-            style={{
-              background: '#0284c7',
-              color: '#fff',
-              width: 14,
-              height: 14,
-              borderRadius: 7,
-              border: '3px solid white',
-              boxShadow: '0 0 0 4px rgba(2,132,199,0.25)',
-            }}
-          />
-        </Marker>
-      )}
-      {mapPoints.map(({ stop, coords }) => {
-        const done = stop.status === 'delivered';
-        return (
-          <Marker
-            key={stop.id}
-            longitude={coords[1]}
-            latitude={coords[0]}
-            anchor="center"
-            onClick={(e) => {
-              e.originalEvent.stopPropagation();
-              setOpenPopupStopId(openPopupStopId === stop.id ? null : stop.id);
-            }}
-          >
-            <NumberedPin n={stop.sequence} done={done} />
-          </Marker>
-        );
-      })}
-      {openPopupStopId &&
-        (() => {
-          const pt = mapPoints.find((p) => p.stop.id === openPopupStopId);
-          if (!pt) return null;
-          const ship = pt.stop.shipmentId ? shipmentsById.get(pt.stop.shipmentId) : undefined;
-          return (
-            <Popup
-              longitude={pt.coords[1]}
-              latitude={pt.coords[0]}
-              anchor="bottom"
-              onClose={() => setOpenPopupStopId(null)}
-              closeOnClick={false}
-            >
-              <div className="text-xs">
-                <div className="font-black mb-1">
-                  {t('logistics.driver.stopN', { n: pt.stop.sequence })}
-                </div>
-                <div className="text-slate-700">{resolveAddress(pt.stop, ship) || '—'}</div>
-                <a
-                  href={mapsUrl(pt.stop, ship) || '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block mt-2 text-blue-600 underline"
-                >
-                  {t('logistics.driver.openInMaps')} →
-                </a>
-              </div>
-            </Popup>
-          );
-        })()}
-      {stopsPolylineGeoJSON && (
-        <Source id="stops-line" type="geojson" data={stopsPolylineGeoJSON}>
-          <Layer
-            id="stops-line-layer"
-            type="line"
-            paint={{
-              'line-color': '#0D9488',
-              'line-width': 3,
-              'line-opacity': 0.7,
-              'line-dasharray': [2, 2],
-            }}
-          />
-        </Source>
-      )}
-    </>
+  const shipmentOf = (stop: { shipmentId?: string | null } | null) =>
+    stop?.shipmentId ? app.shipmentsById.get(stop.shipmentId) : undefined;
+  const planned = detail.route.status === 'planned';
+  const openStops = detail.stops.filter((s) =>
+    ['pending', 'en_route', 'arrived'].includes(s.status),
   );
+  const notArrived = detail.stops.filter((s) => ['pending', 'en_route'].includes(s.status));
+  const currentShipment = shipmentOf(currentStop);
+  const delivering = detail.stops.find((s) => s.id === deliveringId) ?? null;
+  const upcoming = nextOpenStop(detail.stops.filter((s) => s.id !== deliveringId));
+  const problemStop = detail.stops.find((s) => s.id === problem?.stopId) ?? null;
+  const leftover = leftoverStops(detail.stops, detail.packages ?? []);
+  const canDrop = flow.stagingDrop && !planned && leftover.length > 0;
+  const loading = flow.loadOut !== 'off' && packages.length > 0;
+  const toLoad = loading ? packages.filter((pkg) => !pkg.loadedAt).length : 0;
+  const blocked = flow.loadOutRequired && toLoad > 0;
 
-  const routeStarted = detail.route.status !== 'planned';
-  const openStopsCount = detail.stops.filter(
-    (s) => !['delivered', 'postponed', 'exception', 'cancelled'].includes(s.status),
-  ).length;
+  const pickStop = (stopId: string) => {
+    app.focusStop(stopId);
+    setView('now');
+  };
+  // Antes de cerrar, lo que queda en la furgoneta tiene que quedarse en algún sitio.
+  const finish = () => (canDrop ? setDrop({ finishing: true }) : setConfirmFinish(true));
+
+  const footer =
+    view !== 'now' ? undefined : planned ? (
+      <>
+        {loading && (
+          <Button size="lg" variant="secondary" className="w-full" onClick={loadScanner.start}>
+            <QrCode size={18} /> {t('logistics.driver.loadOut.scan')}
+          </Button>
+        )}
+        <Button
+          size="lg"
+          className="h-14 w-full text-base"
+          disabled={app.busy || blocked}
+          onClick={app.startRoute}
+        >
+          <Play size={20} />
+          {blocked
+            ? t('logistics.driver.loadOut.missing', { count: toLoad })
+            : t('logistics.driver.startRoute')}
+        </Button>
+      </>
+    ) : active && currentStop ? (
+      <DriverStopActions
+        status={currentStop.status}
+        isPickup={currentShipment?.kind === 'pickup_return'}
+        canArrive={flow.arrive}
+        onDeliver={() => setDeliveringId(currentStop.id)}
+        onArrive={() => app.arrive(currentStop.id)}
+        onProblem={() => setProblem({ stopId: currentStop.id, preset: null })}
+      />
+    ) : active ? (
+      <Button size="lg" className="h-14 w-full text-base" disabled={app.busy} onClick={finish}>
+        <Square size={20} /> {t('logistics.driver.finishRoute')}
+      </Button>
+    ) : undefined;
 
   return (
-    <div className="min-h-screen bg-bg-muted p-3 space-y-3">
-      {renderScanModals()}
-      <div className="flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            stopGps();
-            setSelectedId(null);
+    <>
+      <DriverScreen
+        scroll={view !== 'map'}
+        header={
+          <DriverRouteHeader
+            detail={detail}
+            view={view}
+            onView={setView}
+            tracking={app.tracking}
+            mapsUrl={fullRouteUrl(detail.stops, app.shipmentsById, flow.map.navigationApp)}
+            notArrived={notArrived.length}
+            onBack={() => openRoute(null)}
+            onScan={() => setScanning(true)}
+            onArriveAll={() => setConfirmArriveAll(true)}
+            onDrop={canDrop ? () => setDrop({ finishing: false }) : undefined}
+            onFinish={finish}
+            onSettings={() => setSettingsOpen(true)}
+          />
+        }
+        footer={footer}
+      >
+        {app.pending > 0 && view !== 'map' && (
+          <div className="px-3 pt-3">
+            <Alert tone="warning">
+              {t('logistics.driver.outbox.pending', { count: app.pending })}
+            </Alert>
+          </div>
+        )}
+        {view === 'now' &&
+          (planned ? (
+            <DriverRouteSetup
+              detail={detail}
+              flow={flow}
+              packages={packages}
+              onTogglePackage={app.setPackageLoaded}
+            />
+          ) : currentStop ? (
+            <DriverNextStop
+              stop={currentStop}
+              total={detail.stops.length}
+              shipment={currentShipment}
+              packages={app.packagesOf(currentStop.shipmentId)}
+              navigationApp={flow.map.navigationApp}
+            />
+          ) : (
+            <div className="py-20">
+              <EmptyState
+                icon={<CheckCircle2 size={32} />}
+                title={
+                  active
+                    ? t('logistics.driver.allDoneTitle')
+                    : t('logistics.driver.routeClosedTitle')
+                }
+                hint={active ? t('logistics.driver.allDoneHint') : undefined}
+              />
+            </div>
+          ))}
+        {view === 'list' && (
+          <DriverStopList
+            stops={detail.stops}
+            shipments={app.shipmentsById}
+            currentId={currentStop?.id ?? null}
+            onPick={pickStop}
+          />
+        )}
+        {view === 'map' && (
+          <DriverStopsMap
+            points={app.mapPoints}
+            shipments={app.shipmentsById}
+            lastFix={app.lastFix}
+            currentId={currentStop?.id ?? null}
+            navigationApp={flow.map.navigationApp}
+            onPick={pickStop}
+          />
+        )}
+      </DriverScreen>
+
+      {shared}
+
+      <BarcodeCameraModal
+        open={loadScanner.open}
+        onClose={loadScanner.stop}
+        onScan={loadScanner.handle}
+        continuous
+      />
+
+      {delivering && (
+        <DeliveryWizard
+          key={delivering.id}
+          flow={flow}
+          stop={delivering}
+          shipment={shipmentOf(delivering)}
+          packages={app.packagesOf(delivering.shipmentId)}
+          upcoming={upcoming}
+          upcomingShipment={shipmentOf(upcoming)}
+          onClose={() => setDeliveringId(null)}
+          onSubmit={(proof) => app.deliver(delivering.id, proof)}
+          onMissingPackage={() => {
+            setProblem({ stopId: delivering.id, preset: MISSING_PACKAGE });
+            setDeliveringId(null);
           }}
-        >
-          ← {t('logistics.driver.myRoutes')}
-        </Button>
-        <div className="flex items-center gap-3">
-          {/* `p-2` se conserva: el icono de 18px necesita el área táctil. */}
-          <Button
-            type="button"
-            onClick={() => setScanOpen(true)}
-            className="p-2 rounded-lg shadow-sm active:scale-95"
-            title={t('logistics.driver.scanArea')}
-          >
-            <QrCode size={18} />
-          </Button>
-          <div className="text-[11px] text-slate-500">
-            {lastFix
-              ? `GPS: ${lastFix.lat.toFixed(4)}, ${lastFix.lng.toFixed(4)}`
-              : t('logistics.driver.gpsInactive')}
-          </div>
-        </div>
-      </div>
-
-      <Card bodyClassName="p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div>
-            <div className="font-bold text-fg-default">{detail.route.name}</div>
-            <div className="text-[11px] text-slate-500">
-              {detail.route.plannedDate} · {detail.route.vehiclePlate || '—'}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {fullRouteMapsUrl && (
-              <a
-                href={fullRouteMapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-sm hover:shadow-md active:scale-[0.97] transition-all"
-              >
-                <RouteIcon size={14} /> {t('logistics.driver.navigateRoute')}
-              </a>
-            )}
-            {tracking ? (
-              <Button onClick={stopGps} variant="danger" className="flex items-center gap-2">
-                <Square size={14} /> {t('logistics.driver.stopGps')}
-              </Button>
-            ) : (
-              <Button onClick={startGps} className="flex items-center gap-2">
-                <Play size={14} /> {t('logistics.driver.startGps')}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Inicio/fin explícito de la ruta — el inicio avisa a los clientes
-            ("en camino") y enciende el GPS; hasta entonces las paradas están
-            bloqueadas. */}
-        {!routeStarted && (
-          <>
-            <Button
-              onClick={startRoute}
-              disabled={routeBusy}
-              className="w-full flex items-center justify-center gap-2"
-            >
-              <Play size={16} /> {t('logistics.driver.startRoute')}
-            </Button>
-            <div className="text-[11px] text-slate-500 text-center">
-              {t('logistics.driver.startRouteHint')}
-            </div>
-          </>
-        )}
-        {detail.route.status === 'active' && (
-          <Button
-            variant="secondary"
-            onClick={() => setFinishConfirm(true)}
-            disabled={routeBusy}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Square size={14} /> {t('logistics.driver.finishRoute')}
-          </Button>
-        )}
-
-        {/* Vehículo detallado */}
-        {detail.vehicle && (
-          <div className="rounded-lg bg-bg-muted border border-border-default px-3 py-2">
-            <div className="flex items-center gap-2">
-              <TruckIconLucide size={16} className="text-slate-500" />
-              <span className="font-mono font-bold text-sm text-fg-default">
-                {detail.vehicle.plate}
-              </span>
-              {(detail.vehicle.brand || detail.vehicle.model) && (
-                <span className="text-xs text-slate-500">
-                  · {[detail.vehicle.brand, detail.vehicle.model].filter(Boolean).join(' ')}
-                </span>
-              )}
-              {detail.vehicle.capacity != null && (
-                <span className="ml-auto text-[11px] text-slate-500">
-                  {t('logistics.driver.capacity', { kg: detail.vehicle.capacity })}
-                </span>
-              )}
-            </div>
-            {detail.vehicle.notes && (
-              <div className="text-[11px] text-slate-500 mt-1">{detail.vehicle.notes}</div>
-            )}
-          </div>
-        )}
-
-        {/* Puntos de recogida (acopios + plataformas) */}
-        {detail.pickups && detail.pickups.length > 0 && (
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              {t('logistics.driver.pickupAt')}
-            </div>
-            <div className="space-y-1.5">
-              {detail.pickups.map((p) => {
-                const navUrl =
-                  p.lat != null && p.lng != null
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`
-                    : p.address
-                      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}&travelmode=driving`
-                      : null;
-                return (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-3 py-2"
-                  >
-                    <Warehouse size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-fg-default truncate">
-                        {p.name}
-                        {p.platform && (
-                          <span className="ml-2 text-[11px] font-normal text-slate-500">
-                            · {p.platform.name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-slate-500 truncate">
-                        {p.address || p.platform?.address || t('logistics.driver.noAddress')} ·{' '}
-                        <b>{p.packageCount}</b>{' '}
-                        {t('logistics.driver.packagesWord', { count: p.packageCount })}
-                      </div>
-                    </div>
-                    {navUrl && (
-                      <a
-                        href={navUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-md bg-amber-500 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm hover:opacity-90"
-                      >
-                        <Navigation size={12} /> {t('logistics.driver.go')}
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Mini-mapa con todas las paradas */}
-      {mapPoints.length > 0 && (
-        <Card bodyClassName="p-0 overflow-hidden">
-          {/* Cabecera desplegable de la sección (todo el ancho, con su borde
-              inferior): estructura, no un botón de acción. Se queda cruda. */}
-          <button
-            type="button"
-            onClick={() => setMapOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-[0.15em] text-slate-500"
-          >
-            <span>{t('logistics.driver.mapStops', { count: mapPoints.length })}</span>
-            {mapOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {mapOpen && (
-            <div style={{ height: 320 }} className="relative">
-              {/* Controles superpuestos al mapa: se quedan como <button> crudos
-                  — envolverlos en Button rompe el posicionamiento absoluto y el
-                  hit-testing sobre el canvas de maplibre. */}
-              <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => centerMap(mapRef)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-                  title={
-                    lastFix
-                      ? t('logistics.driver.centerGps')
-                      : t('logistics.driver.centerFirstStop')
-                  }
-                >
-                  <Navigation size={12} /> {t('logistics.driver.center')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMapFullscreen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-                  title={t('logistics.driver.expandMap')}
-                >
-                  <Maximize2 size={12} /> {t('logistics.driver.expand')}
-                </button>
-              </div>
-              <BaseMap ref={mapRef} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
-                {renderMapMarkers()}
-              </BaseMap>
-            </div>
-          )}
-        </Card>
+          onFinishRoute={() => {
+            setDeliveringId(null);
+            finish();
+          }}
+        />
       )}
 
-      {/* Mapa ampliado a pantalla completa — misma instancia de marcadores,
-          otro <BaseMap>/ref independiente para no pelear por el mismo mapRef
-          con el mini-mapa de arriba. */}
-      <Modal
-        isOpen={mapFullscreen}
-        onClose={() => setMapFullscreen(false)}
-        title={t('logistics.driver.mapStops', { count: mapPoints.length })}
-        maxWidth="full"
-      >
-        <div style={{ height: '75vh' }} className="relative">
-          {/* Overlay del mapa: <button> crudo a propósito (ver mini-mapa). */}
-          <button
-            type="button"
-            onClick={() => centerMap(mapRefFull)}
-            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-            title={
-              lastFix ? t('logistics.driver.centerGps') : t('logistics.driver.centerFirstStop')
+      {problem && (
+        <StopProblemModal
+          key={problem.stopId}
+          reasons={flow.reasons}
+          subtitle={problemStop ? stopAddress(problemStop, shipmentOf(problemStop)) : undefined}
+          preset={problem.preset}
+          onClose={() => setProblem(null)}
+          onConfirm={(kind, reason) =>
+            kind === 'postpone'
+              ? app.postpone(problem.stopId, reason)
+              : app.reportIncident(problem.stopId, reason)
+          }
+        />
+      )}
+
+      {drop && (
+        <StagingDropModal
+          stops={leftover}
+          shipments={app.shipmentsById}
+          packageCount={(shipmentId) => app.packagesOf(shipmentId).length}
+          finishing={drop.finishing}
+          onClose={() => setDrop(null)}
+          onSkip={() => {
+            setDrop(null);
+            setConfirmFinish(true);
+          }}
+          onConfirm={async (areaId, shipmentIds) => {
+            const ok = await app.dropAtStaging(areaId, shipmentIds);
+            if (ok) {
+              const thenFinish = drop.finishing;
+              setDrop(null);
+              if (thenFinish) setConfirmFinish(true);
             }
-          >
-            <Navigation size={12} /> {t('logistics.driver.center')}
-          </button>
-          {mapFullscreen && (
-            <BaseMap ref={mapRefFull} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
-              {renderMapMarkers()}
-            </BaseMap>
-          )}
-        </div>
-      </Modal>
+            return ok;
+          }}
+        />
+      )}
 
-      {/* Confirmación de finalizar ruta — avisa si quedan paradas sin cerrar. */}
-      <Modal
-        isOpen={finishConfirm}
-        onClose={() => setFinishConfirm(false)}
+      <ConfirmDialog
+        open={confirmFinish}
+        onCancel={() => setConfirmFinish(false)}
+        onConfirm={async () => {
+          await app.finishRoute();
+          setConfirmFinish(false);
+        }}
         title={t('logistics.driver.finishRoute')}
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-fg-body">
-            {openStopsCount > 0
-              ? t('logistics.driver.finishOpenStops', { count: openStopsCount })
-              : t('logistics.driver.finishAllClosed')}
-          </p>
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setFinishConfirm(false)}>
-              {t('logistics.common.cancel')}
-            </Button>
-            <Button variant="danger" onClick={finishRoute} disabled={routeBusy}>
-              {t('logistics.driver.finishRoute')}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        message={
+          openStops.length > 0
+            ? t('logistics.driver.finishOpenStops', { count: openStops.length })
+            : t('logistics.driver.finishAllClosed')
+        }
+        confirmLabel={t('logistics.driver.finishRoute')}
+        tone="danger"
+      />
 
-      {/* Header de la lista de repartos */}
-      <div className="flex items-center justify-between mt-2 mb-1 px-1">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-fg-muted">
-          {t('logistics.driver.deliveries', { count: detail.stops.length })}
-        </h2>
-        <span className="text-[10px] text-slate-400">
-          {detail.stops.filter((s) => s.status === 'delivered').length} / {detail.stops.length}{' '}
-          {t('logistics.driver.deliveredCount')}
-        </span>
-      </div>
-
-      {/* Botón masivo — útil cuando el repartidor empieza la ruta y quiere
-           abrir todas las paradas pendientes de golpe. Bloqueado hasta
-           iniciar la ruta, como el resto de acciones. */}
-      {routeStarted &&
-        detail.stops.some((s) => s.status === 'pending' || s.status === 'en_route') && (
-          // `h-10 w-full` intacto: es la acción táctil grande de la ruta.
-          <Button
-            type="button"
-            onClick={markAllArrived}
-            className="w-full h-10 rounded-lg mb-2 text-sm !bg-blue-500 hover:!bg-blue-600 !text-white shadow-sm active:scale-[0.98]"
-          >
-            <MapPin size={16} /> {t('logistics.driver.arrivedAll')}
-          </Button>
-        )}
-
-      <div className="space-y-2">
-        {detail.stops.map((s) => {
-          const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
-          // Cancelado cuenta como cerrado: el envío se devolvió/canceló y la
-          // parada ya no se puede operar.
-          const isDone = s.status === 'delivered' || s.status === 'cancelled';
-          const href = mapsUrl(s, ship);
-          const addr = resolveAddress(s, ship);
-          const isPickup = ship?.kind === 'pickup_return';
-          return (
-            <Card
-              key={s.id}
-              bodyClassName={`p-4 ${isDone ? 'opacity-60' : ''} ${isPickup ? 'border-l-4 border-l-purple-500' : ''}`}
-            >
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
-                  {s.sequence}
-                </span>
-                <Badge variant={isDone ? 'success' : s.status === 'en_route' ? 'info' : 'neutral'}>
-                  {(isPickup && s.status === 'delivered'
-                    ? t('logistics.driver.collected')
-                    : STOP_LABEL[s.status]
-                      ? t(STOP_LABEL[s.status])
-                      : '') || s.status}
-                </Badge>
-                {ship && (
-                  <Badge variant="info">
-                    {(isPickup && ship.status === 'delivered'
-                      ? t('logistics.driver.collected')
-                      : isPickup && ship.status === 'out_for_delivery'
-                        ? t('logistics.driver.collecting')
-                        : SHIP_LABEL[ship.status]
-                          ? t(SHIP_LABEL[ship.status])
-                          : '') || ship.status}
-                  </Badge>
-                )}
-                {isPickup && (
-                  <Badge variant="warning">↩ {t('logistics.driver.returnPickup')}</Badge>
-                )}
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-0.5">
-                {isPickup ? t('logistics.driver.collectFrom') : t('logistics.driver.deliverTo')}
-              </div>
-              <div className="font-semibold text-fg-default">{addr || '—'}</div>
-              {(ship?.recipientName || ship?.recipientEmail) && (
-                <div className="text-xs text-fg-muted mt-0.5">
-                  {ship?.recipientName && (
-                    <span className="font-medium text-fg-body">{ship.recipientName}</span>
-                  )}
-                  {ship?.recipientName && ship?.recipientEmail && ' · '}
-                  {ship?.recipientEmail && (
-                    <a href={`mailto:${ship.recipientEmail}`} className="underline">
-                      {ship.recipientEmail}
-                    </a>
-                  )}
-                </div>
-              )}
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                {href && (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm hover:shadow-md active:scale-[0.97] transition-all"
-                  >
-                    <Navigation size={12} /> {t('logistics.driver.openInMaps')}
-                  </a>
-                )}
-                {ship?.recipientPhone && (
-                  <>
-                    {/* Llamada directa */}
-                    <a
-                      href={`tel:${ship.recipientPhone.replace(/\s+/g, '')}`}
-                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-200 dark:bg-slate-700 text-fg-default text-[11px] font-black uppercase tracking-wider active:scale-[0.97] transition-all"
-                    >
-                      📞 {t('logistics.driver.call')}
-                    </a>
-                    {/* WhatsApp con mensaje prerrellenado */}
-                    <a
-                      href={buildWhatsAppUrl(
-                        ship.recipientPhone,
-                        t(
-                          isPickup
-                            ? 'logistics.driver.whatsapp.pickup'
-                            : 'logistics.driver.whatsapp.delivery',
-                          {
-                            name: ship.recipientName ? ` ${ship.recipientName}` : '',
-                          },
-                        ),
-                      )}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-500 text-white text-[11px] font-black uppercase tracking-wider active:scale-[0.97] transition-all"
-                    >
-                      💬 WhatsApp
-                    </a>
-                  </>
-                )}
-              </div>
-              {!isDone && (
-                <>
-                  <div className="flex gap-2 mt-3">
-                    {s.status !== 'arrived' && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={!routeStarted}
-                        onClick={() => markArrived(s.id)}
-                        className="flex-1 flex items-center justify-center gap-1"
-                      >
-                        <MapPin size={14} /> {t('logistics.driver.arrived')}
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      disabled={!routeStarted}
-                      onClick={() => markDelivered(s.id, s.shipmentId)}
-                      className="flex-1 flex items-center justify-center gap-1"
-                    >
-                      <CheckCircle2 size={14} />{' '}
-                      {isPickup
-                        ? t('logistics.driver.collectedAction')
-                        : t('logistics.driver.deliveredAction')}
-                    </Button>
-                  </div>
-                  {/* Se conservan `flex-1 h-9` (área táctil) y el tono
-                      ámbar/rosa que distingue las dos acciones negativas. */}
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={!routeStarted}
-                      onClick={() => markPostponed(s.id, s.shipmentId)}
-                      className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-amber-50 !text-amber-800 !border-amber-200 hover:!bg-amber-100 dark:!bg-amber-500/10 dark:!text-amber-300 dark:!border-amber-500/30 active:scale-[0.97]"
-                    >
-                      ⏸ {t('logistics.driver.postpone')}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      disabled={!routeStarted}
-                      onClick={() => reportException(s.id, s.shipmentId)}
-                      className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-rose-50 !text-rose-700 !border-rose-200 hover:!bg-rose-100 dark:!bg-rose-500/10 dark:!text-rose-300 dark:!border-rose-500/30 active:scale-[0.97]"
-                    >
-                      ⚠ {t('logistics.driver.incident')}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+      <ConfirmDialog
+        open={confirmArriveAll}
+        onCancel={() => setConfirmArriveAll(false)}
+        onConfirm={async () => {
+          setConfirmArriveAll(false);
+          await app.arriveAll(notArrived);
+        }}
+        title={t('logistics.driver.bulk.title')}
+        message={t('logistics.driver.bulk.message', { count: notArrived.length })}
+        confirmLabel={t('logistics.driver.bulk.confirm')}
+      />
+    </>
   );
 };
 

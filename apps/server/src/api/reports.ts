@@ -9,9 +9,15 @@
 import { Router } from 'express';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { canSeeItemCosts } from './middleware/hideItemCosts';
+import { getRequestLocale, intlLocale, tr } from '../i18n';
+import { PluginTranslations } from '../core/plugins/PluginTranslations';
+import { LocalizationRegistry } from '../core/localization/LocalizationRegistry';
+import { PluginReports, translateReportResult } from '../core/reports/PluginReports';
 import {
   renderReportPdf,
   getCompanyHeader,
+  type ReportColumn,
   type ReportSection,
 } from '../core/reports/ReportRenderer';
 
@@ -107,7 +113,7 @@ router.get('/journal/pdf', async (req: any, res) => {
       { debit: 0, credit: 0 },
     );
 
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: 'Diario de asientos',
       subtitle: period ? formatPeriodRange(period) : undefined,
@@ -216,7 +222,7 @@ router.get('/ledger/pdf', async (req: any, res) => {
 
     const totalDebit = rows.reduce((s: number, r: any) => s + Number(r.debit), 0);
     const totalCredit = rows.reduce((s: number, r: any) => s + Number(r.credit), 0);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: `Libro mayor`,
       subtitle: `${account.code} · ${account.name}`,
@@ -313,7 +319,7 @@ router.get('/trial-balance/pdf', async (req: any, res) => {
       },
       { debit: 0, credit: 0 },
     );
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: 'Balance de sumas y saldos',
       subtitle: period ? formatPeriodRange(period) : undefined,
@@ -394,7 +400,7 @@ router.get('/pl/pdf', async (req: any, res) => {
       .from(schema.accountingPeriods)
       .where(eq(schema.accountingPeriods.id, req.query.periodId));
     const pl = await queryPL(req.tenantClient, req.query.periodId);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const sections: ReportSection[] = [
       {
         title: 'Ingresos (grupo 7)',
@@ -487,7 +493,7 @@ router.get('/balance-sheet/pdf', async (req: any, res) => {
       .from(schema.accountingPeriods)
       .where(eq(schema.accountingPeriods.id, req.query.periodId));
     const bs = await queryBalanceSheet(req.tenantClient, req.query.periodId);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const col = (label: string) => [
       { key: 'code', label: 'Cuenta', width: '15%' },
       { key: 'name', label: 'Denominación' },
@@ -527,10 +533,10 @@ router.get('/balance-sheet/pdf', async (req: any, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// 6) LIBRO DE IVA (modelo 303)
+// 6) RESUMEN DE IMPUESTOS — los libros legales de cada país son de sus plugins
 // ─────────────────────────────────────────────────────────────────
 
-async function queryVat(
+async function queryTaxSummary(
   tenantClient: any,
   filters: { from?: Date; to?: Date; kind: 'output' | 'input' },
 ) {
@@ -545,7 +551,7 @@ async function queryVat(
       date: table.date,
       partnerId: table.partnerId,
       partnerName: schema.businessPartners.name,
-      partnerNif: schema.businessPartners.nif,
+      partnerTaxId: schema.businessPartners.nif,
       subtotal: table.subtotal,
       taxTotal: table.taxTotal,
       total: table.total,
@@ -561,7 +567,7 @@ async function queryVat(
   return rows.map((r: any) => ({
     date: r.date,
     code: `${r.prefix || ''}-${r.periodCode || ''}-${String(r.docNum).padStart(6, '0')}`,
-    partnerNif: r.partnerNif || '',
+    partnerTaxId: r.partnerTaxId || '',
     partnerName: r.partnerName || '',
     base: Number(r.subtotal),
     tax: Number(r.taxTotal),
@@ -569,13 +575,13 @@ async function queryVat(
   }));
 }
 
-router.get('/vat', async (req: any, res) => {
+router.get('/tax-summary', async (req: any, res) => {
   try {
     const from = req.query.from ? new Date(req.query.from) : undefined;
     const to = req.query.to ? new Date(req.query.to) : undefined;
     const [output, input] = await Promise.all([
-      queryVat(req.tenantClient, { from, to, kind: 'output' }),
-      queryVat(req.tenantClient, { from, to, kind: 'input' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'output' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'input' }),
     ]);
     res.json({ output, input });
   } catch (e: any) {
@@ -583,23 +589,24 @@ router.get('/vat', async (req: any, res) => {
   }
 });
 
-router.get('/vat/pdf', async (req: any, res) => {
+router.get('/tax-summary/pdf', async (req: any, res) => {
   try {
     const from = req.query.from ? new Date(req.query.from) : undefined;
     const to = req.query.to ? new Date(req.query.to) : undefined;
     const [output, input] = await Promise.all([
-      queryVat(req.tenantClient, { from, to, kind: 'output' }),
-      queryVat(req.tenantClient, { from, to, kind: 'input' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'output' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'input' }),
     ]);
     const sum = (arr: any[], k: string) => arr.reduce((s, r) => s + Number(r[k] || 0), 0);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
+    const terms = LocalizationRegistry.terminologyFor(req.tenantId);
     const filters: Array<{ label: string; value: string }> = [];
     if (from) filters.push({ label: 'Desde', value: from.toLocaleDateString('es-ES') });
     if (to) filters.push({ label: 'Hasta', value: to.toLocaleDateString('es-ES') });
     const cols = [
       { key: 'date', label: 'Fecha', format: 'date' as const, width: '10%' },
       { key: 'code', label: 'Nº Factura', width: '14%' },
-      { key: 'partnerNif', label: 'NIF', width: '12%' },
+      { key: 'partnerTaxId', label: terms.taxId, width: '12%' },
       { key: 'partnerName', label: 'Cliente/Proveedor' },
       {
         key: 'base',
@@ -610,7 +617,7 @@ router.get('/vat/pdf', async (req: any, res) => {
       },
       {
         key: 'tax',
-        label: 'Cuota IVA',
+        label: terms.tax,
         format: 'money' as const,
         align: 'right' as const,
         width: '12%',
@@ -624,13 +631,14 @@ router.get('/vat/pdf', async (req: any, res) => {
       },
     ];
     const pdf = await renderReportPdf({
-      title: 'Libro de IVA',
-      subtitle: 'IVA repercutido y soportado',
+      title: 'Resumen de impuestos',
+      subtitle: 'Repercutido y soportado',
+      neutral: true,
       filters,
       orientation: 'landscape',
       sections: [
         {
-          title: 'IVA Repercutido (ventas)',
+          title: 'Repercutido (ventas)',
           columns: cols,
           rows: output,
           totals: {
@@ -643,7 +651,7 @@ router.get('/vat/pdf', async (req: any, res) => {
           },
         },
         {
-          title: 'IVA Soportado (compras)',
+          title: 'Soportado (compras)',
           columns: cols,
           rows: input,
           totals: {
@@ -662,8 +670,8 @@ router.get('/vat/pdf', async (req: any, res) => {
             { key: 'amount', label: 'Importe', format: 'money', align: 'right', width: '20%' },
           ],
           rows: [
-            { label: 'IVA Repercutido', amount: sum(output, 'tax') },
-            { label: 'IVA Soportado', amount: -sum(input, 'tax') },
+            { label: 'Repercutido', amount: sum(output, 'tax') },
+            { label: 'Soportado', amount: -sum(input, 'tax') },
             { label: 'A ingresar / (a compensar)', amount: sum(output, 'tax') - sum(input, 'tax') },
           ],
         },
@@ -673,7 +681,91 @@ router.get('/vat/pdf', async (req: any, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.send(pdf);
   } catch (e: any) {
-    console.error('[reports/vat/pdf]', e);
+    console.error('[reports/tax-summary/pdf]', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Informes legales aportados por los plugins activos en la empresa
+// ─────────────────────────────────────────────────────────────────
+
+function pluginReportFilters(query: any) {
+  return {
+    ...query,
+    from: query.from ? new Date(query.from) : undefined,
+    to: query.to ? new Date(query.to) : undefined,
+  };
+}
+
+router.get('/plugin', (req: any, res) => {
+  const translate = (text: string) =>
+    PluginTranslations.text(req.tenantId, getRequestLocale(req), text);
+  res.json(
+    PluginReports.activeFor(req.tenantId).map(({ id, title, description }) => ({
+      id,
+      title: translate(title),
+      description: description ? translate(description) : null,
+    })),
+  );
+});
+
+async function runPluginReport(req: any, res: any) {
+  const definition = PluginReports.find(req.tenantId, req.params.id);
+  if (!definition) {
+    res.status(404).json({ error: 'Informe no disponible' });
+    return null;
+  }
+  const filters = pluginReportFilters(req.query);
+  const locale = getRequestLocale(req);
+  const translate = (text: string, vars?: Record<string, string | number>) =>
+    PluginTranslations.text(req.tenantId, locale, text, vars);
+  const result = translateReportResult(
+    await definition.run({
+      tenantId: req.tenantId,
+      db: req.tenantClient,
+      filters,
+      locale,
+      t: translate,
+    }),
+    translate,
+  );
+  return { title: translate(definition.title), filters, result, locale };
+}
+
+router.get('/plugin/:id', async (req: any, res) => {
+  try {
+    const run = await runPluginReport(req, res);
+    if (run) res.json({ title: run.title, ...run.result });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/plugin/:id/pdf', async (req: any, res) => {
+  try {
+    const run = await runPluginReport(req, res);
+    if (!run) return;
+    const filterRows: Array<{ label: string; value: string }> = [];
+    const dateIn = (d: Date) => d.toLocaleDateString(intlLocale(run.locale));
+    if (run.filters.from) {
+      filterRows.push({ label: tr(run.locale, 'Desde'), value: dateIn(run.filters.from) });
+    }
+    if (run.filters.to) {
+      filterRows.push({ label: tr(run.locale, 'Hasta'), value: dateIn(run.filters.to) });
+    }
+    const pdf = await renderReportPdf({
+      ...(await getCompanyHeader(req.tenantClient, req.tenantId, run.locale)),
+      title: run.title,
+      ...run.result,
+      filters: filterRows,
+      neutral: true,
+      locale: run.locale,
+    } as any);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(pdf);
+  } catch (e: any) {
+    console.error('[reports/plugin/pdf]', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -682,59 +774,294 @@ router.get('/vat/pdf', async (req: any, res) => {
 // OLA 3 — INFORMES DE GESTIÓN
 // ═══════════════════════════════════════════════════════════════════
 
+/** Lo que cuenta como ingreso o gasto: emitido y sin cancelar. */
+const issued = (invoices: any) => sql`${invoices.status} NOT IN ('D', 'X')`;
+
+/** Importe de una línea con su descuento y sin impuesto. */
+const netOf = (lines: any) =>
+  sql`(${lines.quantity} * ${lines.price} - COALESCE(${lines.discountAmount}, 0))`;
+/** Lo que costó su mercancía, con el coste que se llevó al salir. */
+const costOf = (lines: any) =>
+  sql`(${lines.quantity} * COALESCE(${lines.uomFactor}, 1) * COALESCE(${lines.unitCost}, 0))`;
+/** Unidades vendidas sin coste conocido: su margen sale más alto de lo real. */
+const uncostedOf = (lines: any) =>
+  sql`(CASE WHEN ${lines.unitCost} IS NULL AND ${lines.quantity} > 0
+      THEN ${lines.quantity} * COALESCE(${lines.uomFactor}, 1) ELSE 0 END)`;
+const money = (value: unknown) => Math.round(Number(value || 0) * 10000) / 10000;
+const marginRate = (income: number, margin: number) =>
+  income ? Math.round((margin / income) * 10000) / 100 : 0;
+
+/**
+ * Ingreso, gasto y coste de lo vendido por proyecto o centro. Lo comprado para ese
+ * proyecto ya es su gasto, así que del coste de lo vendido solo cuenta lo que supere
+ * a lo comprado de ese mismo artículo: si no, la misma mercancía saldría dos veces.
+ */
+async function analyticProfit(db: any, dimension: 'internalOrderId' | 'costCenterId') {
+  const sold = schema.salesInvoiceLines as any;
+  const bought = schema.purchaseInvoiceLines as any;
+  const income = await db
+    .select({
+      key: sold[dimension],
+      itemId: sold.itemId,
+      amount: sql<string>`COALESCE(SUM(${netOf(sold)}), 0)`,
+      cost: sql<string>`COALESCE(SUM(${costOf(sold)}), 0)`,
+    })
+    .from(sold)
+    .innerJoin(schema.salesInvoices, eq(sold.invoiceId, schema.salesInvoices.id))
+    .where(and(issued(schema.salesInvoices), sql`${sold[dimension]} IS NOT NULL`))
+    .groupBy(sold[dimension], sold.itemId);
+  const expense = await db
+    .select({
+      key: bought[dimension],
+      itemId: bought.itemId,
+      amount: sql<string>`COALESCE(SUM(${netOf(bought)}), 0)`,
+    })
+    .from(bought)
+    .innerJoin(schema.purchaseInvoices, eq(bought.invoiceId, schema.purchaseInvoices.id))
+    .where(and(issued(schema.purchaseInvoices), sql`${bought[dimension]} IS NOT NULL`))
+    .groupBy(bought[dimension], bought.itemId);
+
+  const spent = new Map<string, number>(
+    expense.map((r: any) => [`${r.key}|${r.itemId}`, Number(r.amount)]),
+  );
+  const totals = new Map<string, { income: number; expense: number; cost: number }>();
+  const totalOf = (key: string) => {
+    if (!totals.has(key)) totals.set(key, { income: 0, expense: 0, cost: 0 });
+    return totals.get(key)!;
+  };
+  for (const row of income) {
+    const total = totalOf(row.key);
+    total.income += Number(row.amount);
+    total.cost += Math.max(0, Number(row.cost) - (spent.get(`${row.key}|${row.itemId}`) ?? 0));
+  }
+  for (const row of expense) totalOf(row.key).expense += Number(row.amount);
+  return totals;
+}
+
+/** Una fila de proyecto o centro, sin el coste de lo vendido si no se puede ver. */
+function analyticRow(
+  total: { income: number; expense: number; cost: number } | undefined,
+  showCost: boolean,
+) {
+  const income = money(total?.income);
+  const expense = money(total?.expense);
+  const cost = money(total?.cost);
+  return showCost
+    ? { income, expense, cost, margin: money(income - expense - cost) }
+    : { income, expense, margin: money(income - expense) };
+}
+
+/** Coste y margen en el PDF: las filas solo los traen si quien pregunta puede verlos. */
+const costColumnsPdf = (rows: any[]): ReportColumn[] =>
+  rows.some((r) => r.cost !== undefined)
+    ? [
+        { key: 'cost', label: 'Coste', format: 'money', align: 'right', width: '13%' },
+        { key: 'margin', label: 'Margen', format: 'money', align: 'right', width: '13%' },
+        { key: 'marginRate', label: '% margen', format: 'percent', align: 'right', width: '10%' },
+      ]
+    : [];
+
+/** Importes del total de una columna, solo de las que traen las filas. */
+const sumOf = (rows: any[], keys: string[]) =>
+  Object.fromEntries(
+    keys
+      .filter((key) => rows.some((r) => r[key] !== undefined))
+      .map((key) => [key, money(rows.reduce((total, r) => total + Number(r[key] || 0), 0))]),
+  );
+
+/** El periodo del filtro, para la cabecera del PDF. */
+async function periodSubtitle(req: any): Promise<string | undefined> {
+  if (!req.query.periodId) return undefined;
+  const [period] = await req.tenantClient
+    .select()
+    .from(schema.accountingPeriods)
+    .where(eq(schema.accountingPeriods.id, req.query.periodId));
+  return period ? formatPeriodRange(period) : undefined;
+}
+
+async function sendProfitPdf(
+  req: any,
+  res: any,
+  input: { title: string; columns: ReportColumn[]; rows: any[]; totals: string[] },
+) {
+  const company = await getCompanyHeader(req.tenantClient, req.tenantId);
+  const uncosted = input.rows.some((r) => Number(r.uncosted || 0) > 0);
+  const pdf = await renderReportPdf({
+    title: input.title,
+    subtitle: await periodSubtitle(req),
+    neutral: true,
+    orientation: 'landscape',
+    footerText: uncosted
+      ? 'Hay ventas sin coste registrado: su margen sale más alto de lo real.'
+      : undefined,
+    sections: [
+      {
+        columns: input.columns,
+        rows: input.rows,
+        totals: { label: 'TOTAL', values: sumOf(input.rows, input.totals) },
+      },
+    ],
+    ...company,
+  });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.send(pdf);
+}
+
+async function profitCustomerRows(req: any): Promise<any[]> {
+  const rows = await req.tenantClient
+    .select({
+      id: schema.businessPartners.id,
+      code: schema.businessPartners.code,
+      name: schema.businessPartners.name,
+      total: sql<string>`COALESCE(SUM(${schema.salesInvoices.subtotal}), 0)`,
+      count: sql<string>`COUNT(DISTINCT ${schema.salesInvoices.id})`,
+    })
+    .from(schema.salesInvoices)
+    .innerJoin(
+      schema.businessPartners,
+      eq(schema.salesInvoices.partnerId, schema.businessPartners.id),
+    )
+    .where(
+      and(
+        issued(schema.salesInvoices),
+        req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : undefined,
+      ),
+    )
+    .groupBy(schema.businessPartners.id, schema.businessPartners.code, schema.businessPartners.name)
+    .orderBy(sql`COALESCE(SUM(${schema.salesInvoices.subtotal}), 0) DESC`)
+    .limit(100);
+  const plain = rows.map((r: any) => ({ ...r, total: Number(r.total), count: Number(r.count) }));
+  if (!(await canSeeItemCosts(req))) return plain;
+
+  const costs = await req.tenantClient
+    .select({
+      partnerId: schema.salesInvoices.partnerId,
+      cost: sql<string>`COALESCE(SUM(${costOf(schema.salesInvoiceLines)}), 0)`,
+      uncosted: sql<string>`COALESCE(SUM(${uncostedOf(schema.salesInvoiceLines)}), 0)`,
+    })
+    .from(schema.salesInvoiceLines)
+    .innerJoin(
+      schema.salesInvoices,
+      eq(schema.salesInvoiceLines.invoiceId, schema.salesInvoices.id),
+    )
+    .where(
+      and(
+        issued(schema.salesInvoices),
+        req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : undefined,
+      ),
+    )
+    .groupBy(schema.salesInvoices.partnerId);
+  const byPartner = new Map<string, any>(costs.map((c: any) => [c.partnerId, c]));
+  return plain.map((r: any) => {
+    const cost = money(byPartner.get(r.id)?.cost);
+    const margin = money(r.total - cost);
+    return {
+      ...r,
+      cost,
+      margin,
+      marginRate: marginRate(r.total, margin),
+      uncosted: Number(byPartner.get(r.id)?.uncosted ?? 0),
+    };
+  });
+}
+
 // 7. Rentabilidad por cliente
 router.get('/profit-customer', async (req: any, res) => {
   try {
-    const rows = await req.tenantClient
-      .select({
-        id: schema.businessPartners.id,
-        code: schema.businessPartners.code,
-        name: schema.businessPartners.name,
-        total: sql<string>`COALESCE(SUM(${schema.salesInvoices.subtotal}), 0)`,
-        count: sql<string>`COUNT(DISTINCT ${schema.salesInvoices.id})`,
-      })
-      .from(schema.salesInvoices)
-      .innerJoin(
-        schema.businessPartners,
-        eq(schema.salesInvoices.partnerId, schema.businessPartners.id),
-      )
-      .where(req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : sql`TRUE`)
-      .groupBy(
-        schema.businessPartners.id,
-        schema.businessPartners.code,
-        schema.businessPartners.name,
-      )
-      .orderBy(sql`COALESCE(SUM(${schema.salesInvoices.subtotal}), 0) DESC`)
-      .limit(100);
-    res.json(rows.map((r: any) => ({ ...r, total: Number(r.total), count: Number(r.count) })));
+    res.json(await profitCustomerRows(req));
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
+router.get('/profit-customer/pdf', async (req: any, res) => {
+  try {
+    const rows = await profitCustomerRows(req);
+    await sendProfitPdf(req, res, {
+      title: 'Rentabilidad por cliente',
+      rows,
+      totals: ['total', 'cost', 'margin'],
+      columns: [
+        { key: 'code', label: 'Código', width: '12%' },
+        { key: 'name', label: 'Cliente' },
+        { key: 'count', label: 'Facturas', format: 'integer', align: 'right', width: '9%' },
+        { key: 'total', label: 'Facturación', format: 'money', align: 'right', width: '14%' },
+        ...costColumnsPdf(rows),
+      ],
+    });
+  } catch (e: any) {
+    console.error('[reports/profit-customer/pdf]', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+async function profitItemRows(req: any): Promise<any[]> {
+  const rows = await req.tenantClient
+    .select({
+      id: schema.items.id,
+      code: schema.items.code,
+      name: schema.items.name,
+      qty: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.quantity}), 0)`,
+      revenue: sql<string>`COALESCE(SUM(${netOf(schema.salesInvoiceLines)}), 0)`,
+      cost: sql<string>`COALESCE(SUM(${costOf(schema.salesInvoiceLines)}), 0)`,
+      uncosted: sql<string>`COALESCE(SUM(${uncostedOf(schema.salesInvoiceLines)}), 0)`,
+    })
+    .from(schema.salesInvoiceLines)
+    .innerJoin(
+      schema.salesInvoices,
+      eq(schema.salesInvoiceLines.invoiceId, schema.salesInvoices.id),
+    )
+    .innerJoin(schema.items, eq(schema.salesInvoiceLines.itemId, schema.items.id))
+    .where(
+      and(
+        issued(schema.salesInvoices),
+        req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : undefined,
+      ),
+    )
+    .groupBy(schema.items.id, schema.items.code, schema.items.name)
+    .orderBy(sql`COALESCE(SUM(${netOf(schema.salesInvoiceLines)}), 0) DESC`)
+    .limit(200);
+  const showCost = await canSeeItemCosts(req);
+  return rows.map(({ cost, uncosted, ...r }: any) => {
+    const row = { ...r, qty: Number(r.qty), revenue: money(r.revenue) };
+    if (!showCost) return row;
+    const margin = money(row.revenue - money(cost));
+    return {
+      ...row,
+      cost: money(cost),
+      margin,
+      marginRate: marginRate(row.revenue, margin),
+      uncosted: Number(uncosted),
+    };
+  });
+}
+
 // 8. Rentabilidad por producto
 router.get('/profit-item', async (req: any, res) => {
   try {
-    const rows = await req.tenantClient
-      .select({
-        id: schema.items.id,
-        code: schema.items.code,
-        name: schema.items.name,
-        qty: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.quantity}), 0)`,
-        revenue: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.lineTotal}), 0)`,
-      })
-      .from(schema.salesInvoiceLines)
-      .innerJoin(
-        schema.salesInvoices,
-        eq(schema.salesInvoiceLines.invoiceId, schema.salesInvoices.id),
-      )
-      .innerJoin(schema.items, eq(schema.salesInvoiceLines.itemId, schema.items.id))
-      .where(req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : sql`TRUE`)
-      .groupBy(schema.items.id, schema.items.code, schema.items.name)
-      .orderBy(sql`COALESCE(SUM(${schema.salesInvoiceLines.lineTotal}), 0) DESC`)
-      .limit(200);
-    res.json(rows.map((r: any) => ({ ...r, qty: Number(r.qty), revenue: Number(r.revenue) })));
+    res.json(await profitItemRows(req));
   } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/profit-item/pdf', async (req: any, res) => {
+  try {
+    const rows = await profitItemRows(req);
+    await sendProfitPdf(req, res, {
+      title: 'Rentabilidad por producto',
+      rows,
+      totals: ['revenue', 'cost', 'margin'],
+      columns: [
+        { key: 'code', label: 'Código', width: '14%' },
+        { key: 'name', label: 'Artículo' },
+        { key: 'qty', label: 'Ud vendidas', format: 'integer', align: 'right', width: '10%' },
+        { key: 'revenue', label: 'Facturación', format: 'money', align: 'right', width: '14%' },
+        ...costColumnsPdf(rows),
+      ],
+    });
+  } catch (e: any) {
+    console.error('[reports/profit-item/pdf]', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -742,42 +1069,18 @@ router.get('/profit-item', async (req: any, res) => {
 // 9. Rentabilidad por proyecto (orden interna)
 router.get('/profit-project', async (req: any, res) => {
   try {
-    const income = await req.tenantClient
-      .select({
-        internalOrderId: schema.salesInvoiceLines.internalOrderId,
-        amount: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.lineTotal}), 0)`,
-      })
-      .from(schema.salesInvoiceLines)
-      .where(sql`${schema.salesInvoiceLines.internalOrderId} IS NOT NULL`)
-      .groupBy(schema.salesInvoiceLines.internalOrderId);
-    const expense = await req.tenantClient
-      .select({
-        internalOrderId: schema.purchaseInvoiceLines.internalOrderId,
-        amount: sql<string>`COALESCE(SUM(${schema.purchaseInvoiceLines.lineTotal}), 0)`,
-      })
-      .from(schema.purchaseInvoiceLines)
-      .where(sql`${schema.purchaseInvoiceLines.internalOrderId} IS NOT NULL`)
-      .groupBy(schema.purchaseInvoiceLines.internalOrderId);
-
+    const totals = await analyticProfit(req.tenantClient, 'internalOrderId');
+    const showCost = await canSeeItemCosts(req);
     const projects = await req.tenantClient.select().from(schema.internalOrders);
-    const incMap = new Map<string, number>(
-      income.map((r: any) => [r.internalOrderId as string, Number(r.amount)]),
-    );
-    const expMap = new Map<string, number>(
-      expense.map((r: any) => [r.internalOrderId as string, Number(r.amount)]),
-    );
     const rows = projects.map((p: any) => {
-      const ing = incMap.get(p.id) || 0;
-      const gas = expMap.get(p.id) || 0;
+      const row = analyticRow(totals.get(p.id), showCost);
       const budget = Number(p.budgetAmount || 0);
       return {
         code: p.code,
         name: p.name,
         budget,
-        income: ing,
-        expense: gas,
-        margin: Number(ing) - Number(gas),
-        deviation: budget > 0 ? ((Number(gas) - budget) / budget) * 100 : 0,
+        ...row,
+        deviation: budget > 0 ? ((row.expense - budget) / budget) * 100 : 0,
       };
     });
     res.json(rows);
@@ -789,41 +1092,16 @@ router.get('/profit-project', async (req: any, res) => {
 // 10. Rentabilidad por centro de coste
 router.get('/profit-cost-center', async (req: any, res) => {
   try {
-    const income = await req.tenantClient
-      .select({
-        id: schema.salesInvoiceLines.costCenterId,
-        amount: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.lineTotal}), 0)`,
-      })
-      .from(schema.salesInvoiceLines)
-      .where(sql`${schema.salesInvoiceLines.costCenterId} IS NOT NULL`)
-      .groupBy(schema.salesInvoiceLines.costCenterId);
-    const expense = await req.tenantClient
-      .select({
-        id: schema.purchaseInvoiceLines.costCenterId,
-        amount: sql<string>`COALESCE(SUM(${schema.purchaseInvoiceLines.lineTotal}), 0)`,
-      })
-      .from(schema.purchaseInvoiceLines)
-      .where(sql`${schema.purchaseInvoiceLines.costCenterId} IS NOT NULL`)
-      .groupBy(schema.purchaseInvoiceLines.costCenterId);
-    const ccs = await req.tenantClient.select().from(schema.costCenters);
-    const incMap = new Map<string, number>(
-      income.map((r: any) => [r.id as string, Number(r.amount)]),
-    );
-    const expMap = new Map<string, number>(
-      expense.map((r: any) => [r.id as string, Number(r.amount)]),
-    );
-    const rows = ccs.map((c: any) => {
-      const ing = incMap.get(c.id) || 0;
-      const gas = expMap.get(c.id) || 0;
-      return {
+    const totals = await analyticProfit(req.tenantClient, 'costCenterId');
+    const showCost = await canSeeItemCosts(req);
+    const centers = await req.tenantClient.select().from(schema.costCenters);
+    res.json(
+      centers.map((c: any) => ({
         code: c.code,
         name: c.name,
-        income: Number(ing),
-        expense: Number(gas),
-        margin: Number(ing) - Number(gas),
-      };
-    });
-    res.json(rows);
+        ...analyticRow(totals.get(c.id), showCost),
+      })),
+    );
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -882,7 +1160,8 @@ async function queryAging(tenantClient: any, table: any) {
     .leftJoin(schema.businessPartners, eq(table.partnerId, schema.businessPartners.id))
     .leftJoin(schema.documentSeries, eq(table.seriesId, schema.documentSeries.id))
     .leftJoin(schema.accountingPeriods, eq(table.periodId, schema.accountingPeriods.id))
-    .where(and(eq(table.status, 'O'), sql`${table.total} > COALESCE(${table.amountPaid}, 0)`));
+    // Un abono con saldo sale en negativo: lo que debe la empresa también cuenta.
+    .where(and(eq(table.status, 'O'), sql`${table.total} <> COALESCE(${table.amountPaid}, 0)`));
   return rows.map((r: any) => {
     const pending = Number(r.total) - Number(r.amountPaid || 0);
     const due = r.dueDate ? new Date(r.dueDate) : new Date(r.date);
@@ -991,12 +1270,13 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
       'Noviembre',
       'Diciembre',
     ];
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const gross = Number(p.gross);
-    const irpf = Number(p.irpfAmount);
-    const ssE = Number(p.ssEmployee);
-    const ssEr = Number(p.ssEmployer);
+    const incomeTax = Number(p.incomeTaxTotal);
+    const socialE = Number(p.socialEmployeeTotal);
+    const socialEr = Number(p.socialEmployerTotal);
     const net = Number(p.netPay);
+    const terms = LocalizationRegistry.terminologyFor(req.tenantId);
 
     // Líneas reales para mostrar el desglose completo (pluses, conceptos…).
     const lines: any[] = await req.tenantClient
@@ -1031,8 +1311,8 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
           amount: -Number(l.amount || 0),
         }))
       : [
-          { label: 'Retención IRPF', qty: '', rate: '', amount: -irpf },
-          { label: 'Seguridad Social trabajador', qty: '', rate: '', amount: -ssE },
+          { label: terms.incomeTax, qty: '', rate: '', amount: -incomeTax },
+          { label: terms.socialEmployee, qty: '', rate: '', amount: -socialE },
         ];
 
     const employerRows = employerCosts.length
@@ -1042,13 +1322,14 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
           rate: l.rate ? Number(l.rate).toFixed(2) + ' %' : '',
           amount: Number(l.amount || 0),
         }))
-      : [{ label: 'Seguridad Social a cargo de la empresa', qty: '', rate: '', amount: ssEr }];
+      : [{ label: terms.socialEmployer, qty: '', rate: '', amount: socialEr }];
 
     const totalDeductions = deductionRows.reduce((s, r) => s + Number(r.amount || 0), 0);
     const totalEmployer = employerRows.reduce((s, r) => s + Number(r.amount || 0), 0);
 
     const pdf = await renderReportPdf({
       title: `Recibo de nómina — ${months[p.periodMonth - 1]} ${p.periodYear}`,
+      neutral: true,
       subtitle: emp ? `${emp.firstName} ${emp.lastName} (${emp.code})` : '',
       sections: [
         {
@@ -1096,8 +1377,8 @@ router.get('/labor-cost', async (req: any, res) => {
       .select({
         month: schema.payrolls.periodMonth,
         gross: sql<string>`COALESCE(SUM(${schema.payrolls.gross}), 0)`,
-        ssEmployer: sql<string>`COALESCE(SUM(${schema.payrolls.ssEmployer}), 0)`,
-        irpf: sql<string>`COALESCE(SUM(${schema.payrolls.irpfAmount}), 0)`,
+        socialEmployer: sql<string>`COALESCE(SUM(${schema.payrolls.socialEmployerTotal}), 0)`,
+        incomeTax: sql<string>`COALESCE(SUM(${schema.payrolls.incomeTaxTotal}), 0)`,
         netPay: sql<string>`COALESCE(SUM(${schema.payrolls.netPay}), 0)`,
       })
       .from(schema.payrolls)
@@ -1108,10 +1389,10 @@ router.get('/labor-cost', async (req: any, res) => {
       rows.map((r: any) => ({
         month: r.month,
         gross: Number(r.gross),
-        ssEmployer: Number(r.ssEmployer),
-        irpf: Number(r.irpf),
+        socialEmployer: Number(r.socialEmployer),
+        incomeTax: Number(r.incomeTax),
         netPay: Number(r.netPay),
-        totalCost: Number(r.gross) + Number(r.ssEmployer),
+        totalCost: Number(r.gross) + Number(r.socialEmployer),
       })),
     );
   } catch (e: any) {
@@ -1153,19 +1434,19 @@ router.get('/stock-valuation', async (req: any, res) => {
         code: schema.items.code,
         name: schema.items.name,
         stock: schema.items.stock,
-        basePrice: schema.items.basePrice,
+        averageCost: schema.items.averageCost,
       })
       .from(schema.items)
       .where(sql`${schema.items.stock} > 0`)
       .orderBy(asc(schema.items.code));
+    const showCost = await canSeeItemCosts(req);
     res.json(
-      rows.map((r: any) => ({
-        code: r.code,
-        name: r.name,
-        stock: Number(r.stock),
-        unitPrice: Number(r.basePrice),
-        value: Number(r.stock) * Number(r.basePrice),
-      })),
+      rows.map((r: any) => {
+        const row = { code: r.code, name: r.name, stock: Number(r.stock) };
+        if (!showCost) return row;
+        const unitPrice = Number(r.averageCost);
+        return { ...row, unitPrice, value: money(row.stock * unitPrice), uncosted: unitPrice <= 0 };
+      }),
     );
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -1446,7 +1727,7 @@ router.get('/hr/labor-cost', async (req: any, res) => {
 
     const groups: Record<
       string,
-      { label: string; gross: number; ssEr: number; total: number; count: number }
+      { label: string; gross: number; socialEmployer: number; total: number; count: number }
     > = {};
     for (const p of inRange) {
       const emp: any = empById.get(p.employeeId);
@@ -1470,11 +1751,11 @@ router.get('/hr/labor-cost', async (req: any, res) => {
         label = d2?.name || key;
       }
       const gross = Number(p.gross || 0);
-      const ssEr = Number(p.ssEmployer || 0);
-      const cur = groups[key] || { label, gross: 0, ssEr: 0, total: 0, count: 0 };
+      const socialEmployer = Number(p.socialEmployerTotal || 0);
+      const cur = groups[key] || { label, gross: 0, socialEmployer: 0, total: 0, count: 0 };
       cur.gross += gross;
-      cur.ssEr += ssEr;
-      cur.total += gross + ssEr;
+      cur.socialEmployer += socialEmployer;
+      cur.total += gross + socialEmployer;
       cur.count += 1;
       groups[key] = cur;
     }
@@ -1483,8 +1764,12 @@ router.get('/hr/labor-cost', async (req: any, res) => {
     res.json({
       rows,
       totals: rows.reduce(
-        (s, r) => ({ gross: s.gross + r.gross, ssEr: s.ssEr + r.ssEr, total: s.total + r.total }),
-        { gross: 0, ssEr: 0, total: 0 },
+        (s, r) => ({
+          gross: s.gross + r.gross,
+          socialEmployer: s.socialEmployer + r.socialEmployer,
+          total: s.total + r.total,
+        }),
+        { gross: 0, socialEmployer: 0, total: 0 },
       ),
     });
   } catch (e: any) {

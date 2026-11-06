@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { and, eq, inArray, notInArray, sql, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
+import { contextOf } from '../logistics/shared';
+import { cancelLinkedShipment } from '../../core/logistics/shipmentActions';
+import { runEffects, type Effect } from '../../core/logistics/shipmentTransitions';
 import crypto from 'crypto';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
@@ -8,6 +11,9 @@ import { notifyShipmentStageChange } from '../../core/logistics/shipmentNotifica
 import { dispatchEvent } from '../../core/webhooks/WebhookQueue';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
+import { statusError } from '../../core/documents/documentRules';
+import { fullyReturnedNotes, withReturnState } from '../../core/documents/deliveryReturns';
+import { prepareNoteReturn, returnFromNote } from '../../core/documents/deliveryNoteReturn';
 
 const router = Router();
 const config = DocumentRegistry.get('SDN');
@@ -73,15 +79,20 @@ router.get('/', async (req: any, res) => {
         }
       }
     }
+    const returned = await fullyReturnedNotes(
+      req.tenantClient,
+      results.map((r: any) => r.id),
+    );
     const enriched = results.map((r: any) => ({
       ...r,
+      fullyReturned: returned.has(r.id),
       hasActiveShipment: shipmentMap.has(r.id),
       activeShipmentId: shipmentMap.get(r.id) || null,
       activeShipmentStatus: shipmentStatusMap.get(r.id) || null,
     }));
     res.json(enriched);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -151,20 +162,59 @@ router.get('/:id', async (req: any, res) => {
       }),
     );
 
+    res.json(
+      await withReturnState(req.tenantClient, {
+        ...header.header,
+        seriesPrefix: header.seriesPrefix,
+        numberingMode: header.numberingMode,
+        periodCode: header.periodCode,
+        orderDocNum: header.orderDocNum,
+        orderPrefix: header.orderPrefix,
+        lines: linesWithBatches,
+        hasActiveShipment: !!activeShipment,
+        activeShipmentId: activeShipment?.id || null,
+        activeShipmentStatus: activeShipment?.preparationStatus || null,
+      }),
+    );
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
+// GET /:id/return — lo que puede volver de este albarán.
+router.get('/:id/return', async (req: any, res) => {
+  try {
+    res.json(await prepareNoteReturn(req.tenantClient, req.params.id));
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
+// POST /:id/return — el cliente trae lo que se llevó de un albarán sin facturar. No depende de
+// logística: la entrada queda confirmada y la mercancía, en el almacén.
+router.post('/:id/return', async (req: any, res) => {
+  try {
+    const result = await returnFromNote(
+      { db: req.tenantClient, user: req.user },
+      req.params.id,
+      req.body,
+    );
+    await logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: 'SalesDeliveryNote',
+      entityId: req.params.id,
+      action: 'RETURN',
+      newValue: { reason: result.reason, receiptId: result.receiptId, code: result.code },
+    });
     res.json({
-      ...header.header,
-      seriesPrefix: header.seriesPrefix,
-      numberingMode: header.numberingMode,
-      periodCode: header.periodCode,
-      orderDocNum: header.orderDocNum,
-      orderPrefix: header.orderPrefix,
-      lines: linesWithBatches,
-      hasActiveShipment: !!activeShipment,
-      activeShipmentId: activeShipment?.id || null,
-      activeShipmentStatus: activeShipment?.preparationStatus || null,
+      receiptId: result.receiptId,
+      code: result.code,
+      fullyReturned: result.fullyReturned,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -181,7 +231,7 @@ router.get('/:id/pdf', async (req: any, res) => {
     );
   } catch (error: any) {
     console.error('[SalesDeliveryNote PDF] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -221,7 +271,7 @@ router.post('/', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('[SalesDeliveryNote API] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, ...error.body });
   }
 });
 
@@ -265,14 +315,17 @@ router.post('/:id/cancel', async (req: any, res) => {
       }
     }
 
+    const logisticsContext = await contextOf(req);
+    const logisticsEffects: Effect[] = [];
     const result = await req.tenantClient.transaction(async (tx: any) => {
       const [header] = await tx
         .select()
         .from(schema.salesDeliveryNotes)
         .where(eq(schema.salesDeliveryNotes.id, req.params.id));
-      if (!header) throw new Error('Albarán no encontrado');
-      if (header.status === 'X') throw new Error('El albarán ya está cancelado');
-      if (header.status === 'C') throw new Error('No se puede cancelar un albarán ya facturado');
+      if (!header) throw statusError(404, 'Albarán no encontrado');
+      if (header.status === 'X') throw statusError(409, 'El albarán ya está cancelado');
+      if (header.status === 'C')
+        throw statusError(409, 'No se puede cancelar un albarán ya facturado');
 
       // Revierte stock (global/almacén/zona/lotes), marca 'X' y decrementa el
       // fulfillment del Pedido de Venta origen — todo vía DocumentEngine
@@ -292,47 +345,26 @@ router.post('/:id/cancel', async (req: any, res) => {
           hooks: config.hooks,
         },
         req.params.id,
+        { reason: body.reason },
       );
 
-      // 2b. Propagar al shipment vinculado (si existe y sigue vivo) +
-      // cancelar picking tasks asociadas. La cancelación fiscal del
-      // albarán debe parar también la operación logística.
+      // Parar también la operación logística: envío, paradas y tareas.
       if (activeShipment) {
-        await tx
-          .update(schema.shipments)
-          .set({
-            status: 'cancelled',
-            preparationStatus: 'cancelled',
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.shipments.id, activeShipment.id));
-
-        await tx.insert(schema.shipmentEvents).values({
-          id: crypto.randomUUID(),
-          shipmentId: activeShipment.id,
-          kind: 'status_change',
-          status: 'cancelled',
-          description: body.reason
+        await cancelLinkedShipment(
+          logisticsContext,
+          tx,
+          logisticsEffects,
+          activeShipment,
+          body.reason
             ? `Cancelado al anular el albarán: ${body.reason}`
             : 'Cancelado al anular el albarán de venta',
-        });
-
-        // Picking tasks pendientes → cancelled (el almacén deja de
-        // procesarlas).
-        try {
-          await tx
-            .update(schema.pickingTasks)
-            .set({ status: 'cancelled' })
-            .where(
-              sql`${schema.pickingTasks.shipmentId} = ${activeShipment.id} AND ${schema.pickingTasks.status} IN ('pending','in_progress')`,
-            );
-        } catch {
-          /* tabla opcional, si no existe pickingTasks no rompemos */
-        }
+        );
       }
 
       return { success: true };
     });
+
+    await runEffects(logisticsEffects);
 
     res.json({
       ...result,
@@ -346,7 +378,7 @@ router.post('/:id/cancel', async (req: any, res) => {
       userId: req.user?.id,
       entityType: 'SalesDeliveryNote',
       entityId: req.params.id,
-      action: 'DELETE',
+      action: 'CANCEL',
       newValue: { reason: body.reason || null, force: !!body.force },
     });
 
@@ -377,7 +409,7 @@ router.post('/:id/cancel', async (req: any, res) => {
       }).catch(() => {});
     }
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

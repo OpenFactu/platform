@@ -120,6 +120,7 @@ export class SchemaManager {
       .where(eq(schema.globalUsers.tenantId, tenantId));
     await publicDb.delete(schema.auditLogs).where(eq(schema.auditLogs.tenantId, tenantId));
     await publicDb.delete(schema.devApiKeys).where(eq(schema.devApiKeys.tenantId, tenantId));
+    await publicDb.delete(schema.shipmentTokens).where(eq(schema.shipmentTokens.tenantId, tenantId));
     await publicDb.delete(schema.tenants).where(eq(schema.tenants.id, tenantId));
     await publicDb.execute(sql.raw(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`));
     await ClientFactory.evict(schemaName);

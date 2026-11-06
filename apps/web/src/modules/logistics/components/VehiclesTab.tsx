@@ -144,7 +144,7 @@ export const VehiclesTab: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+        <Card bodyClassName="py-10 text-center text-sm text-fg-muted">
           {t('logistics.vehicles.empty')}
         </Card>
       ) : (
@@ -174,7 +174,7 @@ export const VehiclesTab: React.FC = () => {
                         {v.plate}
                       </span>
                       {(v.brand || v.model) && (
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[11px] text-fg-muted">
                           {[v.brand, v.model].filter(Boolean).join(' ')}
                         </span>
                       )}
@@ -285,7 +285,7 @@ export const VehiclesTab: React.FC = () => {
           </div>
           <div>
             {/* Empleados del servidor → SearchableSelect (sin prop `label`). */}
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.vehicles.defaultDriver')}
             </label>
             <SearchableSelect

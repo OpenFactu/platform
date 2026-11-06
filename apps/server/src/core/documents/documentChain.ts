@@ -17,6 +17,10 @@ export interface DocRef {
   partnerId: string;
   total: number;
   status: string;
+  /** Es un abono: corrige una factura, aunque viva en su misma tabla. */
+  isCreditNote: boolean;
+  /** El tipo fiscal del documento, si lo tiene. */
+  documentTypeName: string | null;
 }
 
 function headerTableFor(type: DocType) {
@@ -27,8 +31,10 @@ export async function hydrate(tenantClient: any, type: DocType, ids: string[]): 
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return [];
   const table = headerTableFor(type);
+  // Los abonos y el tipo fiscal solo existen en las facturas.
+  const fiscal = (table as any).rectifiesInvoiceId !== undefined;
   // JOIN con DocumentSeries + AccountingPeriod para obtener prefix y periodCode.
-  const rows = await tenantClient
+  let query = tenantClient
     .select({
       id: (table as any).id,
       docNum: (table as any).docNum,
@@ -38,11 +44,23 @@ export async function hydrate(tenantClient: any, type: DocType, ids: string[]): 
       status: (table as any).status,
       seriesPrefix: schema.documentSeries.prefix,
       periodCode: schema.accountingPeriods.code,
+      ...(fiscal
+        ? {
+            rectifiesInvoiceId: (table as any).rectifiesInvoiceId,
+            documentTypeName: schema.documentTypes.name,
+          }
+        : {}),
     })
     .from(table)
     .leftJoin(schema.documentSeries, eq((table as any).seriesId, schema.documentSeries.id))
-    .leftJoin(schema.accountingPeriods, eq((table as any).periodId, schema.accountingPeriods.id))
-    .where(inArray((table as any).id, unique));
+    .leftJoin(schema.accountingPeriods, eq((table as any).periodId, schema.accountingPeriods.id));
+  if (fiscal) {
+    query = query.leftJoin(
+      schema.documentTypes,
+      eq((table as any).documentTypeId, schema.documentTypes.id),
+    );
+  }
+  const rows = await query.where(inArray((table as any).id, unique));
   return rows.map((r: any) => {
     const parts = [r.seriesPrefix, r.periodCode, String(r.docNum).padStart(6, '0')].filter(Boolean);
     return {
@@ -53,6 +71,8 @@ export async function hydrate(tenantClient: any, type: DocType, ids: string[]): 
       partnerId: r.partnerId,
       total: Number(r.total || 0),
       status: r.status,
+      isCreditNote: !!r.rectifiesInvoiceId,
+      documentTypeName: r.documentTypeName ?? null,
     };
   });
 }

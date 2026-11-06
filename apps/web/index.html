@@ -90,31 +90,36 @@
         try {
           var cached = localStorage.getItem('openfactu_theme');
           if (cached) {
-            // Lo deja ThemeContext: las variables y atributos que escribió
-            // applyTheme la última vez, para no pintar el tema de fábrica.
+            // Lo deja ThemeContext: las variables y atributos del último tema,
+            // para no pintar el de fábrica. Arriba el de la empresa; `personal`
+            // manda con sesión, salvo en las páginas que se enseñan a terceros
+            // (misma lista que isSharedPage en ThemeContext).
             var parsed = JSON.parse(cached);
             var root = document.documentElement;
-            if (parsed && parsed.themeMode === 'dark') {
+            var sharedPage = /^\/(track|f|join)\/|^\/kiosk/.test(location.pathname);
+            var useUserTheme = parsed && parsed.personal && !sharedPage && localStorage.getItem('openfactu_token');
+            var layer = useUserTheme ? parsed.personal : parsed;
+            if (layer && layer.themeMode === 'dark') {
               root.classList.add('dark');
               root.style.colorScheme = 'dark';
             }
-            if (parsed && parsed.vars) {
-              for (var name in parsed.vars) root.style.setProperty(name, parsed.vars[name]);
-              if (parsed.themeMode === 'dark' && !(parsed.attrs && 'data-k-backdrop' in parsed.attrs) && parsed.vars['--bg-app']) {
-                root.style.background = parsed.vars['--bg-app'];
+            if (layer && layer.vars) {
+              for (var name in layer.vars) root.style.setProperty(name, layer.vars[name]);
+              if (layer.themeMode === 'dark' && !(layer.attrs && 'data-k-backdrop' in layer.attrs) && layer.vars['--bg-app']) {
+                root.style.background = layer.vars['--bg-app'];
               }
             }
-            if (parsed && parsed.attrs) {
-              for (var attr in parsed.attrs) root.setAttribute(attr, parsed.attrs[attr]);
+            if (layer && layer.attrs) {
+              for (var attr in layer.attrs) root.setAttribute(attr, layer.attrs[attr]);
             }
             if (parsed && parsed.appName) {
               document.title = parsed.appName;
             }
-            if (parsed && parsed.fontUrl) {
+            if (layer && layer.fontUrl) {
               // Mismo atributo que usa applyTheme, que así reutiliza este <link>.
               var fontLink = document.createElement('link');
               fontLink.rel = 'stylesheet';
-              fontLink.href = parsed.fontUrl;
+              fontLink.href = layer.fontUrl;
               fontLink.setAttribute('data-openfactu-font', '');
               document.head.appendChild(fontLink);
             }

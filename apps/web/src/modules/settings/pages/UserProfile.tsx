@@ -1,11 +1,21 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, FileDropzone, PageHeader, useToast, usePopup } from '@openfactu/ui';
-import { UserCircle, Upload, X as XIcon, Save, PenLine, ImageIcon, Languages } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  ShieldCheck,
+  UserCircle,
+  Upload,
+  X as XIcon,
+  Save,
+  PenLine,
+  ImageIcon,
+  Languages,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { TwoFactorSettings } from '../components/TwoFactorSettings';
+import { PersonalThemeCard } from '../components/PersonalThemeCard';
 
 interface Profile {
   id: string;
@@ -287,7 +297,16 @@ export const UserProfile: React.FC = () => {
         </div>
       </Card>
 
-      <TwoFactorSettings />
+      <PersonalThemeCard />
+
+      <Card className="p-6 flex items-center justify-between gap-4 flex-wrap border-border-subtle">
+        <p className="text-[11px] text-fg-muted max-w-sm">{t('auth.security.linkHelp')}</p>
+        <Link to="/profile/security">
+          <Button variant="secondary" size="sm" className="gap-2">
+            <ShieldCheck size={14} /> {t('auth.security.link')}
+          </Button>
+        </Link>
+      </Card>
 
       <Card className="p-6 space-y-4 border-border-subtle">
         <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">

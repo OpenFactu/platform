@@ -31,6 +31,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
 import { useI18n } from '@/i18n/I18nContext';
+import { openPdf } from '@/utils/downloadPdf';
 import { formatDate, formatDateTime } from '@/i18n/format';
 import type { Platform } from '../domain/platform';
 import type { StagingArea, StagingAreaItem } from '../domain/stagingArea';
@@ -146,249 +147,11 @@ export const StagingAreasTab: React.FC = () => {
     setQrFor({ id: area.id, name: area.name, payload, imgUrl });
   };
 
-  /**
-   * Abre una ventana nueva con el packing list del acopio en formato
-   * imprimible y dispara `window.print()` al cargar. Usa el payload del
-   * backend (mismo que alimenta el QR) para no tocar la API.
-   */
-  const openPackingList = async (area: StagingArea) => {
-    let p: any;
-    try {
-      p = await stagingAreasApi.payload(area.id);
-    } catch {
-      toast.error(t('logistics.staging.loadError'));
-      return;
-    }
-    const w = window.open('', '_blank');
-    if (!w) {
-      toast.error(t('logistics.staging.popupBlocked'));
-      return;
-    }
-    const esc = (s: any) =>
-      String(s ?? '—').replace(
-        /[&<>"']/g,
-        (c) =>
-          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-      );
-    const totalWeight = (p.packages || []).reduce(
-      (acc: number, pk: any) => acc + (Number(pk.weightKg) || 0),
-      0,
-    );
-    const shipmentMap = new Map<string, any>((p.shipments || []).map((s: any) => [s.id, s]));
-    const byShipment = new Map<string, any[]>();
-    for (const pk of p.packages || []) {
-      const key = pk.shipmentId || '__none__';
-      if (!byShipment.has(key)) byShipment.set(key, []);
-      byShipment.get(key)!.push(pk);
-    }
+  const openPackingList = (area: Pick<StagingArea, 'id'>) =>
+    openPdf(`/api/logistics/staging-areas/${area.id}/packing-list.pdf`);
 
-    const shipmentBlocks = Array.from(byShipment.entries())
-      .map(([sid, pkgs]) => {
-        const s = sid !== '__none__' ? shipmentMap.get(sid) : null;
-        return `
-          <section class="ship">
-            <h3>${s ? esc(t('logistics.staging.print.shipment', { code: s.code || s.id.slice(0, 8) })) : esc(t('logistics.staging.print.noShipment'))}</h3>
-            ${s?.destinationAddress ? `<div class="addr">${esc(s.destinationAddress)}</div>` : ''}
-            <table>
-              <thead><tr><th>${esc(t('logistics.staging.print.code'))}</th><th>${esc(t('logistics.staging.print.status'))}</th><th class="r">${esc(t('logistics.staging.print.weight'))}</th><th>${esc(t('logistics.staging.print.sealed'))}</th></tr></thead>
-              <tbody>
-                ${pkgs
-                  .map(
-                    (pk: any) => `
-                  <tr>
-                    <td><code>${esc(pk.code)}</code></td>
-                    <td>${esc(pk.status)}</td>
-                    <td class="r">${pk.weightKg != null ? esc(pk.weightKg) + ' kg' : '—'}</td>
-                    <td>${pk.sealedAt ? esc(formatDateTime(pk.sealedAt)) : '—'}</td>
-                  </tr>`,
-                  )
-                  .join('')}
-              </tbody>
-            </table>
-          </section>`;
-      })
-      .join('');
-
-    const routesList = (p.routes || [])
-      .map(
-        (r: any) =>
-          `<li><b>${esc(r.code)}</b> · ${esc(r.name || '—')} · ${esc(r.driverName || t('logistics.staging.noDriver'))}${r.vehiclePlate ? ` · ${esc(r.vehiclePlate)}` : ''}</li>`,
-      )
-      .join('');
-
-    w.document.write(`<!doctype html>
-<html lang="${locale}"><head><meta charset="utf-8"/>
-<title>${esc(t('logistics.staging.print.packingList'))} · ${esc(p.staging?.name || '')}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#0f172a; margin: 0; padding: 24px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color:#64748b; margin: 18px 0 6px; font-weight: 900; }
-  h3 { font-size: 14px; margin: 12px 0 6px; color:#0f172a; }
-  header { border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .sub { color:#64748b; font-size: 12px; margin-top: 2px; }
-  ul { margin: 0; padding-left: 18px; font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
-  th { text-align: left; background: #f1f5f9; padding: 6px 8px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
-  td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
-  .r { text-align: right; }
-  code { font-family: 'SF Mono', Menlo, monospace; background:#f1f5f9; padding:1px 4px; border-radius:3px; font-size: 11px; }
-  .addr { color:#64748b; font-size: 11px; margin-bottom: 4px; }
-  .totals { margin-top: 24px; border-top: 2px solid #0f172a; padding-top: 12px; font-size: 12px; }
-  .sign { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; font-size: 11px; color: #64748b; }
-  .sign > div { border-top: 1px solid #0f172a; padding-top: 6px; }
-  @page { margin: 16mm; }
-  @media print { body { padding: 0; } }
-</style></head><body>
-<header>
-  <div>
-    <h1>${esc(t('logistics.staging.print.packingList'))}</h1>
-    <div class="sub">${esc(p.staging?.name || '')} · <code>${esc(p.staging?.code || '')}</code></div>
-  </div>
-  <div class="sub">${formatDateTime(new Date())}</div>
-</header>
-
-<h2>${esc(t('logistics.staging.print.assignedRoutes'))}</h2>
-${routesList ? `<ul>${routesList}</ul>` : `<div class="sub">${esc(t('logistics.staging.print.noRoute'))}</div>`}
-
-<h2>${esc(t('logistics.staging.print.contents'))}</h2>
-${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}</div>`}
-
-<div class="totals">
-  <b>${esc(t('logistics.staging.print.totalPackages'))}</b> ${p.packages?.length || 0} · <b>${esc(t('logistics.staging.print.totalWeight'))}</b> ${totalWeight.toFixed(2)} kg · <b>${esc(t('logistics.staging.print.shipments'))}</b> ${p.shipments?.length || 0}
-</div>
-
-<div class="sign">
-  <div>${esc(t('logistics.staging.print.warehouseSignature'))}</div>
-  <div>${esc(t('logistics.staging.print.carrierSignature'))}</div>
-</div>
-
-<script>
-  window.addEventListener('load', () => setTimeout(() => window.print(), 250));
-</script>
-</body></html>`);
-    w.document.close();
-  };
-
-  /**
-   * Etiquetas imprimibles tipo Amazon: una por paquete, con QR grande con el
-   * código del paquete, dirección de destino en grande y datos de envío.
-   * Pensadas para pegar físicamente en la caja — el repartidor las escanea
-   * en ruta y la app le muestra quién la va a recibir.
-   */
-  const openPackageLabels = async (area: StagingArea, perPage: 1 | 4 = 4) => {
-    let p: any;
-    try {
-      p = await stagingAreasApi.payload(area.id);
-    } catch {
-      toast.error(t('logistics.staging.loadError'));
-      return;
-    }
-    const pkgs = (p.packages || []) as any[];
-    if (pkgs.length === 0) {
-      toast.error(t('logistics.staging.noPackages'));
-      return;
-    }
-    const shipMap = new Map<string, any>((p.shipments || []).map((s: any) => [s.id, s]));
-    const w = window.open('', '_blank');
-    if (!w) {
-      toast.error(t('logistics.staging.popupBlocked'));
-      return;
-    }
-    const esc = (s: any) =>
-      String(s ?? '—').replace(
-        /[&<>"']/g,
-        (c) =>
-          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-      );
-    const labels = pkgs
-      .map((pk) => {
-        const s = pk.shipmentId ? shipMap.get(pk.shipmentId) : null;
-        const trackingOrId = s ? s.code || s.id.slice(0, 8) : '—';
-        const address = s?.destinationAddress || t('logistics.staging.print.noAddress');
-        const qrPayload = JSON.stringify({ v: 1, type: 'package', id: pk.id, code: pk.code });
-        const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrPayload)}`;
-        return `
-          <section class="label">
-            <header>
-              <div class="brand">KEIROST · ${esc(t('logistics.staging.print.deliveryBrand'))}</div>
-              <code>${esc(pk.code)}</code>
-            </header>
-            <div class="row">
-              <img src="${qrSrc}" alt="qr" class="qr"/>
-              <div class="info">
-                <div class="field"><span class="k">${esc(t('logistics.staging.print.labelShipment'))}</span><span class="v mono">${esc(trackingOrId)}</span></div>
-                <div class="field"><span class="k">${esc(t('logistics.staging.print.weight'))}</span><span class="v">${pk.weightKg != null ? esc(pk.weightKg) + ' kg' : '—'}</span></div>
-                <div class="field"><span class="k">${esc(t('logistics.staging.print.status'))}</span><span class="v">${esc(pk.status)}</span></div>
-                <div class="field"><span class="k">${esc(t('logistics.staging.print.area'))}</span><span class="v">${esc(area.name)}</span></div>
-              </div>
-            </div>
-            <div class="addr">
-              <div class="addr-label">${esc(t('logistics.staging.print.destination'))}</div>
-              <div class="addr-text">${esc(address)}</div>
-            </div>
-            <footer>
-              <span class="ts">${formatDateTime(new Date())}</span>
-              <span class="hint">${esc(t('logistics.staging.print.scanHint'))}</span>
-            </footer>
-          </section>`;
-      })
-      .join('');
-
-    w.document.write(`<!doctype html>
-<html lang="${locale}"><head><meta charset="utf-8"/>
-<title>${esc(t('logistics.staging.print.labels'))} · ${esc(area.name)}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; color:#0f172a; background:#f1f5f9; }
-  .sheet { display: flex; flex-wrap: wrap; gap: 0; }
-  .label {
-    ${
-      perPage === 1
-        ? // Una etiqueta por A4 — ocupa toda la hoja (A4 portrait 210×297mm).
-          `width: 210mm; height: 297mm; padding: 18mm;`
-        : // Cuatro por A4 — A6 (105×148mm), 2×2.
-          `width: 105mm; height: 148mm; padding: 5mm;`
-    }
-    background: #fff;
-    display: flex; flex-direction: column; gap: ${perPage === 1 ? '10mm' : '3mm'};
-    border: 1px dashed #0f172a;
-    break-inside: avoid;
-  }
-  /* Salto de página según formato. */
-  .label:nth-child(${perPage}n) { page-break-after: always; }
-  ${
-    perPage === 1
-      ? `.addr-text { font-size: 36px; line-height: 1.2; }
-         .qr { width: 70mm !important; height: 70mm !important; }
-         .brand { font-size: 16px; }
-         header code { font-size: 22px; padding: 6px 14px; }
-         .info { font-size: 16px; gap: 4mm; }
-         .k { font-size: 11px; } .v { font-size: 15px; }`
-      : ''
-  }
-  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 3mm; }
-  .brand { font-size: 10px; font-weight: 900; letter-spacing: .15em; color: #0f172a; }
-  header code { font-family: 'SF Mono', Menlo, monospace; font-size: 13px; background:#0f172a; color:#fff; padding: 3px 8px; border-radius: 4px; }
-  .row { display: flex; gap: 6mm; align-items: flex-start; }
-  .qr { width: 38mm; height: 38mm; border: 1px solid #0f172a; }
-  .info { flex: 1; display: flex; flex-direction: column; gap: 2mm; font-size: 10px; }
-  .field { display: flex; justify-content: space-between; gap: 4mm; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1.5mm; }
-  .k { text-transform: uppercase; letter-spacing: .1em; color: #64748b; font-weight: 700; font-size: 8px; }
-  .v { font-weight: 700; text-align: right; }
-  .mono { font-family: 'SF Mono', Menlo, monospace; }
-  .addr { flex: 1; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 4mm; display: flex; flex-direction: column; justify-content: center; }
-  .addr-label { font-size: 9px; font-weight: 900; letter-spacing: .15em; color: #92400e; margin-bottom: 2mm; }
-  .addr-text { font-size: 15px; font-weight: 800; line-height: 1.25; color:#0f172a; }
-  footer { display: flex; justify-content: space-between; font-size: 8px; color: #64748b; }
-  @page { size: A4 portrait; margin: 0; }
-  @media print { body { background: #fff; } .label { border: 1px dashed #94a3b8; } }
-</style></head><body>
-<div class="sheet">${labels}</div>
-<script>window.addEventListener('load', () => setTimeout(() => window.print(), 350));</script>
-</body></html>`);
-    w.document.close();
-  };
+  const openPackageLabels = (area: Pick<StagingArea, 'id'>) =>
+    openPdf(`/api/logistics/staging-areas/${area.id}/labels.pdf`);
 
   const closeQr = () => {
     // Liberar memoria del blob URL al cerrar el modal.
@@ -502,7 +265,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                         {a.name}
                       </span>
                       {partner && (
-                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 shrink-0">
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-info-bg text-info shrink-0">
                           {partner.name}
                         </span>
                       )}
@@ -554,12 +317,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                       {
                         label: t('logistics.staging.menu.labels4'),
                         icon: <Tag size={14} />,
-                        onClick: () => openPackageLabels(a, 4),
-                      },
-                      {
-                        label: t('logistics.staging.menu.labels1'),
-                        icon: <Tag size={14} strokeWidth={2.5} />,
-                        onClick: () => openPackageLabels(a, 1),
+                        onClick: () => openPackageLabels(a),
                       },
                       {
                         label: t('logistics.common.edit'),
@@ -601,7 +359,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
           <div>
             {/* Clientes vienen del servidor y son muchos → SearchableSelect (no
                 tiene prop `label`, se conserva el <label> suelto). */}
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.staging.form.owner')}
             </label>
             <SearchableSelect
@@ -615,7 +373,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
               placeholder={t('logistics.staging.form.sharedPlaceholder')}
               clearable
             />
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+            <p className="text-[11px] text-fg-muted mt-1 leading-relaxed">
               {t('logistics.staging.form.ownerHint.p1')}{' '}
               <b>{t('logistics.staging.form.ownerHint.b1')}</b>{' '}
               {t('logistics.staging.form.ownerHint.p2')}{' '}
@@ -638,7 +396,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                   : t('logistics.staging.form.namePlaceholder')
               }
             />
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-fg-muted mt-1">
               {t('logistics.staging.form.nameHintBefore')}{' '}
               <b>{t('logistics.staging.form.nameHintPattern')}</b>{' '}
               {t('logistics.staging.form.nameHintAfter')}
@@ -648,7 +406,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
             <div>
               {/* Almacenes y plataformas vienen del servidor →
                   SearchableSelect (sin prop `label`). */}
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
                 {t('logistics.staging.form.ownWarehouse')}
               </label>
               <SearchableSelect
@@ -660,7 +418,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
                 {t('logistics.staging.form.externalPlatform')}
               </label>
               <SearchableSelect
@@ -689,7 +447,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
               />
             </div>
           </div>
-          <p className="text-[11px] text-slate-500 -mt-1 leading-relaxed">
+          <p className="text-[11px] text-fg-muted -mt-1 leading-relaxed">
             {t('logistics.staging.form.locationHint.p1')}{' '}
             <b>{t('logistics.staging.form.ownWarehouse')}</b>{' '}
             {t('logistics.staging.form.locationHint.p2')}{' '}
@@ -725,7 +483,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
               placeholder="-3.7038"
             />
           </div>
-          <p className="text-[11px] text-slate-500 -mt-2">
+          <p className="text-[11px] text-fg-muted -mt-2">
             {t('logistics.staging.form.coordsHint')}
           </p>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
@@ -751,7 +509,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 {/* Artículos del servidor → SearchableSelect (sin `label`). */}
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
                   {t('logistics.staging.items.item')}
                 </label>
                 <SearchableSelect
@@ -802,7 +560,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                           {it?.name || ai.itemId}
                         </span>
                         {ai.expectedQty != null && (
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-fg-muted">
                             {t('logistics.staging.items.target', { qty: ai.expectedQty })}
                           </span>
                         )}
@@ -878,7 +636,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                 </ul>
               </Card>
             )}
-            <div className="text-[11px] text-slate-500 pt-2 border-t border-border-subtle flex items-center justify-between">
+            <div className="text-[11px] text-fg-muted pt-2 border-t border-border-subtle flex items-center justify-between">
               <span>
                 {t('logistics.staging.packages.total')} <b>{areaPackages.length}</b>
               </span>
@@ -900,18 +658,18 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
       >
         {qrFor && (
           <div className="space-y-3 pt-4">
-            <div className="flex items-center justify-center p-4 bg-white rounded-lg border border-border-subtle">
+            <div className="flex items-center justify-center p-4 bg-bg-card rounded-lg border border-border-subtle">
               {qrFor.imgUrl ? (
                 <img src={qrFor.imgUrl} alt="QR" className="w-80 h-80" />
               ) : (
-                <div className="w-80 h-80 flex items-center justify-center text-slate-400 text-sm">
+                <div className="w-80 h-80 flex items-center justify-center text-fg-subtle text-sm">
                   {t('logistics.staging.qrLoadError')}
                 </div>
               )}
             </div>
             <div className="w-full max-w-md space-y-2">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1.5">
                   {t('logistics.staging.qr.assignedRoutes')}
                 </div>
                 {qrFor.payload.routes?.length ? (
@@ -927,19 +685,19 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
                         <span className="flex-1 text-xs font-semibold text-fg-default truncate">
                           {r.name || '—'}
                         </span>
-                        <span className="text-[11px] text-slate-500 shrink-0">
+                        <span className="text-[11px] text-fg-muted shrink-0">
                           {r.driverName || t('logistics.staging.noDriver')}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                  <div className="text-[11px] text-warning bg-warning-bg border border-warning rounded-lg px-2.5 py-1.5">
                     {t('logistics.staging.qr.noRoute')}
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
+              <div className="flex items-center gap-4 text-[11px] text-fg-muted pt-1">
                 <span>
                   <b>{qrFor.payload.packages?.length || 0}</b>{' '}
                   {t('logistics.staging.qr.packages', {
@@ -963,9 +721,7 @@ ${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() =>
-                  qrFor && openPackingList({ id: qrFor.id, name: qrFor.name } as StagingArea)
-                }
+                onClick={() => qrFor && openPackingList({ id: qrFor.id })}
               >
                 <Printer size={14} /> {t('logistics.staging.menu.packingList')}
               </Button>

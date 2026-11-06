@@ -6,14 +6,18 @@ import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import { loadPlugins } from './plugins/loader';
+import { bootstrapLocalization } from './core/localization/bootstrap';
+import localizationRouter from './api/localization';
 import setupRouter from './api/setup';
 import pluginsRouter from './api/plugins';
 import customFieldsRouter from './api/customFields';
+import linkedObjectsRouter from './api/linkedObjects';
 import userTablesRouter from './api/userTables';
 import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
 import dashboardWidgetsRouter from './api/dashboardWidgets';
-import logisticsRouter, { publicTrackRouter } from './api/logistics';
+import logisticsRouter, { driverRouter, publicTrackRouter } from './api/logistics';
+import { backfillShipmentTokens } from './core/logistics/shipmentTokens';
 import { publicSiteHostMiddleware, publicSiteRouter } from './api/publicSite';
 import websiteRouter from './api/website';
 import apiTokensRouter from './api/apiTokens';
@@ -26,6 +30,10 @@ import itemsRouter from './api/items';
 import categoriesRouter from './api/categories';
 import uomRouter from './api/uom';
 import partnersRouter from './api/partners';
+import partnerCreditRouter from './api/partnerCredit';
+import salesSettingsRouter from './api/salesSettings';
+import dunningRouter from './api/dunning';
+import recurringDocumentsRouter from './api/recurringDocuments';
 import crmContactsRouter from './api/crm/contacts';
 import crmOpportunitiesRouter from './api/crm/opportunities';
 import crmStagesRouter from './api/crm/stages';
@@ -40,6 +48,8 @@ import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
 import { registerCrmLeadListener } from './core/crm/leads';
 import { startCrmCron } from './core/crm/crmCron';
+import { startDunningCron } from './core/dunning/dunningCron';
+import { startRecurringCron } from './core/recurring/recurringCron';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -90,6 +100,12 @@ import purchaseDeliveryNotesRouter from './api/documentos/purchaseDeliveryNotes'
 import purchaseInvoicesRouter from './api/documentos/purchaseInvoices';
 import salesOrdersRouter from './api/documentos/salesOrders';
 import salesDeliveryNotesRouter from './api/documentos/salesDeliveryNotes';
+import {
+  bankAccountOptionsRouter,
+  bankAccountsRouter,
+  bankStatementsRouter,
+  paymentBatchesRouter,
+} from './api/banking';
 import salesInvoicesRouter from './api/documentos/salesInvoices';
 import paymentsRouter from './api/payments';
 import {
@@ -110,11 +126,13 @@ import permissionsRouter from './api/permissions';
 import {
   mountApi,
   mountApiBySubpath,
+  mountApiWithAction,
   mountShared,
   mountPublic,
   denyUndeclared,
   mountReport,
   PUBLIC_SUBPATH,
+  mountApiAny,
 } from './core/auth/apiMounts';
 import systemRouter from './api/system';
 import emailRouter from './api/email';
@@ -124,15 +142,25 @@ import dashboardRouter from './api/dashboard';
 import tenantsRouter from './api/tenants';
 import configRouter from './api/config';
 import aiRouter from './api/ai';
+import messagingRouter from './api/messaging';
+import messagingInternalRouter from './api/messagingInternal';
 import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
 import documentRouter from './api/documentos/documentRouter';
+import inventoryCountsRouter from './api/inventoryCounts';
+import replenishmentRouter from './api/replenishment';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
+import { restrictedSession } from './api/middleware/restrictedSession';
+import settingsSecurityRouter from './api/settingsSecurity';
+import authProvidersRouter from './api/authProviders';
+import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
+import { startAuthCleanupCron } from './core/auth/authCleanupCron';
+import { startCarrierTrackingCron } from './core/cron/carrierTrackingCron';
 import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
 import { adminMiddleware } from './api/middleware/adminAuth';
@@ -142,6 +170,7 @@ import { notifyTenant } from './core/realtime/notifyTenant';
 import { HookManager } from './core/plugins/HookManager';
 import { invalidateDashboardCache } from './api/dashboard';
 import { bootstrapAdmin } from './core/auth/bootstrap';
+import { startSessionListener, stopSessionListener } from './core/auth/sessions';
 import { ClientFactory } from './core/tenant/ClientFactory';
 import { seedGeo } from './core/geo/seedGeo';
 import { PdfRenderer } from '@openfactu/pdf';
@@ -156,6 +185,16 @@ dotenv.config({ path: require('path').join(__dirname, '../../../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Detrás de un proxy inverso, `req.ip` es el del proxy salvo que se confíe en él. De ello dependen
+// el freno por IP y el historial de accesos. `true`/`false`, un número de saltos o una lista de IPs
+// separadas por comas. Sin definir se mantiene el comportamiento de Express (no confiar).
+if (process.env.TRUST_PROXY !== undefined && process.env.TRUST_PROXY.trim() !== '') {
+  const raw = process.env.TRUST_PROXY.trim();
+  const trust: boolean | number | string =
+    raw === 'true' ? true : raw === 'false' ? false : /^\d+$/.test(raw) ? Number(raw) : raw;
+  app.set('trust proxy', trust);
+}
 
 app.use(cors());
 // Límite amplio: las pruebas de entrega (PoD) suben firma + foto en base64
@@ -217,9 +256,21 @@ app.use('/api', apiTokenMiddleware);
 
 // 2. Middleware de Contexto (Inyecta Prisma Tenant en req)
 app.use('/api', tenantContextMiddleware);
+// Una sesión que debe configurar su 2FA no llega a nada más.
+app.use('/api', restrictedSession);
+// Sin el permiso de costes, ninguna respuesta los lleva.
+app.use('/api', hideItemCosts);
 
 // 2b. Gestión de tokens de API (solo admins).
 mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
+mountApi(app, '/api/settings/security', '/settings/security', settingsSecurityRouter);
+// Proveedores de SSO de la instancia: el router exige un SUPERUSER de la base.
+mountShared(
+  app,
+  '/api/auth-providers',
+  'proveedores de inicio de sesión — solo SUPERUSER de la base, lo comprueba el router',
+  authProvidersRouter,
+);
 
 // 3. Rutas de Plugins, Dev Keys y Negocio
 // `/api/plugins` sirve además los componentes de plugin que carga CUALQUIER
@@ -233,6 +284,12 @@ mountShared(
   pluginsRouter,
 );
 mountApi(app, '/api/custom-fields', '/custom-fields', customFieldsRouter);
+mountShared(
+  app,
+  '/api/linked-objects',
+  'Búsqueda de los campos enlazados: cada objeto comprueba el permiso que pide.',
+  linkedObjectsRouter,
+);
 mountApi(app, '/api/user-tables', '/user-tables', userTablesRouter);
 mountShared(app, '/api/user-modules', 'módulos propios que pintan el menú', userModulesRouter);
 mountApi(app, '/api/automations', '/automations', automationsRouter);
@@ -247,6 +304,7 @@ mountShared(
   'widgets del panel y su código, que carga el navegador sin cabeceras',
   dashboardWidgetsRouter,
 );
+mountApiAny(app, '/api/logistics/my', ['/driver', '/logistics'], ['DRIVER'], driverRouter);
 mountApi(app, '/api/logistics', '/logistics', logisticsRouter);
 mountApi(app, '/api/website', '/website/pages', websiteRouter);
 mountApi(app, '/api/dev-keys', '/settings/api-tokens', devKeysRouter);
@@ -256,12 +314,24 @@ mountApi(app, '/api/items', '/items', itemsRouter);
 mountApi(app, '/api/categories', '/categories', categoriesRouter);
 mountApi(app, '/api/uom', '/uom', uomRouter);
 mountApi(app, '/api/partners', '/partners', partnersRouter);
+mountApiAny(
+  app,
+  '/api/partner-credit',
+  ['/partners', '/sales-orders', '/sales/delivery-notes', '/sales/invoices'],
+  [],
+  partnerCreditRouter,
+);
+mountApi(app, '/api/sales-settings', '/sales/settings', salesSettingsRouter);
+mountApi(app, '/api/dunning', '/sales/dunning', dunningRouter);
+mountApi(app, '/api/recurring-documents', '/sales/recurring', recurringDocumentsRouter);
 mountApi(app, '/api/pricelists', '/pricelists', pricelistsRouter);
 mountApi(app, '/api/zones', '/logistics/zones', zonesRouter);
 mountApi(app, '/api/warehouses', '/warehouses', warehousesRouter);
 mountApi(app, '/api/transfer-notes', '/logistics/stock-movements', transferNotesRouter);
 mountApi(app, '/api/goods-receipts', '/logistics/stock-movements', goodsReceiptsRouter);
 mountApi(app, '/api/goods-issues', '/logistics/stock-movements', goodsIssuesRouter);
+mountApi(app, '/api/inventory-counts', '/inventory/counts', inventoryCountsRouter);
+mountApi(app, '/api/replenishment', '/inventory/replenishment', replenishmentRouter);
 mountShared(
   app,
   '/api/stock',
@@ -309,7 +379,7 @@ mountApi(app, '/api/company/signature', '/settings/company', companySignatureRou
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
 mountShared(app, '/api/profile', 'perfil del propio usuario', userProfileRouter);
 mountShared(app, '/api/2fa', 'doble factor del propio usuario', twoFactorRouter);
-// Un permiso POR INFORME: el libro de IVA y el coste laboral no son lo mismo
+// Un permiso POR INFORME: los libros fiscales y el coste laboral no son lo mismo
 // que la rotación de stock. Antes este router no pedía ninguno.
 mountApiBySubpath(
   app,
@@ -320,7 +390,9 @@ mountApiBySubpath(
     '/trial-balance': '/reports/accounting/trial-balance',
     '/pl': '/reports/accounting/pl',
     '/balance-sheet': '/reports/accounting/balance-sheet',
-    '/vat': '/reports/accounting/vat',
+    // La clave del permiso se conserva para no perder lo ya concedido a cada rol.
+    '/tax-summary': '/reports/accounting/vat',
+    '/plugin': '/reports/accounting/vat',
     '/profit-customer': '/reports/management/profit-customer',
     '/profit-item': '/reports/management/profit-item',
     '/profit-project': '/reports/management/profit-project',
@@ -340,6 +412,12 @@ mountApiBySubpath(
     '/stock-movements': '/reports/stock/movements',
   },
   reportsRouter,
+);
+mountShared(
+  app,
+  '/api/localization',
+  'terminología y normativa que pinta cualquier pantalla',
+  localizationRouter,
 );
 mountApi(app, '/api/hr/employees', '/hr/employees', hrEmployeesRouter);
 mountApi(app, '/api/hr/departments', '/hr/departments', hrDepartmentsRouter);
@@ -379,7 +457,7 @@ mountApi(app, '/api/sales/invoices', '/sales/invoices', salesInvoicesRouter);
 mountApi(app, '/api/sales', '/sales-orders', salesOrdersRouter);
 // Generic document router (new unified API)
 mountApi(app, '/api/documents', '/documents', documentRouter);
-mountApi(app, '/api/taxes', '/taxes', taxesRouter);
+mountShared(app, '/api/taxes', 'catálogo de impuestos', taxesRouter);
 mountApi(app, '/api/audit-logs', '/audit-logs', auditLogsRouter);
 // El selector de empresa del login vive aquí y se consulta ANTES de que haya
 // sesión: si se mete entero detrás del permiso de usuarios, no se puede ni
@@ -418,6 +496,17 @@ mountShared(
   configRouter,
 );
 mountApi(app, '/api/ai', '/ai/chat', aiRouter);
+// El ticket es un POST pero solo da acceso: basta con poder leer Mensajes. Si
+// además puede escribir, va dentro del propio ticket.
+mountApiWithAction(app, '/api/messaging', '/messaging', 'read', messagingRouter);
+// Sin sesión: lo llama el propio servicio de mensajería con su token de
+// servicio (ficheros que entran y salen por Telegram). Ver messagingInternal.ts.
+mountPublic(
+  app,
+  '/api/internal/messaging',
+  'servicio de mensajería, con token de servicio propio',
+  messagingInternalRouter,
+);
 mountApi(app, '/api/mcp', '/ai/chat', mcpRouter);
 // Mira doce entidades a la vez, así que no puede exigir UN permiso: recorta
 // su propia respuesta a lo que el usuario pueda ver (ver api/search.ts).
@@ -430,6 +519,23 @@ mountShared(
 mountShared(app, '/api/geo', 'países, provincias y localidades', geoRouter);
 mountApi(app, '/api/factuapi', '/documents', factuApiRouter);
 mountApi(app, '/api/payments', '/payments', paymentsRouter);
+mountApi(app, '/api/bank-accounts', '/banking/accounts', bankAccountsRouter);
+mountApiAny(
+  app,
+  '/api/bank-account-options',
+  [
+    '/banking/accounts',
+    '/banking/reconciliation',
+    '/banking/batches',
+    '/payments',
+    '/sales/invoices',
+    '/purchases/invoices',
+  ],
+  [],
+  bankAccountOptionsRouter,
+);
+mountApi(app, '/api/bank-statements', '/banking/reconciliation', bankStatementsRouter);
+mountApi(app, '/api/payment-batches', '/banking/batches', paymentBatchesRouter);
 mountShared(app, '/api/currencies', 'catálogo de divisas', currenciesRouter);
 mountShared(app, '/api/document-types', 'catálogo de tipos de documento', documentTypesRouter);
 mountShared(app, '/api/payment-methods', 'catálogo de formas de pago', paymentMethodsRouter);
@@ -532,8 +638,15 @@ const start = async () => {
     console.log('[Bootstrap] Sincronizando esquemas de empresas...');
     await MigrationManager.syncAllTenants();
     console.log('[Bootstrap] Esquemas sincronizados.');
+    await backfillShipmentTokens();
 
     await loadPlugins(app);
+
+    // Con empresas migradas y plugins cargados: cada empresa recibe su normativa.
+    await bootstrapLocalization();
+
+    // Revocar una sesión en otra instancia corta aquí su caché y sus websockets.
+    await startSessionListener();
 
     // Cierre por defecto. Va DESPUÉS de los plugins a propósito: ellos también
     // montan rutas y hacerlo antes las dejaría inalcanzables. Cualquier
@@ -549,9 +662,13 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+    startAuthCleanupCron();
+    startCarrierTrackingCron();
 
     // Avisos del CRM (presupuestos caducados, recordatorios…) — solo empresas con el CRM activo.
     startCrmCron();
+    startDunningCron();
+    startRecurringCron();
     // Limpieza de archivos subidos a formularios que nunca se enviaron.
     startFormsCron();
 
@@ -651,6 +768,11 @@ const shutdown = async () => {
   console.log('[Server] Cerrando recursos...');
   try {
     await PdfRenderer.shutdown();
+  } catch {
+    /* noop */
+  }
+  try {
+    await stopSessionListener();
   } catch {
     /* noop */
   }

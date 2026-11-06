@@ -5,6 +5,8 @@ import * as UI from '@openfactu/ui';
 import * as Router from 'react-router-dom';
 import * as Common from '@openfactu/common';
 import { apiClient } from '@/shared/http';
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Cliente "capado" para componentes de widget escritos por el usuario desde
@@ -22,6 +24,10 @@ const widgetApi = {
     // Delegamos en el ApiClient central: auth + tenant + errores normalizados.
     return apiClient.get<unknown>(path);
   },
+  /** Traduce fuera de un componente, con el idioma activo en ese momento. */
+  t,
+  /** Para componentes: `const { t, locale } = useTranslation()` repinta al cambiar de idioma. */
+  useTranslation: useI18n,
 };
 
 /**

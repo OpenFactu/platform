@@ -1,6 +1,6 @@
 FROM node:20-alpine AS builder
 
-ARG VITE_API_URL=http://localhost:3000
+ARG VITE_API_URL=
 
 WORKDIR /app
 COPY package*.json ./

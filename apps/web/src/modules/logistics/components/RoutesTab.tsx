@@ -7,17 +7,31 @@ import {
   Input,
   Modal,
   Badge,
-  Loader,
-  Select,
+  EmptyState,
+  Progress,
   SearchableSelect,
+  Switch,
+  Table,
   DatePicker,
   useToast,
   usePopup,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
-import { Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
+import type { BadgeProps, RowAction, TableColumn } from '@openfactu/ui';
+import {
+  AlertTriangle,
+  Plus,
+  Trash2,
+  Edit2,
+  Printer,
+  RotateCcw,
+  MapPin,
+  Square,
+} from 'lucide-react';
 import { RouteMapPlanner } from '../components/RouteMapPlanner';
+import { useRouteWarnings } from '../hooks/useRouteWarnings';
 import { useAuth } from '@/context/AuthContext';
+import { useFormat } from '@/hooks/useFormat';
+import { openPdf } from '@/utils/downloadPdf';
 import { ApiError } from '@/shared/http';
 import { useI18n } from '@/i18n/I18nContext';
 import type { Route, RouteVehicleOption } from '../domain/route';
@@ -30,7 +44,6 @@ const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   cancelled: 'error',
 };
 
-// Estados de ruta en un solo sitio: el desplegable deriva sus opciones de aquí.
 const STATUS_LABELS: Record<string, string> = {
   planned: 'logistics.routes.status.planned',
   active: 'logistics.routes.status.active',
@@ -43,10 +56,9 @@ export const RoutesTab: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
   const { t } = useI18n();
-  const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(([value, label]) => ({
-    value,
-    label: t(label),
-  }));
+  const fmt = useFormat();
+  const showWarnings = useRouteWarnings();
+  const [showArchived, setShowArchived] = useState(false);
   const [rows, setRows] = useState<Route[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicles, setVehicles] = useState<RouteVehicleOption[]>([]);
@@ -59,7 +71,7 @@ export const RoutesTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [r1, r2, r3] = await Promise.all([
-      routesApi.list().catch(() => []),
+      routesApi.list({ includeArchived: showArchived }).catch(() => []),
       employeesApi.list().catch(() => []),
       vehiclesApi.list().catch(() => []),
     ]);
@@ -71,11 +83,11 @@ export const RoutesTab: React.FC = () => {
   useEffect(() => {
     if (user?.tenantId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.tenantId]);
+  }, [user?.tenantId, showArchived]);
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ plannedDate: new Date().toISOString().slice(0, 10), status: 'planned' });
+    setForm({ plannedDate: new Date().toISOString().slice(0, 10) });
     setPlannerIds([]);
     setShowModal(true);
   };
@@ -93,6 +105,7 @@ export const RoutesTab: React.FC = () => {
     }
     try {
       const d = editing ? await routesApi.update(editing.id, form) : await routesApi.create(form);
+      showWarnings((d as any)?.warnings);
 
       // Al crear una ruta nueva, insertamos las paradas del planner respetando el orden.
       if (!editing && plannerIds.length > 0) {
@@ -132,107 +145,155 @@ export const RoutesTab: React.FC = () => {
       confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
-    await routesApi.remove(id);
-    load();
+    try {
+      const { archived } = await routesApi.remove(id);
+      if (archived) toast.success(t('logistics.routes.archived'));
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || t('logistics.common.error'));
+    }
   };
 
   const empMap = new Map(employees.map((e) => [e.id, e] as const));
 
+  const restore = async (id: string) => {
+    await routesApi.restore(id);
+    load();
+  };
+
+  const finish = async (r: Route) => {
+    const ok = await popup.confirm({
+      title: t('logistics.routes.finishTitle'),
+      message: t('logistics.routes.finishMessage', { count: r.stopsOpen || 0 }),
+      confirmLabel: t('logistics.routes.finish'),
+    });
+    if (!ok) return;
+    try {
+      await routesApi.finish(r.id);
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || t('logistics.common.error'));
+    }
+  };
+
+  const driverOf = (r: Route) => {
+    const employee = r.driverEmployeeId ? empMap.get(r.driverEmployeeId) : null;
+    return employee ? `${employee.firstName} ${employee.lastName}` : r.driverName || '—';
+  };
+
+  const columns: TableColumn<Route>[] = [
+    {
+      header: t('logistics.routes.columns.code'),
+      cell: (r) => <span className="font-mono text-xs text-fg-default">{r.code}</span>,
+    },
+    { header: t('logistics.routes.name'), cell: (r) => r.name },
+    { header: t('logistics.routes.columns.date'), cell: (r) => fmt.date(r.plannedDate) },
+    {
+      header: t('logistics.routes.statusLabel'),
+      cell: (r) => (
+        <Badge variant={STATUS_BADGE[r.status] || 'neutral'}>
+          {STATUS_LABELS[r.status] ? t(STATUS_LABELS[r.status]) : r.status}
+        </Badge>
+      ),
+    },
+    {
+      header: t('logistics.routes.columns.progress'),
+      cell: (r) => {
+        const total = r.stopsTotal || 0;
+        const closed = total - (r.stopsOpen || 0);
+        return total === 0 ? (
+          <span className="text-xs text-fg-muted">{t('logistics.routes.noStops')}</span>
+        ) : (
+          <div className="min-w-[120px] space-y-1">
+            <div className="text-xs text-fg-muted">
+              {t('logistics.routes.stopsProgress', { closed, total })}
+            </div>
+            <Progress value={Math.round((closed / total) * 100)} size="sm" />
+          </div>
+        );
+      },
+    },
+    {
+      header: t('logistics.routes.columns.driver'),
+      cell: (r) => (
+        <div>
+          <div>{driverOf(r)}</div>
+          {r.vehiclePlate && <div className="text-xs text-fg-muted">{r.vehiclePlate}</div>}
+          {r.capacityKg != null && (r.loadKg || 0) > r.capacityKg && (
+            <div className="flex items-center gap-1 text-xs text-warning">
+              <AlertTriangle size={12} />
+              {t('logistics.routes.overCapacity', { load: r.loadKg || 0, capacity: r.capacityKg })}
+            </div>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const rowActions = (r: Route): RowAction[] => [
+    {
+      label: t('logistics.routes.sheet'),
+      icon: <Printer size={14} />,
+      onClick: () => openPdf(`/api/logistics/routes/${r.id}/sheet.pdf`),
+    },
+    {
+      label: t('logistics.common.edit'),
+      icon: <Edit2 size={14} />,
+      onClick: () => openEdit(r),
+    },
+    ...(r.status === 'active'
+      ? [
+          {
+            label: t('logistics.routes.finish'),
+            icon: <Square size={14} />,
+            onClick: () => finish(r),
+          },
+        ]
+      : []),
+    r.archivedAt
+      ? {
+          label: t('logistics.shipmentDetail.restore'),
+          icon: <RotateCcw size={14} />,
+          onClick: () => restore(r.id),
+        }
+      : {
+          label:
+            r.status === 'planned' ? t('logistics.common.delete') : t('logistics.routes.archive'),
+          icon: <Trash2 size={14} />,
+          destructive: true,
+          onClick: () => remove(r.id),
+        },
+  ];
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <Switch
+          checked={showArchived}
+          onChange={setShowArchived}
+          label={t('logistics.routes.showArchived')}
+        />
         <Button onClick={openCreate} className="flex items-center gap-2">
           <Plus size={14} /> {t('logistics.routes.new')}
         </Button>
       </div>
 
-      {loading ? (
-        <div className="py-10 flex justify-center">
-          <Loader />
-        </div>
-      ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          {t('logistics.routes.empty')}
+      {!loading && rows.length === 0 ? (
+        <Card bodyClassName="py-10">
+          <EmptyState icon={<MapPin size={28} />} title={t('logistics.routes.empty')} />
         </Card>
       ) : (
-        <Card bodyClassName="p-0">
-          <ul>
-            {rows.map((r) => {
-              const isDone = r.status === 'completed';
-              return (
-                <li
-                  key={r.id}
-                  className={
-                    'flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ' +
-                    (isDone
-                      ? 'bg-emerald-50/60 dark:bg-emerald-500/5 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 pl-3'
-                      : '')
-                  }
-                >
-                  {isDone ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-sm">
-                      <CheckCircle2 size={12} strokeWidth={3} />
-                      {t('logistics.routes.status.completed')}
-                    </span>
-                  ) : (
-                    <Badge variant={STATUS_BADGE[r.status] || 'neutral'}>
-                      {STATUS_LABELS[r.status] ? t(STATUS_LABELS[r.status]) : r.status}
-                    </Badge>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <code
-                        className={
-                          'px-1.5 py-0.5 text-[11px] font-mono rounded ' +
-                          (isDone
-                            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-bg-muted')
-                        }
-                      >
-                        {r.code}
-                      </code>
-                      <span
-                        className={
-                          'font-semibold text-sm ' +
-                          (isDone
-                            ? 'text-fg-muted line-through decoration-emerald-500/40'
-                            : 'text-fg-default')
-                        }
-                      >
-                        {r.name}
-                      </span>
-                      <span className="text-[11px] text-slate-500">{r.plannedDate}</span>
-                    </div>
-                    <div className="text-[11px] text-fg-muted mt-0.5">
-                      {t('logistics.routes.driver')}{' '}
-                      {r.driverEmployeeId && empMap.get(r.driverEmployeeId)
-                        ? `${empMap.get(r.driverEmployeeId)!.firstName} ${empMap.get(r.driverEmployeeId)!.lastName}`
-                        : r.driverName || '—'}
-                      {r.vehiclePlate && <> · {r.vehiclePlate}</>}
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openEdit(r)}
-                    title={t('logistics.common.edit')}
-                  >
-                    <Edit2 size={13} />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => remove(r.id)}
-                    title={t('logistics.common.delete')}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
+        <Card noPadding className="overflow-hidden">
+          <Table
+            className="max-md:p-3"
+            columns={columns}
+            data={rows}
+            isLoading={loading}
+            rowActions={rowActions}
+            skeletonRowHeight={24}
+          />
         </Card>
       )}
 
@@ -263,7 +324,7 @@ export const RoutesTab: React.FC = () => {
           <div>
             {/* Empleados vienen del servidor y pueden ser muchos →
                 SearchableSelect (no tiene prop `label`). */}
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.routes.driverEmployee')}
             </label>
             <SearchableSelect
@@ -290,12 +351,12 @@ export const RoutesTab: React.FC = () => {
               placeholder={t('logistics.routes.unassigned')}
               clearable
             />
-            <p className="text-[11px] text-slate-500 mt-1">{t('logistics.routes.driverHint')}</p>
+            <p className="text-[11px] text-fg-muted mt-1">{t('logistics.routes.driverHint')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {/* Vehículos del servidor → SearchableSelect (sin prop `label`). */}
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
                 {t('logistics.routes.vehicle')}
               </label>
               <SearchableSelect
@@ -341,31 +402,19 @@ export const RoutesTab: React.FC = () => {
                 clearable
               />
               {form.vehiclePlate && (
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[11px] text-fg-muted mt-1">
                   {t('logistics.routes.registeredPlate')}{' '}
                   <span className="font-mono">{form.vehiclePlate}</span>
                 </p>
               )}
             </div>
-            {/* Lista estática y corta → Select (sí tiene prop `label`). */}
-            <Select
-              label={t('logistics.routes.statusLabel')}
-              options={STATUS_OPTIONS}
-              value={form.status || 'planned'}
-              onChange={(v) => setForm({ ...form, status: v })}
-            />
           </div>
           {!editing && (
             <div className="pt-4 border-t border-border-subtle">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-2">
                 {t('logistics.routes.sketch')}
               </div>
-              <RouteMapPlanner
-                token={token || ''}
-                tenantId={user?.tenantId || ''}
-                selectedIds={plannerIds}
-                onSelectionChange={setPlannerIds}
-              />
+              <RouteMapPlanner selectedIds={plannerIds} onSelectionChange={setPlannerIds} />
             </div>
           )}
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">

@@ -31,13 +31,8 @@
       "switchSection": "{title}: change section"
     },
     "bottomNav": {
-      "home": "Home",
-      "sales": "Sales",
-      "purchases": "Purchases",
       "scan": "Scan code",
       "search": "Search",
-      "more": "More",
-      "aria": "Bottom navigation",
       "actions": "Actions",
       "quickActions": "Quick actions"
     },
@@ -166,10 +161,17 @@
       "option": "Option",
       "attachmentPlaceholder": "Attachment URL or id",
       "searchRef": "Search {table}...",
+      "searchLinked": "Search...",
+      "openLinked": "Open",
+      "linkedHidden": "No access",
+      "linkedMissing": "No longer exists",
       "additional": "Additional fields (plugins)",
       "enable": "Enable"
     },
     "tenant": {
+      "changedElsewhereTitle": "Company changed in another tab",
+      "changedElsewhereBody": "This tab is still on the previous company. Reload it to continue in the new one.",
+      "reload": "Reload",
       "loadError": "Could not load companies",
       "switched": "Company switched",
       "switchError": "Error switching company",
@@ -271,6 +273,8 @@
       "thisDocument": "This document",
       "current": "(current)",
       "paymentsAndAccounting": "Payments and accounting",
+      "creditNote": "Credit note",
+      "creditApplied": "Credit applied",
       "payment": "Collection / payment",
       "journalEntryLabel": "Journal entry",
       "emptyHintPopup": "When this document originates another or is generated from one, the full chain will appear here."
@@ -343,7 +347,10 @@
     },
     "login": {
       "rememberedAccounts": "Accounts remembered in this browser",
-      "forgetAccount": "Forget {name} in this browser",
+      "forgetThisAccount": "Forget this account on this browser",
+      "or": "or",
+      "backToAccounts": "Back to my accounts",
+      "orWithoutAccount": "or, without picking an account",
       "useOtherAccount": "Use another account",
       "pickCompanyError": "Choose the company you want to sign in to",
       "invalid2fa": "Invalid 2FA code",
@@ -367,6 +374,7 @@
       "forgot": "Forgot your password?",
       "verify": "Verify",
       "enter": "Sign in",
+      "enteringCompany": "You'll sign in to",
       "whatIs": "What is Keirost?",
       "docs": "Documentation"
     },
@@ -616,7 +624,7 @@
         "title": "3. First company",
         "subtitle": "Tax details of your main company.",
         "name": "Company name",
-        "nif": "Tax ID (NIF / CIF)"
+        "nif": "Tax ID"
       },
       "details": {
         "title": "4. Company settings",
@@ -649,7 +657,7 @@
     "tracking": {
       "copy": {
         "t0": "Being prepared",
-        "t1": "Ready / Dispatched",
+        "t1": "Ready",
         "t2": "On the way",
         "t3": "Out for delivery",
         "t4": "Delivered",
@@ -739,6 +747,25 @@
       "unavailableHint": "The link is incorrect or the form no longer exists.",
       "hello": "Hi, {name}.",
       "editing": "You are changing a response you already submitted."
+    },
+    "localization": {
+      "title": "Regulations",
+      "activePacks": "Active regulations",
+      "noPack": "This company has no active regulations pack. Its invoices work, but without legal rules or reports. Activate one in Plugins.",
+      "connectors": "Tax connectors",
+      "noConnectors": "None",
+      "tax": "Tax",
+      "taxId": "Tax ID",
+      "withholding": "Withholding",
+      "incomeTax": "Income tax withholding",
+      "socialEmployee": "Employee social contribution",
+      "socialEmployer": "Employer social contribution",
+      "category": "Concept type",
+      "categoryOther": "Other",
+      "categoryIncomeTax": "Income tax withholding",
+      "categorySocialEmployee": "Employee contribution",
+      "categorySocialEmployer": "Employer contribution",
+      "legalReports": "Legal reports"
     }
   }
 }

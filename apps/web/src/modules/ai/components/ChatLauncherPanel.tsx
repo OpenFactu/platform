@@ -11,10 +11,10 @@
  * Se oculta a sí mismo cuando la pestaña activa YA es /ai/chat — mostrar el
  * lanzador ahí sería redundante con la página que ya está abierta.
  *
- * Solo se muestra en desktop (`md:` y superior). En móvil choca con la barra
- * inferior (`MobileBottomNav`, que también es fixed) y con su botón central
- * de escaneo — y Keiro ya es accesible desde ahí vía Menú, así que el
- * lanzador flotante es redundante en pantallas pequeñas.
+ * Solo se muestra en desktop (`md:` y superior). En móvil choca con el botón
+ * flotante de la pantalla (`MobileActionButton`, en la misma esquina) — y
+ * Keiro ya es accesible desde el menú, así que el lanzador flotante es
+ * redundante en pantallas pequeñas.
  *
  * En desktop la bolita se puede arrastrar a cualquiera de las 4 esquinas
  * (arrastre real, no solo click) — al soltar, se ancla a la esquina más
@@ -178,6 +178,8 @@ export const ChatLauncherPanel: React.FC = () => {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const onChatTab = Boolean(activeTab?.path?.startsWith('/ai/chat'));
+  // En Mensajes el botón flotante taparía el de enviar del compositor.
+  const onMessagingTab = Boolean(activeTab?.path?.startsWith('/messaging'));
 
   useEffect(() => {
     // La pestaña dedicada gestiona su propia visibilidad — si está activa,
@@ -191,7 +193,7 @@ export const ChatLauncherPanel: React.FC = () => {
 
   return (
     <>
-      {!open && (
+      {!open && !onMessagingTab && (
         <button
           ref={btnRef}
           type="button"

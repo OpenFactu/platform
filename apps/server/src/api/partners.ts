@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { eq, asc, sql } from 'drizzle-orm';
+import { TaxIdValidators } from '../core/geo/TaxIdValidators';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
@@ -10,6 +11,7 @@ import { HookManager } from '../core/plugins/HookManager';
 import { PluginFieldManager } from '../core/plugins/PluginFieldManager';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { validateIban, normalizeIban } from '../utils/ibanValidation';
+import { resolveCreditLimitChange } from '../core/partners/creditLimit';
 
 const router = Router();
 
@@ -91,12 +93,14 @@ async function fetchPluginValues(req: any): Promise<Map<string, Record<string, a
 }
 
 /**
- * Valida un NIF contra el regex del país. Si el país no está seed o no tiene
- * countryCode, no valida (permisivo). Devuelve null si es válido o string con error.
+ * Valida la identificación fiscal contra el regex del país y los validadores de
+ * los plugins de la empresa. Si el país no está seed o no tiene countryCode, no
+ * valida (permisivo). Devuelve null si es válido o string con error.
  */
 async function checkTaxId(
   nif: string | null | undefined,
   countryCode: string | null | undefined,
+  tenantId?: string,
 ): Promise<string | null> {
   if (!nif || !countryCode) return null;
   try {
@@ -107,12 +111,12 @@ async function checkTaxId(
       .where(eq(schema.countries.code, countryCode.toUpperCase()));
     if (!country) return null;
     if (!validateTaxId(nif, country as any)) {
-      return `El ${country.taxIdLabel || 'NIF'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
+      return `El ${country.taxIdLabel || 'identificador fiscal'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
     }
   } catch {
     /* ignorar errores de lookup */
   }
-  return null;
+  return TaxIdValidators.check(tenantId, countryCode, nif);
 }
 
 /**
@@ -179,8 +183,8 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
   try {
     const { groupId, code, addresses, ...restBody } = req.body;
 
-    // Validación de NIF según país
-    const taxErr = await checkTaxId(restBody.nif, restBody.countryCode);
+    // Validación de la identificación fiscal según país
+    const taxErr = await checkTaxId(restBody.nif, restBody.countryCode, req.tenantId);
     if (taxErr) return res.status(400).json({ error: taxErr });
 
     // Validación de IBAN si se informa
@@ -189,6 +193,14 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
       if (!ibanCheck.ok)
         return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
       restBody.iban = normalizeIban(restBody.iban);
+    }
+
+    if (restBody.creditLimit !== undefined) {
+      restBody.creditLimit = await resolveCreditLimitChange(restBody.creditLimit, null, {
+        user: req.user,
+        tenantId: req.tenantId,
+        apiToken: req.apiToken,
+      });
     }
 
     let finalCode = code;
@@ -248,7 +260,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     // Auditoría
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'BusinessPartner',
       entityId: id,
@@ -259,6 +271,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     // Drizzle envuelve el error de pg en `Failed query: ...` ocultando la
     // causa real. Extraemos `error.cause.message` cuando existe para devolver
     // un mensaje útil ("duplicate key", "null violates not-null", etc.).
+    if (error?.statusCode) return res.status(error.statusCode).json({ error: error.message });
     const detail =
       (error?.cause?.detail as string | undefined) ||
       (error?.cause?.message as string | undefined) ||
@@ -283,10 +296,10 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
 
     const { addresses, groupId, ...restBody } = req.body;
 
-    // Validación de NIF según país (si cambian ambos o si se actualiza el nif)
+    // Validación de la identificación fiscal según país (si cambian ambos o si se actualiza el nif)
     const effectiveCountry = restBody.countryCode || oldPartner?.countryCode;
     const effectiveNif = restBody.nif !== undefined ? restBody.nif : oldPartner?.nif;
-    const taxErr = await checkTaxId(effectiveNif, effectiveCountry);
+    const taxErr = await checkTaxId(effectiveNif, effectiveCountry, req.tenantId);
     if (taxErr) return res.status(400).json({ error: taxErr });
 
     // Validación de IBAN si se informa
@@ -295,6 +308,14 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       if (!ibanCheck.ok)
         return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
       restBody.iban = normalizeIban(restBody.iban);
+    }
+
+    if (restBody.creditLimit !== undefined) {
+      restBody.creditLimit = await resolveCreditLimitChange(
+        restBody.creditLimit,
+        oldPartner?.creditLimit,
+        { user: req.user, tenantId: req.tenantId, apiToken: req.apiToken },
+      );
     }
 
     const pluginValues = await extractPluginFields(req);
@@ -337,7 +358,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
     // Auditoría
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'BusinessPartner',
       entityId: id,
@@ -346,7 +367,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       newValue: partner,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -369,7 +390,7 @@ router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
     if (oldPartner) {
       logAudit({
         tenantClient: req.tenantClient,
-        tenantId: req.headers['x-tenant-id'] || '',
+        tenantId: req.tenantId || '',
         userId: req.user?.id,
         entityType: 'BusinessPartner',
         entityId: id,

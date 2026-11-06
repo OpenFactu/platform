@@ -25,6 +25,7 @@ import type { PluginField } from '../domain/PluginField';
 import type { PluginTable } from '../domain/PluginTable';
 import type { Module } from '@/modules';
 import { useI18n } from '@/i18n/I18nContext';
+import { useLocalization } from '@/context/LocalizationContext';
 
 /** Nombre de tabla/campo en monoespaciada, como en el resto de vistas técnicas. */
 const codeCell = (text: string) => (
@@ -64,6 +65,7 @@ export const appsPluginManager: React.FC = () => {
   const { reload: reloadManifests } = usePlugins();
   const toast = useToast();
   const { t } = useI18n();
+  const { refresh: refreshLocalization } = useLocalization();
   const fieldColumns = useMemo(
     () => FIELD_COLUMNS.map((c) => ({ ...c, header: t(c.header as string) })),
     [t],
@@ -123,6 +125,8 @@ export const appsPluginManager: React.FC = () => {
       } else {
         await pluginsApi.activate(pluginId);
       }
+      // Activar o desactivar un plugin puede cambiar la normativa de la empresa.
+      await refreshLocalization();
 
       // Actualizar estado local inmediatamente
       setPlugins((prev) =>

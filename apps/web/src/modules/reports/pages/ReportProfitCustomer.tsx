@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
+import { UncostedNotice } from '../components/UncostedNotice';
+import { costColumns, hasCosts } from '../domain/itemCosts';
 
 export const ReportProfitCustomer: React.FC = () => {
   const { user } = useAuth();
@@ -41,8 +43,9 @@ export const ReportProfitCustomer: React.FC = () => {
       { key: 'name', label: t('reports.common.customer') },
       { key: 'count', label: t('reports.profitCustomer.invoices'), format: (v: any) => String(v) },
       { key: 'total', label: t('reports.common.revenue'), format: (v: any) => fmt.money(v) },
+      ...(hasCosts(rows) ? costColumns(t, fmt) : []),
     ],
-    [fmt, t],
+    [fmt, t, rows],
   );
 
   return (
@@ -56,6 +59,7 @@ export const ReportProfitCustomer: React.FC = () => {
       filename={`rent-cliente-${periodId}`}
       pdfEndpoint="/api/reports/profit-customer/pdf"
       pdfQuery={{ periodId }}
+      footer={<UncostedNotice rows={rows} message={t('reports.common.uncostedNotice')} />}
       filters={
         <div className="max-w-sm">
           <label className="block text-xs font-bold text-fg-body mb-1">

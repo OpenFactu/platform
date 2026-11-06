@@ -10,8 +10,11 @@ import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
 import { AiChatProvider } from '@/modules/ai/AiChatContext';
 import { ChatLauncherPanel } from '@/modules/ai/components/ChatLauncherPanel';
+import { MessagingProvider } from '@/modules/messaging/context/MessagingContext';
+import { MessagingHost } from '@/modules/messaging/components/MessagingHost';
 import { DebugPanel } from './components/DebugPanel';
 
+import { PDF_VIEWER_PATH } from './utils/downloadPdf';
 const SetupWizard = lazy(() =>
   import('./pages/SetupWizard').then((m) => ({ default: m.SetupWizard })),
 );
@@ -22,15 +25,28 @@ const ForgotPassword = lazy(() =>
 const ResetPassword = lazy(() =>
   import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })),
 );
+const LoginEmailLink = lazy(() =>
+  import('./pages/LoginEmailLink').then((m) => ({ default: m.LoginEmailLink })),
+);
+const LoginSso = lazy(() => import('./pages/LoginSso').then((m) => ({ default: m.LoginSso })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
+const GuestCallPage = lazy(() =>
+  import('./pages/public/GuestCallPage').then((m) => ({ default: m.GuestCallPage })),
+);
 const PublicFormPage = lazy(() =>
   import('./pages/public/PublicFormPage').then((m) => ({ default: m.PublicFormPage })),
 );
+const PdfViewerPage = lazy(() =>
+  import('./pages/PdfViewerPage').then((m) => ({ default: m.PdfViewerPage })),
+);
 const KioskMode = lazy(() =>
   import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
+);
+const MfaSetupRequired = lazy(() =>
+  import('./pages/MfaSetupRequired').then((m) => ({ default: m.MfaSetupRequired })),
 );
 const MainLayout = lazy(() =>
   import('./components/MainLayout').then((m) => ({ default: m.MainLayout })),
@@ -39,7 +55,7 @@ const MainLayout = lazy(() =>
 function App() {
   const [setupChecked, setSetupChecked] = useState(false);
   const [setupNeeded, setSetupNeeded] = useState(false);
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -68,7 +84,9 @@ function App() {
   // El `BrowserRouter` se remonta dentro de cada rama, así que duplicamos el
   // check aquí para el caso "cargando".
   const publicPath =
-    window.location.pathname.startsWith('/track/') || window.location.pathname.startsWith('/f/');
+    window.location.pathname.startsWith('/track/') ||
+    window.location.pathname.startsWith('/f/') ||
+    window.location.pathname.startsWith('/join/');
   const kioskPath = window.location.pathname.startsWith('/kiosk');
 
   if (publicPath) {
@@ -78,6 +96,7 @@ function App() {
           <Routes>
             <Route path="/track/:token" element={<TrackingPage />} />
             <Route path="/f/:tenantId/:slug" element={<PublicFormPage />} />
+            <Route path="/join/:token" element={<GuestCallPage />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />
@@ -128,6 +147,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/login/email" element={<LoginEmailLink />} />
+            <Route path="/login/sso" element={<LoginSso />} />
             <Route path="/que-es-keirost" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
@@ -137,6 +158,38 @@ function App() {
     );
   }
 
+  // El enlace del correo también se abre en un navegador con sesión: ahí aprueba el acceso de
+  // otro dispositivo. Sin el menú del ERP.
+  if (window.location.pathname === '/login/email') {
+    return (
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login/email" element={<LoginEmailLink />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+        <DebugPanel />
+      </>
+    );
+  }
+
+  // La empresa exige el segundo factor y esta sesión aún no lo tiene: solo puede darlo de alta.
+  // Sin MainLayout ni providers del ERP, porque todo lo demás respondería 403.
+  if (user?.restricted === 'mfa_setup') {
+    return (
+      <>
+        <MfaSetupRequired />
+        <DebugPanel />
+      </>
+    );
+  }
+
+  // Pestaña con un PDF, sin el menú del ERP (ver `openPdf`).
+  if (window.location.pathname === PDF_VIEWER_PATH) {
+    return <PdfViewerPage />;
+  }
+
   return (
     <>
       <TabsProvider>
@@ -144,8 +197,11 @@ function App() {
           <ScannerProvider>
             <PopupProvider>
               <AiChatProvider>
-                <MainLayout />
-                <ChatLauncherPanel />
+                <MessagingProvider>
+                  <MainLayout />
+                  <ChatLauncherPanel />
+                  <MessagingHost />
+                </MessagingProvider>
               </AiChatProvider>
             </PopupProvider>
           </ScannerProvider>

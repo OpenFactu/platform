@@ -108,7 +108,7 @@ export const Partners: React.FC = () => {
   /**
    * Filtro en cliente: el listado viene entero del servidor, así que basta con
    * cribarlo aquí. Busca por todas las columnas visibles a la vez — código,
-   * razón social (y su nombre extranjero), NIF, grupo y contacto — porque el
+   * razón social (y su nombre extranjero), identificación fiscal, grupo y contacto — porque el
    * usuario no tiene por qué saber en cuál de ellas está lo que recuerda.
    */
   const visiblePartners = useMemo(() => {

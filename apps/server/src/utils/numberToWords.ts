@@ -156,11 +156,39 @@ export function amountToSpanishWords(amount: number, currency: string = 'euro'):
 }
 
 const EN_ONES = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen',
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+  'thirteen',
+  'fourteen',
+  'fifteen',
+  'sixteen',
+  'seventeen',
+  'eighteen',
   'nineteen',
 ];
-const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const EN_TENS = [
+  '',
+  '',
+  'twenty',
+  'thirty',
+  'forty',
+  'fifty',
+  'sixty',
+  'seventy',
+  'eighty',
+  'ninety',
+];
 
 function belowThousandEn(n: number): string {
   const parts: string[] = [];
@@ -203,5 +231,7 @@ export function amountToEnglishWords(amount: number, currency: string = 'euro'):
 
 /** Importe a letras en el idioma del documento. */
 export function amountToWords(amount: number, locale: string = 'es'): string {
-  return locale.startsWith('en') ? amountToEnglishWords(amount) : amountToSpanishWords(amount);
+  if (locale.startsWith('en')) return amountToEnglishWords(amount);
+  // En otro idioma no se escribe: mejor sin total en letras que en un idioma ajeno.
+  return locale.startsWith('es') ? amountToSpanishWords(amount) : '';
 }

@@ -1,0 +1,9 @@
+# HTTPS de Keirost: certificado automático (Let's Encrypt) para KEIROST_DOMAIN,
+# redirección de HTTP a HTTPS y paso de websockets (/ws, /rt/ws) hacia nginx.
+# Se activa con:  docker compose --profile https up -d
+# Sin dominio público (localhost), Caddy usa su propia CA local.
+{$KEIROST_DOMAIN:localhost} {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy web:80
+}

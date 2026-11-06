@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { eq, or, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { logAudit } from '../utils/audit';
-import { newId, recalcInvoicePaymentStatus } from '../core/documents/paymentStatusRecalc';
-import { JournalEngine } from '../core/accounting/JournalEngine';
+import { assertDateNotClosed } from '../core/accounting/periodRules';
+import { registerPayment, reversePayment } from '../core/payments/paymentService';
 import { broadcastEvent } from '../core/realtime/EventSocket';
 import { invalidateDashboardCache } from './dashboard';
 
@@ -31,14 +31,14 @@ router.get('/', async (req: any, res) => {
 
     res.json(rows);
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 
 /**
  * POST /api/payments
- * Body: { salesInvoiceId?|purchaseInvoiceId?, date, amount, currencyId?, paymentMethodId?, reference?, notes?, source? }
- * Al crear, recalcula el paymentStatus de la factura vinculada.
+ * Body: { salesInvoiceId?|purchaseInvoiceId?, date, amount, currencyId?, paymentMethodId?, bankAccountId?, reference?, notes?, source? }
+ * Guarda el cobro y su asiento, y recalcula el paymentStatus de la factura vinculada.
  */
 router.post('/', async (req: any, res) => {
   try {
@@ -51,6 +51,7 @@ router.post('/', async (req: any, res) => {
       exchangeRate,
       amountBase,
       paymentMethodId,
+      bankAccountId,
       reference,
       notes,
       source,
@@ -66,52 +67,30 @@ router.post('/', async (req: any, res) => {
     if (salesInvoiceId && purchaseInvoiceId)
       return res.status(400).json({ error: 'Solo uno de salesInvoiceId o purchaseInvoiceId' });
 
-    const id = newId();
-    await req.tenantClient.insert(schema.payments).values({
-      id,
-      salesInvoiceId: salesInvoiceId || null,
-      purchaseInvoiceId: purchaseInvoiceId || null,
-      date,
-      amount: String(amount),
-      currencyId: currencyId || null,
-      exchangeRate: exchangeRate != null ? String(exchangeRate) : '1',
-      amountBase: amountBase != null ? String(amountBase) : String(amount),
-      paymentMethodId: paymentMethodId || null,
-      reference: String(reference).trim(),
-      notes: notes || null,
-      source: source || 'manual',
-      sourceRef: sourceRef || null,
-      createdBy: req.user?.id || null,
-    });
-
     const kind = salesInvoiceId ? 'sales' : 'purchase';
     const invoiceId = salesInvoiceId || purchaseInvoiceId;
-    const result = await recalcInvoicePaymentStatus(req.tenantClient, kind as any, invoiceId);
-
-    // Asiento automático del cobro/pago (best-effort).
-    let journalEntryId: string | null = null;
-    try {
-      const invoiceTable = kind === 'sales' ? schema.salesInvoices : schema.purchaseInvoices;
-      const [inv] = await req.tenantClient
-        .select()
-        .from(invoiceTable)
-        .where(eq(invoiceTable.id, invoiceId!));
-      if (inv) {
-        const je = await JournalEngine.createFromPayment(
-          req.tenantClient,
-          { id, amount, date, paymentMethodId: paymentMethodId || null },
-          { id: inv.id, partnerId: inv.partnerId, periodId: inv.periodId, docNum: inv.docNum },
-          kind as 'sales' | 'purchase',
-          req.user?.id,
-        );
-        if (je) {
-          await JournalEngine.post(req.tenantClient, je.id, req.user?.id);
-          journalEntryId = je.id;
-        }
-      }
-    } catch (err: any) {
-      console.warn('[Payment POST] No se pudo generar asiento:', err.message);
-    }
+    const result = await req.tenantClient.transaction((tx: any) =>
+      registerPayment(
+        tx,
+        {
+          kind,
+          invoiceId,
+          date,
+          amount: Number(amount),
+          reference,
+          currencyId,
+          exchangeRate,
+          amountBase,
+          paymentMethodId,
+          bankAccountId,
+          notes,
+          source,
+          sourceRef,
+        },
+        req.user?.id,
+      ),
+    );
+    const { id, journalEntryId } = result;
 
     logAudit({
       tenantClient: req.tenantClient,
@@ -131,9 +110,9 @@ router.post('/', async (req: any, res) => {
       });
     }
 
-    res.json({ id, journalEntryId, ...result });
+    res.json(result);
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 
@@ -153,6 +132,7 @@ router.patch('/:id', async (req: any, res) => {
     const payload: any = {};
     if ('date' in req.body) {
       if (!req.body.date) return res.status(400).json({ error: 'date obligatorio' });
+      await assertDateNotClosed(req.tenantClient, req.body.date);
       payload.date = req.body.date;
     }
     if ('reference' in req.body) {
@@ -184,7 +164,7 @@ router.patch('/:id', async (req: any, res) => {
       newValue: row,
     });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 
@@ -193,44 +173,9 @@ router.patch('/:id', async (req: any, res) => {
  */
 router.delete('/:id', async (req: any, res) => {
   try {
-    const [row] = await req.tenantClient
-      .select()
-      .from(schema.payments)
-      .where(eq(schema.payments.id, req.params.id));
-    if (!row) return res.status(404).json({ error: 'No encontrado' });
-
-    // Reversar asiento asociado (si existe) ANTES de borrar el pago —
-    // así el contra-asiento queda vinculado con sourceDocumentId del pago.
-    try {
-      const [je] = await req.tenantClient
-        .select()
-        .from(schema.journalEntries)
-        .where(
-          and(
-            eq(schema.journalEntries.source, 'payment'),
-            eq(schema.journalEntries.sourceDocumentId, req.params.id),
-            eq(schema.journalEntries.status, 'posted'),
-          ),
-        );
-      if (je) {
-        await JournalEngine.reverse(
-          req.tenantClient,
-          je.id,
-          req.user?.id,
-          `Anulación de cobro/pago ${req.params.id}`,
-        );
-      }
-    } catch (err: any) {
-      console.warn('[Payment DELETE] No se pudo reversar asiento:', err.message);
-    }
-
-    await req.tenantClient.delete(schema.payments).where(eq(schema.payments.id, req.params.id));
-
-    const invoiceId = row.salesInvoiceId || row.purchaseInvoiceId;
-    const kind = row.salesInvoiceId ? 'sales' : 'purchase';
-    if (invoiceId) {
-      await recalcInvoicePaymentStatus(req.tenantClient, kind as any, invoiceId);
-    }
+    const { row, invoiceId } = await req.tenantClient.transaction((tx: any) =>
+      reversePayment(tx, req.params.id, req.user?.id),
+    );
 
     logAudit({
       tenantClient: req.tenantClient,
@@ -244,7 +189,7 @@ router.delete('/:id', async (req: any, res) => {
 
     res.json({ success: true });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 

@@ -3,6 +3,172 @@
  * plantillas de documento, stock y contabilidad. Ver `../../index.ts`.
  */
 export default {
+  // ── Devoluciones ──
+  'Este albarán ya está facturado: la mercancía vuelve con el abono de su factura.':
+    'This delivery note is already invoiced: the goods come back with the credit note of its invoice.',
+  'Este albarán tiene un envío en marcha: resuélvelo antes desde logística.':
+    'This delivery note has a shipment under way: resolve it first from logistics.',
+  'Esa línea no es de este albarán.': 'That line is not on this delivery note.',
+  'La cantidad a devolver tiene que ser mayor que cero.':
+    'The quantity to return must be greater than zero.',
+  'De «{0}» hay que decir de qué lote vuelve.': 'Say which batch of «{0}» comes back.',
+  'El lote {0} no salió con este albarán.': 'Batch {0} did not leave with this delivery note.',
+  '«{0}» va por número de serie: vuelve entero.':
+    '«{0}» is tracked by serial number: it comes back whole.',
+  'De «{0}» solo queda {1} por volver.': 'Only {1} of «{0}» can still come back.',
+  'Esa ubicación no es de ese almacén.': 'That location is not in that warehouse.',
+  'Este almacén exige indicar la ubicación donde entra la mercancía.':
+    'This warehouse requires the location where the goods come in.',
+  'Indica el motivo de la devolución.': 'Enter the reason for the return.',
+  'Elige el almacén al que vuelve.': 'Choose the warehouse it returns to.',
+  'Ese almacén no existe.': 'That warehouse does not exist.',
+  'Parte de este albarán ya ha vuelto y está en el almacén: para anularlo, devuelve también el resto.':
+    'Part of this delivery note already came back and is in the warehouse: to cancel it, return the rest too.',
+  'Esta mercancía ha vuelto con su entrada: para enviarla otra vez, haz un albarán nuevo.':
+    'These goods came back with their receipt: to ship them again, make a new delivery note.',
+  'De «{0}» ya han vuelto {1} por logística: abónalo sin devolver al stock.':
+    '{1} of «{0}» already came back through logistics: credit it without returning it to stock.',
+  'De «{0}» solo quedan {1} por devolver.': 'Only {1} of «{0}» can still be returned.',
+  'La mercancía de la línea {0} del albarán ha vuelto: no se puede facturar.':
+    'The goods on line {0} of the delivery note came back: it cannot be invoiced.',
+  'De la línea {0} del albarán ha vuelto parte: solo se pueden facturar {1}.':
+    'Part of line {0} of the delivery note came back: only {1} can be invoiced.',
+  'Parte de este albarán ya ha vuelto con una entrada de mercancía: bórrala antes de cancelarlo.':
+    'Part of this delivery note already came back with a goods receipt: delete it before cancelling.',
+  'Su albarán ya está anulado: esta entrada es la que devuelve la mercancía.':
+    'Its delivery note is already cancelled: this receipt is what brings the goods back.',
+  'Esta mercancía ya había vuelto con un abono: no se crea otra entrada.':
+    'These goods already came back with a credit note: no other receipt is created.',
+  'Una compra devuelta no crea entrada: su mercancía entró con el albarán.':
+    'A returned purchase creates no receipt: its goods came in with the goods receipt note.',
+
+  // ── Reglas de los documentos ──
+  'El total del documento no puede ser negativo. Para devolver dinero, usa un abono.':
+    'The document total cannot be negative. To give money back, use a credit note.',
+  'El periodo {0} está cerrado y este documento movió stock: no se puede cancelar. Corrígelo con un documento nuevo en un periodo abierto.':
+    'Period {0} is closed and this document moved stock: it cannot be cancelled. Correct it with a new document in an open period.',
+  'El total no puede ser negativo.': 'The total cannot be negative.',
+  'El precio no es válido.': 'The price is not valid.',
+  'No se ha podido completar la operación.': 'The operation could not be completed.',
+  'Elige el interlocutor del documento.': 'Choose the business partner for the document.',
+  'Elige la serie de numeración.': 'Choose the numbering series.',
+  'Elige el periodo contable.': 'Choose the accounting period.',
+  'La fecha del documento no es válida.': 'The document date is not valid.',
+  'La retención del documento tiene que estar entre 0 y 100.':
+    'The document withholding has to be between 0 and 100.',
+  'La línea {0} no tiene artículo.': 'Line {0} has no item.',
+  'La cantidad de la línea {0} no es válida.': 'The quantity on line {0} is not valid.',
+  'El precio de la línea {0} no es válido.': 'The price on line {0} is not valid.',
+  'El descuento de la línea {0} tiene que estar entre 0 y 100.':
+    'The discount on line {0} has to be between 0 and 100.',
+  'El descuento de la línea {0} supera su importe.':
+    'The discount on line {0} is more than its amount.',
+  'La retención de la línea {0} tiene que estar entre 0 y 100.':
+    'The withholding on line {0} has to be between 0 and 100.',
+  'La unidad de la línea {0} no es válida.': 'The unit on line {0} is not valid.',
+  'El impuesto de la línea {0} no existe.': 'The tax on line {0} does not exist.',
+  'Ese interlocutor no existe.': 'That business partner does not exist.',
+  'Ese periodo contable no existe.': 'That accounting period does not exist.',
+  'Esa serie de numeración no existe.': 'That numbering series does not exist.',
+  'El periodo {0} está cerrado: no admite documentos.':
+    'Period {0} is closed: it does not accept documents.',
+  'El periodo {0} está cerrado: no admite asientos.':
+    'Period {0} is closed: it does not accept journal entries.',
+  'El periodo {0} está cerrado: elige otra fecha.': 'Period {0} is closed: choose another date.',
+  'La fecha {0} no cae en el periodo {1}.': 'The date {0} is not in period {1}.',
+  'No hay un periodo contable abierto para el {0}.': 'There is no open accounting period for {0}.',
+  'No hay un periodo abierto para revertir el asiento {0}.':
+    'There is no open period to reverse journal entry {0}.',
+  'La serie {0} no es de este tipo de documento.': 'Series {0} is not for this type of document.',
+  'La serie {0} no es de ese periodo.': 'Series {0} is not for that period.',
+  'La serie {0} ha llegado a su último número ({1}).':
+    'Series {0} has reached its last number ({1}).',
+  'El siguiente número no puede ser {0}: la serie ya ha llegado al {1}.':
+    'The next number cannot be {0}: the series has already reached {1}.',
+
+  // ── Límite de crédito ──
+  'Este cliente supera su límite de crédito de {0}: con este documento debería {1}.':
+    'This customer is over their credit limit of {0}: with this document they would owe {1}.',
+  'El límite de crédito tiene que ser un importe positivo.':
+    'The credit limit has to be a positive amount.',
+  'No tienes permiso para cambiar el límite de crédito.':
+    'You do not have permission to change the credit limit.',
+  'Modo de crédito no válido.': 'Invalid credit mode.',
+
+  // ── Campos enlazados ──
+  Interlocutor: 'Business partner',
+  Artículo: 'Item',
+  Almacén: 'Warehouse',
+  Empleado: 'Employee',
+  'Cuenta contable': 'Ledger account',
+  'Centro de coste': 'Cost centre',
+  Proyecto: 'Project',
+  'Objeto no encontrado.': 'Object not found.',
+  'No tienes permiso para ver esto.': 'You do not have permission to see this.',
+  'Elige a qué objeto se enlaza.': 'Choose which object it links to.',
+
+  // ── Abonos ──
+  'Una factura emitida no se puede cancelar. Corrígela con un abono.':
+    'An issued invoice cannot be cancelled. Correct it with a credit note.',
+  'Rectifica la factura {ref}. Motivo: {reason}': 'Corrects invoice {ref}. Reason: {reason}',
+  'Factura no encontrada.': 'Invoice not found.',
+  'Esta factura está cancelada.': 'This invoice is cancelled.',
+  'Solo se abonan facturas emitidas.': 'Only issued invoices can be credited.',
+  'Un abono no se puede abonar.': 'A credit note cannot be credited.',
+  'Indica el motivo del abono.': 'Enter the reason for the credit note.',
+  'Elige al menos una línea.': 'Choose at least one line.',
+  'Esa línea no es de esta factura.': 'That line does not belong to this invoice.',
+  'La cantidad a abonar tiene que ser mayor que cero.':
+    'The quantity to credit must be greater than zero.',
+  'De «{0}» solo quedan {1} por abonar.': 'Only {1} of "{0}" left to credit.',
+  'Ese tipo de documento no es rectificativo.': 'That document type is not a corrective one.',
+  'No hay ningún tipo de documento rectificativo. Crea uno en los ajustes fiscales.':
+    'There is no corrective document type. Create one in the tax settings.',
+  'De «{0}» no consta de qué lotes salió: no se puede devolver con este abono.':
+    'It is not recorded which batches "{0}" left from: it cannot be returned with this credit note.',
+  'El pedido de este albarán ya no existe.': 'The order for this delivery note no longer exists.',
+  'Este pedido está cancelado.': 'This order is cancelled.',
+  'Este pedido ya está cerrado: no queda nada por recibir.':
+    'This order is already closed: there is nothing left to receive.',
+  'Este pedido ya está cerrado: no queda nada por entregar.':
+    'This order is already closed: there is nothing left to deliver.',
+  'Este pedido ya está cerrado.': 'This order is already closed.',
+  'Este albarán está cancelado.': 'This delivery note is cancelled.',
+  'Este albarán ya está facturado.': 'This delivery note has already been invoiced.',
+  'La línea {0} no está en el pedido.': 'Line {0} is not on the order.',
+  'De la línea {0} del pedido quedan {1} por recibir, no {2}.':
+    'Line {0} of the order has {1} left to receive, not {2}.',
+  'De la línea {0} del pedido quedan {1} por entregar, no {2}.':
+    'Line {0} of the order has {1} left to deliver, not {2}.',
+  'Fecha no válida.': 'Invalid date.',
+  'No hay ningún periodo abierto para esa fecha.': 'There is no open period for that date.',
+  'Esa serie no vale para este documento y periodo.':
+    'That series is not valid for this document and period.',
+  'No hay ninguna serie para el periodo de esta fecha.':
+    'There is no series for the period of this date.',
+  'El importe tiene que ser mayor que cero.': 'The amount must be greater than zero.',
+  'Un abono no se aplica a sí mismo.': 'A credit note cannot be applied to itself.',
+  'Abono no encontrado.': 'Credit note not found.',
+  'Solo se aplican abonos emitidos.': 'Only issued credit notes can be applied.',
+  'Es más de lo que queda en este abono.': 'That is more than what is left on this credit note.',
+  'Factura de destino no encontrada.': 'Target invoice not found.',
+  'La factura de destino es de otro interlocutor.':
+    'The target invoice belongs to another business partner.',
+  'Solo se aplica a facturas emitidas.': 'It can only be applied to issued invoices.',
+  'Es más de lo que debe esa factura.': 'That is more than what that invoice owes.',
+  'Un importe negativo solo vale para devolver el saldo de un abono.':
+    'A negative amount is only valid to refund the balance of a credit note.',
+  'Un abono se devuelve con un importe negativo.':
+    'A credit note is refunded with a negative amount.',
+  'Solo quedan {0} por devolver en este abono.': 'Only {0} left to refund on this credit note.',
+  'El importe no puede ser cero.': 'The amount cannot be zero.',
+  'Solo se registran cobros y pagos en facturas emitidas.':
+    'Payments can only be registered on issued invoices.',
+  'Esta factura ya está saldada.': 'This invoice is already settled.',
+  'Solo quedan {0} pendientes en esta factura.': 'Only {0} left to settle on this invoice.',
+  'Esto es la aplicación de un abono, no un cobro.':
+    'This is a credit note being applied, not a payment.',
+
   // ── Router unificado de documentos ──
   'Tipo de documento no válido: {0}': 'Invalid document type: {0}',
   'Este tipo de documento no se puede editar.': 'This document type cannot be edited.',
@@ -27,8 +193,7 @@ export default {
     'Receipt in progress. Confirm with force=true to cancel.',
   'Albarán no encontrado': 'Delivery note not found',
   'El albarán ya está cancelado': 'The delivery note is already cancelled',
-  'No se puede cancelar un albarán ya facturado':
-    'An invoiced delivery note cannot be cancelled',
+  'No se puede cancelar un albarán ya facturado': 'An invoiced delivery note cannot be cancelled',
   'El envío ya ha sido entregado. Usa "Devolver" en el envío en lugar de cancelar el albarán.':
     'The shipment has already been delivered. Use "Return" on the shipment instead of cancelling the delivery note.',
   'El envío está en ruta. Confirma con force=true para cancelarlo — el conductor debe volver sin entregar.':
@@ -123,6 +288,10 @@ export default {
   // ── Plantillas de documento ──
   'Solo disponible para administradores': 'Only available to administrators',
   'docType inválido': 'Invalid docType',
+  'Esta tabla no es de tipo documento.': 'This table is not a document table.',
+  'Tabla no encontrada.': 'Table not found.',
+  '{0} (editada)': '{0} (edited)',
+  'Tipo de documento {0} no encontrado': 'Document type {0} not found',
   'name y html son obligatorios': 'name and html are required',
   'Solo admin/superuser': 'Admin/superuser only',
   'Tenant schema no resuelto': 'Tenant schema not resolved',
@@ -169,8 +338,7 @@ export default {
   'Un asiento requiere al menos 2 líneas': 'A journal entry requires at least 2 lines',
   'Línea {0}: accountId obligatorio': 'Line {0}: accountId is required',
   'Línea {0}: debe/haber no pueden ser negativos': 'Line {0}: debit/credit cannot be negative',
-  'Línea {0}: no puede tener debe y haber a la vez':
-    'Line {0}: cannot have both debit and credit',
+  'Línea {0}: no puede tener debe y haber a la vez': 'Line {0}: cannot have both debit and credit',
   'Línea {0}: debe o haber tiene que ser > 0': 'Line {0}: debit or credit must be > 0',
   'Asiento descuadrado: debe={0} ≠ haber={1}': 'Unbalanced journal entry: debit={0} ≠ credit={1}',
   'Asiento {0} no existe': 'Journal entry {0} does not exist',

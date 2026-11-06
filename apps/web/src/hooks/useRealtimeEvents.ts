@@ -20,7 +20,7 @@ type Handlers = Record<string, (payload: any, ev: RealtimeEvent) => void>;
  *   });
  */
 export function useRealtimeEvents(handlers: Handlers) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   // Mantenemos la referencia más reciente de handlers para que reconectar
   // no pise el callback del consumidor.
   const handlersRef = useRef(handlers);
@@ -28,7 +28,7 @@ export function useRealtimeEvents(handlers: Handlers) {
 
   useEffect(() => {
     const tenantId = user?.tenantId;
-    if (!tenantId) return;
+    if (!tenantId || !token) return;
 
     let ws: WebSocket | null = null;
     let retry = 0;
@@ -38,7 +38,7 @@ export function useRealtimeEvents(handlers: Handlers) {
     const connect = () => {
       if (stopped) return;
       const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const url = `${proto}://${window.location.host}/ws/events?tenant=${encodeURIComponent(tenantId)}`;
+      const url = `${proto}://${window.location.host}/ws/events?tenant=${encodeURIComponent(tenantId)}&token=${encodeURIComponent(token)}`;
       try {
         ws = new WebSocket(url);
       } catch (err) {
@@ -57,7 +57,11 @@ export function useRealtimeEvents(handlers: Handlers) {
           /* noop */
         }
       };
-      ws.onclose = () => scheduleReconnect();
+      ws.onclose = (ev) => {
+        // 4401: el servidor no acepta la sesión (revocada o caducada); reintentar no sirve.
+        if (ev.code === 4401) return;
+        scheduleReconnect();
+      };
       ws.onerror = () => {
         try {
           ws?.close();
@@ -85,5 +89,5 @@ export function useRealtimeEvents(handlers: Handlers) {
         /* noop */
       }
     };
-  }, [user?.tenantId]);
+  }, [user?.tenantId, token]);
 }

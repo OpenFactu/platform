@@ -3,11 +3,29 @@ import { and, eq, asc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../../utils/audit';
+import { LocalizationInstaller } from '../../core/localization/LocalizationInstaller';
 
 const router = Router();
 
 const VALID_KIND = new Set(['devengo', 'deduccion', 'aportacion_empresa']);
 const VALID_CALC = new Set(['fixed', 'percent_of_base', 'per_hour']);
+const VALID_CATEGORY = new Set(['income_tax', 'social_employee', 'social_employer']);
+
+/** Los dos marcadores de "sujeto a", con su nombre genérico y el anterior. */
+function taxableFlags(body: any): Record<string, boolean> {
+  const flags: Record<string, boolean> = {};
+  for (const [neutral, legacy] of [
+    ['taxableIncomeTax', 'taxableIrpf'],
+    ['taxableSocial', 'taxableSs'],
+  ]) {
+    const value = body[neutral] ?? body[legacy];
+    if (value !== undefined) {
+      flags[neutral] = value;
+      flags[legacy] = value;
+    }
+  }
+  return flags;
+}
 
 /** GET /api/hr/payroll-concepts?activeOnly=true&kind= */
 router.get('/', async (req: any, res) => {
@@ -46,8 +64,7 @@ router.post('/', async (req: any, res) => {
       code,
       name,
       kind,
-      taxableIrpf,
-      taxableSs,
+      category,
       calculation,
       defaultAmount,
       defaultPercent,
@@ -63,6 +80,9 @@ router.post('/', async (req: any, res) => {
     if (calculation && !VALID_CALC.has(calculation)) {
       return res.status(400).json({ error: `calculation inválido: ${calculation}` });
     }
+    if (category && !VALID_CATEGORY.has(category)) {
+      return res.status(400).json({ error: `category inválido: ${category}` });
+    }
     const id = crypto.randomUUID();
     const [row] = await req.tenantClient
       .insert(schema.payrollConcepts)
@@ -71,8 +91,8 @@ router.post('/', async (req: any, res) => {
         code,
         name,
         kind,
-        taxableIrpf: taxableIrpf ?? true,
-        taxableSs: taxableSs ?? true,
+        category: category || null,
+        ...taxableFlags(req.body),
         calculation: calculation || 'fixed',
         defaultAmount: defaultAmount != null ? String(defaultAmount) : null,
         defaultPercent: defaultPercent != null ? String(defaultPercent) : null,
@@ -102,13 +122,16 @@ router.patch('/:id', async (req: any, res) => {
       'code',
       'name',
       'kind',
-      'taxableIrpf',
-      'taxableSs',
+      'category',
       'calculation',
       'accountId',
       'isActive',
     ];
     for (const k of allow) if (k in req.body) patch[k] = req.body[k];
+    Object.assign(patch, taxableFlags(req.body));
+    if (patch.category === '') patch.category = null;
+    if (patch.category && !VALID_CATEGORY.has(patch.category))
+      return res.status(400).json({ error: `category inválido: ${patch.category}` });
     if (patch.kind && !VALID_KIND.has(patch.kind))
       return res.status(400).json({ error: `kind inválido: ${patch.kind}` });
     if (patch.calculation && !VALID_CALC.has(patch.calculation))
@@ -170,125 +193,12 @@ router.delete('/:id', async (req: any, res) => {
 
 /**
  * POST /api/hr/payroll-concepts/seed-defaults
- * Crea (idempotente) un catálogo estándar español: salario base, pluses
- * comunes, IRPF, SS empleado y SS empresa con porcentajes típicos. Sólo
- * inserta los códigos que aún no existen.
+ * Crea (idempotente) el catálogo de conceptos de los paquetes de localización
+ * activos. Sólo inserta los códigos que aún no existen.
  */
 router.post('/seed-defaults', async (req: any, res) => {
   try {
-    const existing = await req.tenantClient
-      .select({ code: schema.payrollConcepts.code })
-      .from(schema.payrollConcepts);
-    const have = new Set(existing.map((r: any) => r.code));
-
-    const seeds = [
-      // Devengos
-      {
-        code: 'SB',
-        name: 'Salario base',
-        kind: 'devengo',
-        calculation: 'fixed',
-        taxableIrpf: true,
-        taxableSs: true,
-      },
-      {
-        code: 'PLUS_CONV',
-        name: 'Plus convenio',
-        kind: 'devengo',
-        calculation: 'fixed',
-        taxableIrpf: true,
-        taxableSs: true,
-      },
-      {
-        code: 'PLUS_TRANSP',
-        name: 'Plus transporte',
-        kind: 'devengo',
-        calculation: 'fixed',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-      {
-        code: 'PLUS_PROD',
-        name: 'Plus productividad',
-        kind: 'devengo',
-        calculation: 'fixed',
-        taxableIrpf: true,
-        taxableSs: true,
-      },
-      {
-        code: 'DIETAS',
-        name: 'Dietas',
-        kind: 'devengo',
-        calculation: 'fixed',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-      {
-        code: 'HORAS_EXTRA',
-        name: 'Horas extra',
-        kind: 'devengo',
-        calculation: 'per_hour',
-        taxableIrpf: true,
-        taxableSs: true,
-      },
-      // Deducciones
-      {
-        code: 'IRPF',
-        name: 'Retención IRPF',
-        kind: 'deduccion',
-        calculation: 'percent_of_base',
-        defaultPercent: '15',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-      {
-        code: 'SS_EMP',
-        name: 'Seguridad Social Empleado',
-        kind: 'deduccion',
-        calculation: 'percent_of_base',
-        defaultPercent: '6.35',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-      {
-        code: 'ANTICIPO',
-        name: 'Anticipo',
-        kind: 'deduccion',
-        calculation: 'fixed',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-      // Aportación empresa
-      {
-        code: 'SS_EMPRESA',
-        name: 'Seguridad Social Empresa',
-        kind: 'aportacion_empresa',
-        calculation: 'percent_of_base',
-        defaultPercent: '29.9',
-        taxableIrpf: false,
-        taxableSs: false,
-      },
-    ];
-
-    let created = 0;
-    for (const s of seeds) {
-      if (have.has(s.code)) continue;
-      await req.tenantClient.insert(schema.payrollConcepts).values({
-        id: crypto.randomUUID(),
-        code: s.code,
-        name: s.name,
-        kind: s.kind,
-        calculation: s.calculation,
-        defaultPercent: (s as any).defaultPercent || null,
-        defaultAmount: null,
-        taxableIrpf: s.taxableIrpf,
-        taxableSs: s.taxableSs,
-        accountId: null,
-        isActive: true,
-      });
-      created++;
-    }
-    res.json({ created, total: seeds.length });
+    res.json(await LocalizationInstaller.applyPayrollCatalog(req.tenantId, req.tenantClient));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

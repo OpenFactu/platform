@@ -188,7 +188,7 @@ export const Payrolls: React.FC = () => {
       }
     }
 
-    // 3) Auto-IRPF/SS si está marcado.
+    // 3) Retenciones y cotizaciones automáticas si está marcado.
     if (form.autoTaxes) {
       await payrollsApi.autoDeductions(createdPayroll.id);
     }
@@ -705,20 +705,24 @@ export const Payrolls: React.FC = () => {
             {/* Aviso si hay devengos pero faltan deducciones de impuestos */}
             {(() => {
               const hasEarnings = lines.some((l: any) => l.type === 'earning');
-              const hasIrpf = lines.some(
-                (l: any) => /irpf/i.test(l.concept || '') && l.type === 'deduction',
-              );
-              const hasSs = lines.some(
-                (l: any) =>
-                  l.type === 'deduction' &&
-                  (/^ss/i.test(l.concept || '') || /seguridad social/i.test(l.concept || '')),
-              );
-              if (hasEarnings && (!hasIrpf || !hasSs)) {
+              // Solo se avisa de lo que el catálogo de la empresa contempla.
+              const needed = (category: string) =>
+                concepts.some((c: any) => c.category === category);
+              const present = (category: string) =>
+                lines.some(
+                  (l: any) =>
+                    l.type === 'deduction' &&
+                    concepts.find((c: any) => c.id === l.conceptId)?.category === category,
+                );
+              const hasIncomeTax = !needed('income_tax') || present('income_tax');
+              const hasSocial = !needed('social_employee') || present('social_employee');
+              if (hasEarnings && (!hasIncomeTax || !hasSocial)) {
                 return (
                   <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300">
-                    ⚠ {t('hrPayroll.payrolls.missingTaxesBefore')} {!hasIrpf && <b>IRPF</b>}
-                    {!hasIrpf && !hasSs && ` ${t('hrPayroll.payrolls.and')} `}
-                    {!hasSs && <b>{t('hrPayroll.payrolls.ssEmployeeLong')}</b>}
+                    ⚠ {t('hrPayroll.payrolls.missingTaxesBefore')}{' '}
+                    {!hasIncomeTax && <b>{t('reports.laborCost.incomeTax')}</b>}
+                    {!hasIncomeTax && !hasSocial && ` ${t('hrPayroll.payrolls.and')} `}
+                    {!hasSocial && <b>{t('hrPayroll.payrolls.ssEmployeeLong')}</b>}
                     {t('hrPayroll.payrolls.missingTaxesAfter')}
                   </div>
                 );
@@ -833,16 +837,20 @@ export const Payrolls: React.FC = () => {
                 <div className="font-bold">{Number(editLines.gross).toFixed(2)} €</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">IRPF</div>
-                <div className="font-bold">{Number(editLines.irpfAmount).toFixed(2)} €</div>
+                <div className="text-xs text-slate-400">{t('reports.laborCost.incomeTax')}</div>
+                <div className="font-bold">{Number(editLines.incomeTaxTotal).toFixed(2)} €</div>
               </div>
               <div>
                 <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.ssEmployee')}</div>
-                <div className="font-bold">{Number(editLines.ssEmployee).toFixed(2)} €</div>
+                <div className="font-bold">
+                  {Number(editLines.socialEmployeeTotal).toFixed(2)} €
+                </div>
               </div>
               <div>
                 <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.ssEmployer')}</div>
-                <div className="font-bold">{Number(editLines.ssEmployer).toFixed(2)} €</div>
+                <div className="font-bold">
+                  {Number(editLines.socialEmployerTotal).toFixed(2)} €
+                </div>
               </div>
               <div>
                 <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.net')}</div>
@@ -887,7 +895,7 @@ const PayrollLineRow: React.FC<{
   const [base, setBase] = useState<number | null>(num(line.baseAmount));
   const [amount, setAmount] = useState<number | null>(num(line.amount ?? 0));
 
-  // Sincroniza con la prop cuando el servidor recalcula (p.ej. añadir IRPF).
+  // Sincroniza con la prop cuando el servidor recalcula (p.ej. añadir una retención).
   useEffect(() => {
     setQty(num(line.quantity));
     setRate(num(line.rate));

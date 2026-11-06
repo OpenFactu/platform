@@ -4,7 +4,7 @@ import { Alert, Button } from '@openfactu/ui';
 import { DUPLICATE_REASON_LABEL, type Duplicate, type PartnerLike } from '../domain/partnerChecks';
 
 /**
- * Aviso de interlocutores que ya existen con el mismo NIF, correo o nombre,
+ * Aviso de interlocutores que ya existen con la misma identificación fiscal, correo o nombre,
  * con un botón por cada uno para usar (o abrir) ese en lugar de duplicarlo.
  */
 export function PartnerDuplicatesAlert<P extends PartnerLike>({

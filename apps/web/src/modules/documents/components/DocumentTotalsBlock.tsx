@@ -6,9 +6,9 @@ interface Props {
   subtotal: number | string;
   tax: number | string;
   total: number | string;
-  /** Importe retenido (IRPF) — se resta del total. */
+  /** Importe retenido — se resta del total. */
   withholdingAmount?: number | string | null;
-  /** Tipo de retención aplicado (para etiqueta "IRPF 15%"). */
+  /** Tipo de retención aplicado (para la etiqueta, con su porcentaje). */
   withholdingRate?: number | string | null;
   totalLabel?: string;
   /**

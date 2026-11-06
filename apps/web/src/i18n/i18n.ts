@@ -7,9 +7,13 @@
  * fusiona en la raíz, así que por convención cada uno tiene una sola clave
  * raíz igual a su nombre (`hr.json` → `{ "hr": { … } }`), salvo los
  * históricos de `documents.json` (`invoice`, `line`, `payment`).
+ *
+ * Los plugins activos en la empresa añaden los suyos (`setPluginTranslations`):
+ * claves propias y hasta idiomas enteros. Lo del núcleo siempre gana.
  */
 
-export type Locale = 'es' | 'en';
+/** Los que trae la aplicación, más cualquiera que aporte un plugin. */
+export type Locale = 'es' | 'en' | (string & {});
 export const LOCALES: Locale[] = ['es', 'en'];
 export const DEFAULT_LOCALE: Locale = 'es';
 
@@ -35,11 +39,14 @@ const modules = import.meta.glob<Messages>('./locales/*/*.json', {
   import: 'default',
 });
 
-const MESSAGES: Record<Locale, Messages> = { es: {}, en: {} };
+const MESSAGES: Record<string, Messages> = { es: {}, en: {} };
 for (const [path, content] of Object.entries(modules)) {
   const locale = path.split('/')[2] as Locale;
   if (MESSAGES[locale]) deepMerge(MESSAGES[locale], content);
 }
+
+/** Lo que aportan los plugins, por idioma. Se reemplaza entero al cambiar de empresa. */
+let pluginMessages: Record<string, Messages> = {};
 
 function lookup(obj: Messages, path: string): string | undefined {
   let cur: unknown = obj;
@@ -50,15 +57,40 @@ function lookup(obj: Messages, path: string): string | undefined {
   return typeof cur === 'string' ? cur : undefined;
 }
 
-function interpolate(template: string, vars?: TranslateVars): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (_, key) => (key in vars ? String(vars[key]) : `{${key}}`));
+/** Términos de la normativa de la empresa; sin ella, los genéricos de cada idioma. */
+let localizationTerms: TranslateVars | null = null;
+let termsVersion = 0;
+
+function genericTerm(locale: Locale, key: string): string | undefined {
+  return resolve(locale, `app.localization.${key}`);
 }
+
+const TERM_KEYS = new Set([
+  'tax',
+  'taxId',
+  'withholding',
+  'incomeTax',
+  'socialEmployee',
+  'socialEmployer',
+]);
+
+function interpolate(locale: Locale, template: string, vars?: TranslateVars): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    if (vars && key in vars) return String(vars[key]);
+    if (TERM_KEYS.has(key)) {
+      const term = localizationTerms?.[key] ?? genericTerm(locale, key);
+      if (term != null) return String(term);
+    }
+    return `{${key}}`;
+  });
+}
+
+const LOCALE_CODE = /^[a-z]{2,3}(-[A-Z]{2})?$/;
 
 function detectInitialLocale(): Locale {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'es' || stored === 'en') return stored;
+    if (stored && LOCALE_CODE.test(stored)) return stored;
   } catch {
     /* noop */
   }
@@ -89,27 +121,66 @@ export function setLocale(l: Locale): void {
   listeners.forEach((fn) => fn());
 }
 
+/**
+ * Fija las traducciones de los plugins activos. Dispara un re-render igual que los
+ * términos; con null, solo queda lo de la aplicación.
+ */
+export function setPluginTranslations(translations: Record<string, Messages> | null): void {
+  pluginMessages = translations ?? {};
+  termsVersion++;
+  listeners.forEach((fn) => fn());
+}
+
+/** Fija los términos de la normativa activa, o null para volver a los genéricos. */
+export function setLocalizationTerms(terms: TranslateVars | null): void {
+  localizationTerms = terms;
+  termsVersion++;
+  listeners.forEach((fn) => fn());
+}
+
+/** Cambia con los términos, para que `t` y lo que dependa de ella se recalculen. */
+export function getTermsVersion(): number {
+  return termsVersion;
+}
+
 export function subscribeLocale(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
 
+/** Idiomas en los que buscar, del pedido a los de reserva. */
+function fallbackChain(locale: Locale): Locale[] {
+  return [...new Set([locale, 'en', DEFAULT_LOCALE])];
+}
+
+function lookupIn(locale: Locale, path: string): string | undefined {
+  const core = MESSAGES[locale];
+  const fromCore = core ? lookup(core, path) : undefined;
+  if (fromCore != null) return fromCore;
+  const fromPlugins = pluginMessages[locale];
+  return fromPlugins ? lookup(fromPlugins, path) : undefined;
+}
+
 function resolve(locale: Locale, path: string, count?: number): string | undefined {
-  if (count != null) {
-    const plural = lookup(MESSAGES[locale], `${path}_${count === 1 ? 'one' : 'other'}`);
-    if (plural != null) return plural;
+  for (const language of fallbackChain(locale)) {
+    if (count != null) {
+      const plural = lookupIn(language, `${path}_${count === 1 ? 'one' : 'other'}`);
+      if (plural != null) return plural;
+    }
+    const text = lookupIn(language, path);
+    if (text != null) return text;
   }
-  return lookup(MESSAGES[locale], path);
+  return undefined;
 }
 
 /**
  * Traduce `path`. Si `vars.count` es un número busca antes `path_one` /
- * `path_other`. Cae a español y, si tampoco existe, devuelve la clave.
+ * `path_other`. Cae a inglés y a español y, si tampoco existe, devuelve la clave.
  */
 export function translate(locale: Locale, path: string, vars?: TranslateVars): string {
   const count = typeof vars?.count === 'number' ? vars.count : undefined;
-  const text = resolve(locale, path, count) ?? resolve(DEFAULT_LOCALE, path, count);
-  return text != null ? interpolate(text, vars) : path;
+  const text = resolve(locale, path, count);
+  return text != null ? interpolate(locale, text, vars) : path;
 }
 
 /** `t` para código fuera de React; usa el idioma activo en el momento de la llamada. */
@@ -119,5 +190,7 @@ export function t(path: string, vars?: TranslateVars): string {
 
 /** Etiqueta BCP 47 para `Intl` (`es-ES`, `en-GB`). */
 export function intlLocale(l: Locale = current): string {
-  return l === 'en' ? 'en-GB' : 'es-ES';
+  if (l === 'en') return 'en-GB';
+  if (l === 'es') return 'es-ES';
+  return l;
 }

@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTabs } from '@/context/TabsContext';
@@ -18,7 +19,7 @@ import {
   DEFAULT_VISUAL_OPTIONS,
   type VisualOptions,
 } from '@openfactu/pdf/browser';
-import { useDocTypeOptions, type DocType, type TemplateRow } from './constants';
+import { isUserDocType, useDocTypeOptions, type DocType, type TemplateRow } from './constants';
 import { ModeTabs, type EditorMode } from './ModeTabs';
 import { VisualForm } from './VisualForm';
 import { AdvancedEditor, type AdvancedEditorHandle } from './AdvancedEditor';
@@ -44,13 +45,24 @@ function seedLayoutFor(docType: DocType): CanvasLayout {
 
 interface Props {
   template: TemplateRow | null;
+  /** Para una plantilla nueva: de qué documento es y cómo se llama. */
+  initialDocType?: DocType;
+  initialName?: string;
   onBack: () => void;
   onSave: (t: Partial<TemplateRow>) => Promise<void>;
   token: string;
   tenantId: string;
 }
 
-export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, token, tenantId }) => {
+export const TemplateEditor: React.FC<Props> = ({
+  template,
+  initialDocType,
+  initialName,
+  onBack,
+  onSave,
+  token,
+  tenantId,
+}) => {
   const toast = useToast();
   const { t } = useI18n();
   const DOC_TYPE_OPTIONS = useDocTypeOptions();
@@ -61,11 +73,16 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   // Si la plantilla fue diseñada con el canvas designer (legacyHtml === false),
   // su `html` ya está compilado por ese diseñador y NO debe regenerarse desde
   // este editor (visual o advanced). Forzamos modo advanced y deshabilitamos
-  // la regeneración para que el preview muestre el diseño real.
-  const isCanvasTemplate = (template as any)?.legacyHtml === false;
+  // la regeneración para que el preview muestre el diseño real. La marca sola no
+  // basta: la IA dejó así plantillas de este formulario, que guardan sus colores.
+  const isCanvasTemplate =
+    (template as any)?.legacyHtml === false &&
+    !/OPENFACTU-META:[^>]*"accentColor"/.test(template?.html ?? '');
 
-  const [name, setName] = useState(template?.name || t('templates.editor.defaultName'));
-  const [docType, setDocType] = useState<DocType>(template?.docType || 'SINV');
+  const [name, setName] = useState(
+    template?.name || initialName || t('templates.editor.defaultName'),
+  );
+  const [docType, setDocType] = useState<DocType>(template?.docType || initialDocType || 'SINV');
   const [isDefault, setIsDefault] = useState(!!template?.isDefault);
   // FREE y LABEL no tienen modo visual: el editor de visualOptions asume un documento
   // con header/totales/líneas que no aplica a una etiqueta libre. Forzamos
@@ -85,6 +102,11 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   // uno de esos tipos precargamos su layout-semilla (etiqueta de artículo para
   // LABEL, lienzo en blanco A4 para FREE) y persistimos su canvasLayout para que
   // el diseñador lo abra preconfigurado.
+  // Una tabla propia sale como ficha de campos, no como documento comercial.
+  const effectiveOpts: VisualOptions = {
+    ...visualOpts,
+    layout: isUserDocType(docType) ? 'record' : undefined,
+  };
   const [canvasLayoutForSave, setCanvasLayoutForSave] = useState<any>(
     (template as any)?.canvasLayout ?? null,
   );
@@ -118,7 +140,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       return;
     }
     if (mode === 'visual') {
-      setHtml(buildVisualTemplate(docType as Exclude<DocType, 'FREE' | 'LABEL'>, visualOpts));
+      setHtml(buildVisualTemplate(docType as Exclude<DocType, 'FREE' | 'LABEL'>, effectiveOpts));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visualOpts, docType, mode, isCanvasTemplate, isFreeOrLabelTemplate]);
@@ -207,9 +229,11 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
         divider
         className="flex-shrink-0"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft size={18} />
-          </Button>
+          <PageBack onBack={onBack}>
+            <Button type="button" variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft size={18} />
+            </Button>
+          </PageBack>
         }
         actions={
           <div className="flex items-center gap-2">
@@ -304,7 +328,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
             bodyClassName="h-full flex flex-col overflow-hidden"
           >
             {mode === 'visual' ? (
-              <VisualForm opts={visualOpts} updateOpt={updateOpt} />
+              <VisualForm opts={effectiveOpts} updateOpt={updateOpt} />
             ) : (
               <AdvancedEditor ref={advancedEditorRef} value={html} onChange={setHtml} />
             )}
@@ -332,6 +356,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
               <FieldExplorer
                 onInsert={handleInsertField}
                 insertMode={mode === 'advanced' ? 'insert' : 'copy'}
+                docType={docType}
               />
             </Card>
           )}

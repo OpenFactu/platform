@@ -90,7 +90,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
             <Mail size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
+            <h2 className="text-lg font-bold text-fg-default font-display">
               {t('doc.email.sendInvoice')}
             </h2>
             <p className="text-xs text-ink-500 dark:text-ink-400 font-mono">{docCode}</p>
@@ -129,26 +129,24 @@ export const SendInvoiceModal: React.FC<Props> = ({
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400 mb-2">
               {t('doc.email.preview')}
             </h3>
-            <div className="rounded-sm border border-line dark:border-ink-700 bg-white dark:bg-ink-900 overflow-hidden">
+            <div className="rounded-sm border border-border-default bg-bg-card overflow-hidden">
               <div className="bg-line-2/60 dark:bg-ink-800 px-4 py-2 text-xs space-y-0.5">
                 <div>
                   <span className="font-mono text-ink-400">{t('doc.email.to')}: </span>
-                  <span className="text-ink-700 dark:text-slate-200">{to || '—'}</span>
+                  <span className="text-fg-body">{to || '—'}</span>
                 </div>
                 {cc && (
                   <div>
                     <span className="font-mono text-ink-400">Cc: </span>
-                    <span className="text-ink-700 dark:text-slate-200">{cc}</span>
+                    <span className="text-fg-body">{cc}</span>
                   </div>
                 )}
                 <div>
                   <span className="font-mono text-ink-400">{t('doc.email.subject')}: </span>
-                  <span className="font-bold text-ink-900 dark:text-slate-100">{subject}</span>
+                  <span className="font-bold text-fg-default">{subject}</span>
                 </div>
               </div>
-              <pre className="whitespace-pre-wrap font-sans text-sm text-ink-700 dark:text-slate-200 p-4">
-                {body}
-              </pre>
+              <pre className="whitespace-pre-wrap font-sans text-sm text-fg-body p-4">{body}</pre>
               <div className="px-4 py-2 border-t border-line dark:border-ink-700 text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-2">
                 <Mail size={12} />
                 {t('doc.email.attachment')}: <span className="font-mono">{docCode}.pdf</span>

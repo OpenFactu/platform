@@ -12,7 +12,7 @@ const MobileNavContext = createContext<MobileNavContextType | undefined>(undefin
 
 /**
  * Estado global del drawer móvil (sidebar oculto por defecto en < md,
- * visible mediante hamburguesa o bottom-nav "Menú"). Se cierra
+ * visible mediante la hamburguesa de la cabecera). Se cierra
  * automáticamente al cambiar de pestaña activa para no tapar contenido.
  */
 export const MobileNavProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

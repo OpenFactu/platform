@@ -3,6 +3,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -25,10 +26,10 @@ import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import {
   FileStack,
   Plus,
+  Repeat,
   Save,
   FileText,
   AlertCircle,
-  Download,
   CreditCard,
   Eye,
 } from 'lucide-react';
@@ -45,20 +46,27 @@ import { useFormLineColumns } from '../hooks/useFormLineColumns';
 import { buildFormSteps, formStepStatus } from '../domain/formSteps';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { usePluginLineFields } from '@/hooks/usePluginLineFields';
 import { usePluginListColumns } from '@/components/plugin-fields';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
+import { useCreditSubmit } from '../hooks/useCreditLimit';
+import { newExposure } from '../domain/sales';
+import { PartnerCreditNotice } from '../components/documents/PartnerCreditNotice';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { formatDocCode } from '@/utils/docCode';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { PaymentStatusBadge } from '../components/payments/PaymentStatusBadge';
+import { InvoiceCreditChip } from '../components/documents/InvoiceCreditChip';
+import { invoiceRemaining } from '../domain/creditNote';
 import { RegisterPaymentModal } from '../components/payments/RegisterPaymentModal';
+import { CreditNoteActions } from '../components/documents/CreditNoteActions';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { SendInvoiceModal } from '../components/documents/SendInvoiceModal';
 import { InvoicePaymentsList } from '../components/payments/InvoicePaymentsList';
@@ -87,7 +95,7 @@ const InvoiceList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/sales/invoices/${id}/pdf`);
+      await openPdf(`/api/sales/invoices/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -128,7 +136,10 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => item.docCode || '',
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+            <InvoiceCreditChip invoice={item} />
+          </span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1 uppercase tracking-tighter">
             {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
@@ -167,9 +178,9 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => item.baseDocCode || '',
       cell: (item: any) =>
         item.baseDocCode ? (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/30 text-[10px] font-black text-indigo-700 dark:text-indigo-200 uppercase tracking-tight">
+          <Badge variant="info">
             <FileText size={11} /> {item.baseDocCode}
-          </span>
+          </Badge>
         ) : (
           <span className="text-[10px] text-fg-subtle font-bold italic">
             {t('doc.invoices.direct')}
@@ -183,7 +194,7 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => Number(item.withholdingAmount) || 0,
       cell: (item: any) =>
         Number(item.withholdingAmount) > 0 ? (
-          <span className="text-rose-600 dark:text-rose-400 font-bold text-xs tabular-nums">
+          <span className="text-danger font-bold text-xs tabular-nums">
             −{fmt.money(item.withholdingAmount)}
             {Number(item.withholdingRate) > 0 && (
               <span className="ml-1 text-[10px] opacity-70">({item.withholdingRate}%)</span>
@@ -220,9 +231,12 @@ const InvoiceList: React.FC<{
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.paymentStatus || 'pending',
-      cell: (item: any) => (
-        <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
-      ),
+      cell: (item: any) =>
+        item.status === 'O' ? (
+          <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
+        ) : (
+          <span className="text-fg-subtle text-xs">—</span>
+        ),
     },
   ];
 
@@ -236,7 +250,7 @@ const InvoiceList: React.FC<{
     { label: t('doc.invoices.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
   ];
@@ -251,10 +265,7 @@ const InvoiceList: React.FC<{
         divider
         toolbar={
           doc.state.mastersError ? (
-            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {doc.state.mastersError}
-            </div>
+            <Alert tone="warning">{doc.state.mastersError}</Alert>
           ) : undefined
         }
         actions={
@@ -371,7 +382,7 @@ const InvoiceForm: React.FC<{
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const isMobile = useIsMobile();
 
-  // Autocompletar IRPF del cliente en silencio cuando cambie el partner y el
+  // Autocompletar la retención del cliente en silencio cuando cambie el partner y el
   // doc aún no tenga tasa asignada. El usuario puede sobrescribirla después.
   // Los campos fiscales viven en `pluginData` con prefijo `__fiscal_` (ver
   // DocumentFiscalPanel) — el backend los extrae al guardar.
@@ -418,12 +429,14 @@ const InvoiceForm: React.FC<{
     <>
       <DocumentFormLayout
         title={
-          state.lines.some((l: any) => l.baseId)
-            ? t('doc.salesInvoices.fromDeliveryTitle')
-            : t('doc.invoices.newTitle')
+          state.lines.some((l: any) => l.baseType === 'SQ')
+            ? t('doc.salesInvoices.fromQuoteTitle')
+            : state.lines.some((l: any) => l.baseId)
+              ? t('doc.salesInvoices.fromDeliveryTitle')
+              : t('doc.invoices.newTitle')
         }
         subtitle={t('doc.salesInvoices.formSubtitle')}
-        submitLabel={t('doc.invoices.post')}
+        submitLabel={t('doc.invoices.saveDraft')}
         onSubmit={() => onSubmit()}
         isSubmitting={state.isSubmitting}
         canSubmit={!state.seriesError && state.canWrite}
@@ -440,7 +453,7 @@ const InvoiceForm: React.FC<{
                 <Field label={t('doc.partner.customer')} required>
                   <SearchableSelect
                     value={state.partnerId}
-                    onChange={setState.setPartnerId}
+                    onChange={actions.selectPartner}
                     options={masters.partners.map((p: any) => ({ label: p.name, value: p.id }))}
                     placeholder={t('doc.common.selectCustomer')}
                     required
@@ -450,7 +463,7 @@ const InvoiceForm: React.FC<{
                   label={t('doc.invoices.date')}
                   required
                   value={state.date}
-                  onChange={(v) => setState.setDate(v ?? '')}
+                  onChange={(v) => actions.selectDate(v ?? '')}
                 />
                 <Input
                   label={t('doc.invoices.customerRef')}
@@ -459,6 +472,12 @@ const InvoiceForm: React.FC<{
                   placeholder={t('doc.invoices.customerRefPlaceholder')}
                 />
                 <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
+                <div className="sm:col-span-2 empty:hidden">
+                  <PartnerCreditNotice
+                    partnerId={state.partnerId}
+                    amount={newExposure(state.lines, computations.total)}
+                  />
+                </div>
               </FormGrid>
               <div className="space-y-4">
                 <SeriesPeriodFields state={state} setState={setState} masters={masters} />
@@ -520,6 +539,7 @@ const InvoiceDetail: React.FC<{
   onPost?: () => void;
   isPosting?: boolean;
   canDelete: boolean;
+  canWrite: boolean;
   isCancelling: boolean;
   masters: any;
   setViewingBatch: (l: any) => void;
@@ -530,6 +550,7 @@ const InvoiceDetail: React.FC<{
   onPost,
   isPosting,
   canDelete,
+  canWrite,
   isCancelling,
   masters,
   setViewingBatch,
@@ -537,6 +558,7 @@ const InvoiceDetail: React.FC<{
   const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
+  const { openTab } = useTabs();
   const partner = masters.partners.find((p: any) => p.id === invoice.partnerId);
   const series = masters.series?.find((s: any) => s.id === invoice.seriesId);
   const period = masters.periods?.find((p: any) => p.id === invoice.periodId);
@@ -566,8 +588,11 @@ const InvoiceDetail: React.FC<{
   const [payModalOpen, setPayModalOpen] = React.useState(false);
   const [emailModalOpen, setEmailModalOpen] = React.useState(false);
   const [paymentsRefreshKey, setPaymentsRefreshKey] = React.useState(0);
-  const remaining = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
+  const remaining = invoiceRemaining(invoice);
   const docCode = formatDocCode(invoice);
+  const makeRecurring = () => {
+    openTab(`/sales/recurring/new?from=${invoice.id}`);
+  };
 
   const pluginLineFields = usePluginLineFields('SalesInvoiceLine');
   const columns = useMemo(
@@ -589,6 +614,8 @@ const InvoiceDetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.salesInvoices.breadcrumb')}
       title={formatDocCode(invoice)}
+      cancelledAt={invoice.cancelledAt}
+      cancelReason={invoice.cancelReason}
       status={statusBadgeProps(invoice.status, DocKind.Invoice)}
       actions={
         <DocumentActionBar
@@ -597,7 +624,7 @@ const InvoiceDetail: React.FC<{
           docId={invoice.id}
           docCode={docCode}
           onCancel={onCancel}
-          showCancel={(invoice.status === 'O' || invoice.status === 'D') && canDelete}
+          showCancel={invoice.status === 'D' && canDelete}
           isCancelling={isCancelling}
           onSendEmail={invoice.status === 'O' ? () => setEmailModalOpen(true) : undefined}
           primary={
@@ -620,8 +647,37 @@ const InvoiceDetail: React.FC<{
       }
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
-        <PaymentStatusBadge status={invoice.paymentStatus} isLocked={invoice.isLocked} />
+        {invoice.status === 'O' && (
+          <PaymentStatusBadge status={invoice.paymentStatus} isLocked={invoice.isLocked} />
+        )}
         <CloneDocumentActions docType="SINV" doc={invoice} show="copy" size={14} />
+        {canWrite && !invoice.rectifiesInvoiceId && (
+          <ResponsiveActions
+            source="secondary:recurring"
+            actions={[
+              {
+                id: 'recurring',
+                label: t('doc.recurring.makeRecurring'),
+                icon: <Repeat size={19} />,
+                onClick: makeRecurring,
+              },
+            ]}
+          >
+            <Button type="button" variant="secondary" size="sm" onClick={makeRecurring}>
+              <Repeat size={14} /> {t('doc.recurring.makeRecurring')}
+            </Button>
+          </ResponsiveActions>
+        )}
+        <CreditNoteActions
+          side="sales"
+          invoice={invoice}
+          invoiceCode={docCode}
+          canWrite={canWrite}
+          onChanged={() => {
+            setPaymentsRefreshKey((v) => v + 1);
+            notifyDocChange(DocType.SalesInvoice);
+          }}
+        />
         <TraceabilityButton type="SINV" id={invoice.id} docCode={docCode} />
         <InternalOrderChip internalOrderId={invoice.internalOrderId} />
         {invoice.amountPaid != null && Number(invoice.amountPaid) > 0 && (
@@ -687,12 +743,21 @@ const InvoiceDetail: React.FC<{
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg">
-            <FileText size={16} className="text-amber-600 dark:text-amber-300 shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium leading-tight">
-              {t('doc.salesInvoices.firmNotice')}
-            </p>
-          </div>
+          {invoice.status === 'D' ? (
+            <Alert tone="info" icon={<FileText size={16} />}>
+              {t(
+                invoice.stockMoved
+                  ? 'doc.salesInvoices.draftNoticeMoved'
+                  : 'doc.salesInvoices.draftNotice',
+              )}
+            </Alert>
+          ) : (
+            invoice.status === 'O' && (
+              <Alert tone="warning" icon={<FileText size={16} />}>
+                {t('doc.salesInvoices.firmNotice')}
+              </Alert>
+            )
+          )}
         </Card>
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
@@ -732,7 +797,7 @@ const InvoiceDetail: React.FC<{
                 <dd className="text-sm font-bold text-fg-default truncate flex items-center gap-2">
                   {docType.name}
                   {docType.isRectify && (
-                    <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                    <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-warning-bg text-warning-fg">
                       {t('doc.invoices.rectifying')}
                     </span>
                   )}
@@ -767,10 +832,10 @@ const InvoiceDetail: React.FC<{
             )}
             {Number(invoice.withholdingRate) > 0 && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-danger uppercase tracking-wider">
                   {t('doc.totals.withholding')}
                 </dt>
-                <dd className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                <dd className="text-sm font-bold text-danger tabular-nums">
                   {invoice.withholdingRate}% ({fmt.money(invoice.withholdingAmount || 0)})
                 </dd>
               </div>
@@ -842,6 +907,8 @@ export const SalesInvoices: React.FC = () => {
     apiEndpoint: '/api/sales/invoices',
     permissions: (user as any)?.permissions?.['/sales/invoices'],
   });
+
+  const creditSubmit = useCreditSubmit();
 
   // Escáner HID + cámara → añade línea automáticamente cuando estamos
   // editando una factura (isCreate o isDetail editable).
@@ -935,19 +1002,23 @@ export const SalesInvoices: React.FC = () => {
       const sdn = JSON.parse(sourceData);
       doc.setState.setPartnerId(sdn.partnerId);
       if (sdn.internalOrderId) setInternalOrderId(sdn.internalOrderId);
+      // Lo que ha vuelto por logística ya no se factura.
+      const stillOut = (l: any) => Number(l.quantity) - Number(l.returnedQty || 0);
       doc.setState.setLines(
-        sdn.lines.map((l: any) => ({
-          itemId: l.itemId,
-          quantity: l.quantity,
-          price: l.price,
-          taxGroupId: l.taxGroupId,
-          warehouseId: l.warehouseId,
-          zoneId: l.zoneId,
-          batchDetails: l.batchDetails,
-          baseType: 'SDN',
-          baseId: sdn.id,
-          baseLine: l.lineNum || l.id,
-        })),
+        sdn.lines
+          .filter((l: any) => stillOut(l) > 0)
+          .map((l: any) => ({
+            itemId: l.itemId,
+            quantity: stillOut(l),
+            price: l.price,
+            taxGroupId: l.taxGroupId,
+            warehouseId: l.warehouseId,
+            zoneId: l.zoneId,
+            batchDetails: l.batchDetails,
+            baseType: 'SDN',
+            baseId: sdn.id,
+            baseLine: l.lineNum || l.id,
+          })),
       );
     } catch (e) {
       console.error('Error parsing copy_pdn_source', e);
@@ -1009,7 +1080,12 @@ export const SalesInvoices: React.FC = () => {
       if (internalOrderId) fiscalFields.internalOrderId = internalOrderId;
       if (externalRef.trim()) fiscalFields.externalRef = externalRef.trim();
 
-      const created = await doc.actions.submitDocument({ ...fiscalFields, ...extra });
+      const created = await creditSubmit(
+        doc.state.partnerId,
+        newExposure(doc.state.lines, doc.computations.total),
+        (credit) => doc.actions.submitDocument({ ...fiscalFields, ...extra, ...credit }),
+      );
+      if (!created) return;
       toast.success(t('doc.salesInvoices.created'));
       notifyDocChange(DocType.SalesInvoice);
       if (created?.id) {
@@ -1131,6 +1207,7 @@ export const SalesInvoices: React.FC = () => {
           onPost={handlePost}
           isPosting={posting}
           canDelete={doc.state.canDelete}
+          canWrite={doc.state.canWrite}
           isCancelling={cancelling}
           masters={doc.masters}
           setViewingBatch={setViewingBatch}

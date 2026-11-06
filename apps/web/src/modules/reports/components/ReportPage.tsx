@@ -1,10 +1,12 @@
+import { useGoBack } from '@/hooks/useGoBack';
+import { PageBack } from '@/components/common/PageBack';
 import { coreApi } from '@/shared/api';
+import { openPdf } from '@/utils/downloadPdf';
 import React, { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Card, Button, Table, PageHeader, useToast } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { ExcelTools, type ExcelColumn } from '@/components/common/ExcelTools';
@@ -53,7 +55,7 @@ export function ReportPage<T extends Record<string, any>>({
 }: Props<T>) {
   const { token, user } = useAuth();
   const { t } = useI18n();
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const toast = useToast();
 
   const downloadPdf = async () => {
@@ -66,16 +68,7 @@ export function ReportPage<T extends Record<string, any>>({
           .join('&')
       : '';
     try {
-      const { blob } = await coreApi.getBlob(`${pdfEndpoint}${qs}`);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${filename}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success(t('reports.common.pdfDownloaded'));
+      await openPdf(`${pdfEndpoint}${qs}`, `${filename}.pdf`);
     } catch (err: any) {
       toast.error(err?.message || t('reports.common.pdfError'));
     }
@@ -111,9 +104,11 @@ export function ReportPage<T extends Record<string, any>>({
         subtitle={subtitle}
         icon={<FileText size={18} />}
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
-          </Button>
+          <PageBack onBack={goBack}>
+            <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+              <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
+            </Button>
+          </PageBack>
         }
         actions={
           <div className="flex items-center gap-2 flex-shrink-0">

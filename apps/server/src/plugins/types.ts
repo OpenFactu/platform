@@ -5,7 +5,17 @@ import { FactuApi, FactuApiTransaction } from '../core/plugins/FactuApi';
 import type { ICarrierAdapter } from '../core/carriers/ICarrierAdapter';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import type { ChatToolContext } from '../core/ai/tools';
+import type { LocalizationPack } from '../core/localization/types';
+import type { TaxResolver } from '../core/tax/TaxEngine';
+import type { TaxIdValidator } from '../core/geo/TaxIdValidators';
+import type { PayrollCalculator } from '../core/hr/payrollCalculation';
+import type { PluginReportDefinition } from '../core/reports/PluginReports';
+import type { FiscalConnector } from '../core/fiscal/FiscalConnectors';
+import type { LinkableObject } from '../core/customFields/linkableObjects';
+import type { BatchExporter, StatementParser } from '../core/banking/bankFormats';
+import type { PluginLifecycleContext } from '../core/plugins/PluginLifecycle';
 import * as schema from '../db/schema';
+import type { pluginDbOperators } from './dbOperators';
 
 export type HookHandler = (context: any) => Promise<void> | void;
 
@@ -37,6 +47,14 @@ export interface PluginContext {
   documents: {
     onBeforeCreate: (tableName: string, handler: HookHandler) => void;
     onAfterCreate: (tableName: string, handler: HookHandler) => void;
+    /** Antes de asentar. Lanza para impedirlo. Dentro de la transacción. */
+    onBeforePost: (tableName: string, handler: HookHandler) => void;
+    /** Ya asentado y con su asiento generado. Un fallo aquí no deshace nada. */
+    onAfterPost: (tableName: string, handler: HookHandler) => void;
+    /** Antes de cancelar. Lanza para impedirlo. Dentro de la transacción. */
+    onBeforeCancel: (tableName: string, handler: HookHandler) => void;
+    /** Ya cancelado, dentro de la transacción. */
+    onAfterCancel: (tableName: string, handler: HookHandler) => void;
     /**
      * Registrar un tipo de documento nuevo (estilo object-type): hereda gratis
      * el flujo genérico completo — API CRUD (`/api/documents/{docType}`),
@@ -82,6 +100,65 @@ export interface PluginContext {
     forTenant: (tenantId: string) => Promise<PluginDrizzleClient>;
     /** Módulo de schema tipado, para construir queries Drizzle en vez de SQL crudo. */
     schema: typeof schema;
+    /**
+     * Operadores de Drizzle (`eq`, `and`, `gte`...). Un plugin los toma de aquí
+     * en vez de instalar `drizzle-orm`: así no necesita dependencias propias.
+     */
+    ops: typeof pluginDbOperators;
+  };
+  /**
+   * Normativa de un país o zona, sin programar: impuestos, plan contable,
+   * conceptos de nómina, terminología y textos legales. Se valida al registrar
+   * y se aplica en cada empresa que active el plugin.
+   */
+  localization: {
+    register: (pack: LocalizationPack) => void;
+  };
+  /**
+   * Reglas de impuestos por línea: varios impuestos, retenciones, reglas según
+   * destino... Devolver null deja el cálculo estándar del grupo de impuesto.
+   */
+  taxes: {
+    registerResolver: (resolver: TaxResolver) => void;
+  };
+  /** Comprobación de la identificación fiscal de un país, además del regex de `Country`. */
+  taxIds: {
+    registerValidator: (country: string, validate: TaxIdValidator) => void;
+  };
+  /** Cálculo de nómina propio. Recibe el resultado estándar para ajustarlo. */
+  payroll: {
+    registerCalculator: (calculator: PayrollCalculator) => void;
+  };
+  /** Informes legales: aparecen en el catálogo de informes, con PDF neutro. */
+  reports: {
+    register: (definition: PluginReportDefinition) => void;
+  };
+  /** Firma, encadenado y envío a la administración, al asentar y cancelar. */
+  /** Objetos propios a los que se puede enlazar un campo de usuario. */
+  linkableObjects: {
+    register: (object: LinkableObject) => void;
+  };
+  /** Formatos de los bancos: leer extractos y generar el fichero de una remesa. */
+  bankFormats: {
+    registerStatementParser: (parser: StatementParser) => void;
+    registerBatchExporter: (exporter: BatchExporter) => void;
+  };
+  fiscal: {
+    registerConnector: (connector: FiscalConnector) => void;
+  };
+  /**
+   * Traducciones. Lo habitual es dejarlas en `i18n/<idioma>.json`, que se cargan
+   * solas; desde aquí se pueden leer en el servidor.
+   */
+  i18n: {
+    /** Traduce una clave de este plugin. Si no existe, devuelve el texto tal cual. */
+    t: (locale: string, key: string, vars?: Record<string, string | number>) => string;
+    register: (locale: string, catalog: Record<string, unknown>) => void;
+  };
+  /** Avisos cuando una empresa activa o desactiva este plugin. */
+  lifecycle: {
+    onActivate: (handler: (ctx: PluginLifecycleContext) => Promise<void> | void) => void;
+    onDeactivate: (handler: (ctx: PluginLifecycleContext) => Promise<void> | void) => void;
   };
   /** Registro programático de UI, alternativa a declarar todo en manifest.json. */
   widgets: {

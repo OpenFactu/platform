@@ -15,6 +15,10 @@ import QRCode from 'qrcode';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
+import { revokeAllForUser, setSessionTenant } from '../core/auth/sessions';
+import { mfaRequiredSomewhere } from '../core/auth/policy';
+import { recordAuthEvent } from '../core/auth/authEvents';
+import { clientInfo } from '../core/auth/clientInfo';
 import {
   encryptSecret,
   decryptSecret,
@@ -26,6 +30,21 @@ const router = Router();
 const ISSUER = 'Keirost';
 
 /**
+ * Los respaldos se guardan como `XXXX-XXXX`; quien teclea puede omitir el guion, usar
+ * minúsculas o separar con espacios. Solo se reformatea si quedan 8 caracteres.
+ */
+export function normalizeBackupCode(code: string): string {
+  const clean = (code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return clean.length === 8 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+}
+
+/** Comprueba el código del alta del 2FA con la misma ventana de ±1 paso que el login. */
+export function verifyEnrollCode(code: string, secret: string, window = 1): boolean {
+  const epoch = Number(authenticator.allOptions().epoch ?? Date.now());
+  return authenticator.clone({ window, epoch }).check(String(code).replace(/\s|-/g, ''), secret);
+}
+
+/**
  * Verifica un código de 2FA contra el secreto TOTP o, si no coincide, contra los
  * códigos de respaldo (consumiéndolo). Devuelve `{ ok, usedBackup }` y, si se usó
  * un backup, la lista de hashes restante para persistir.
@@ -34,7 +53,8 @@ export function verifyTwoFactor(
   code: string,
   encryptedSecret: string | null,
   backupCodesJson: string | null,
-): { ok: boolean; usedBackup: boolean; remainingBackups?: string[] } {
+  lastStep: number | null = null,
+): { ok: boolean; usedBackup: boolean; remainingBackups?: string[]; step?: number } {
   const clean = (code || '').replace(/\s|-/g, '');
   if (!clean) return { ok: false, usedBackup: false };
 
@@ -42,8 +62,17 @@ export function verifyTwoFactor(
   if (encryptedSecret) {
     try {
       const secret = decryptSecret(encryptedSecret);
-      if (authenticator.verify({ token: clean, secret })) {
-        return { ok: true, usedBackup: false };
+      // Instancia propia: la ventana de ±1 paso no se filtra a las opciones globales.
+      // Un solo reloj para comprobar el código y para calcular su paso.
+      const epoch = Number(authenticator.allOptions().epoch ?? Date.now());
+      const auth = authenticator.clone({ window: 1, epoch });
+      const delta = auth.checkDelta(clean, secret);
+      if (delta !== null && delta !== undefined) {
+        const step = Math.floor(epoch / 1000 / 30) + delta;
+        // Un código ya usado (o más viejo que el último aceptado) no vale otra vez.
+        if (lastStep == null || step > lastStep) {
+          return { ok: true, usedBackup: false, step };
+        }
       }
     } catch {
       /* secreto corrupto → cae a backup */
@@ -54,7 +83,7 @@ export function verifyTwoFactor(
   if (backupCodesJson) {
     try {
       const hashes: string[] = JSON.parse(backupCodesJson);
-      const incoming = hashCode(code);
+      const incoming = hashCode(normalizeBackupCode(code));
       const idx = hashes.indexOf(incoming);
       if (idx !== -1) {
         const remaining = hashes.filter((_, i) => i !== idx);
@@ -143,7 +172,7 @@ router.post('/enable', async (req: any, res) => {
     } catch {
       return res.status(400).json({ error: 'Configuración de 2FA inválida, reinténtalo' });
     }
-    if (!authenticator.verify({ token: String(code).replace(/\s|-/g, ''), secret })) {
+    if (!verifyEnrollCode(code, secret)) {
       return res.status(400).json({ error: 'Código incorrecto' });
     }
 
@@ -158,6 +187,17 @@ router.post('/enable', async (req: any, res) => {
       })
       .where(eq(schema.globalUsers.id, userId));
 
+    await recordAuthEvent({
+      userId,
+      kind: 'mfa_change',
+      ok: true,
+      client: clientInfo(req),
+      detail: { enabled: true },
+    });
+    // Con el segundo factor ya puesto, la sesión deja de estar restringida.
+    if (req.session?.restricted) {
+      await setSessionTenant(req.session.id, req.session.tenantId ?? null, null);
+    }
     res.json({ enabled: true, backupCodes });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });
@@ -184,7 +224,25 @@ router.post('/disable', async (req: any, res) => {
       return res.status(400).json({ error: 'El 2FA no está activo' });
     }
 
-    const check = verifyTwoFactor(String(code), user.totpSecret, user.totpBackupCodes);
+    // Si una empresa suya exige 2FA y no le queda otro factor, no puede quitarlo.
+    const [passkey] = await publicDb
+      .select({ id: schema.userPasskeys.id })
+      .from(schema.userPasskeys)
+      .where(eq(schema.userPasskeys.userId, userId))
+      .limit(1);
+    if (!passkey && (await mfaRequiredSomewhere(userId))) {
+      return res.status(409).json({
+        error: 'Una de tus empresas exige la verificación en dos pasos: no se puede desactivar',
+        code: 'MFA_REQUIRED_BY_POLICY',
+      });
+    }
+
+    const check = verifyTwoFactor(
+      String(code),
+      user.totpSecret,
+      user.totpBackupCodes,
+      user.totpLastStep ?? null,
+    );
     if (!check.ok) return res.status(400).json({ error: 'Código incorrecto' });
 
     await publicDb
@@ -197,6 +255,16 @@ router.post('/disable', async (req: any, res) => {
       })
       .where(eq(schema.globalUsers.id, userId));
 
+    // Sin segundo factor, las demás sesiones dejan de ser de confianza; la actual sigue.
+    await revokeAllForUser(userId, 'mfa_disabled', req.session?.id);
+
+    await recordAuthEvent({
+      userId,
+      kind: 'mfa_change',
+      ok: true,
+      client: clientInfo(req),
+      detail: { enabled: false },
+    });
     res.json({ enabled: false });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });

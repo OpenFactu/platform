@@ -1,6 +1,23 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 
+/** Los dos primeros pasos, los únicos posibles cuando no hay petición de por medio. */
+export async function configuredPublicBaseUrl(tenantClient: any): Promise<string> {
+  try {
+    if (tenantClient) {
+      const [row] = await tenantClient
+        .select({ value: schema.systemConfigs.value })
+        .from(schema.systemConfigs)
+        .where(eq(schema.systemConfigs.key, 'app_public_base_url'));
+      const v = row?.value?.toString().trim();
+      if (v && /^https?:\/\//.test(v)) return v.replace(/\/$/, '');
+    }
+  } catch {
+    /* ignore, cae al siguiente */
+  }
+  return process.env.PUBLIC_BASE_URL?.trim().replace(/\/$/, '') || '';
+}
+
 /**
  * URL base pública para los enlaces de los emails al destinatario.
  *
@@ -14,22 +31,8 @@ import * as schema from '../db/schema';
  *   6. `req.protocol + host` (último recurso).
  */
 export async function publicBaseUrl(req: any): Promise<string> {
-  // 1. SystemConfig del tenant.
-  try {
-    if (req.tenantClient) {
-      const [row] = await req.tenantClient
-        .select({ value: schema.systemConfigs.value })
-        .from(schema.systemConfigs)
-        .where(eq(schema.systemConfigs.key, 'app_public_base_url'));
-      const v = row?.value?.toString().trim();
-      if (v && /^https?:\/\//.test(v)) return v.replace(/\/$/, '');
-    }
-  } catch {
-    /* ignore, cae al siguiente */
-  }
-
-  const envUrl = process.env.PUBLIC_BASE_URL?.trim();
-  if (envUrl) return envUrl.replace(/\/$/, '');
+  const configured = await configuredPublicBaseUrl(req.tenantClient);
+  if (configured) return configured;
 
   const origin = (req.headers?.origin as string | undefined)?.trim();
   if (origin && /^https?:\/\//.test(origin)) return origin.replace(/\/$/, '');

@@ -1,0 +1,11 @@
+{
+  "name": "@openfactu/messaging",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servicio de mensajería en Rust. Este package.json solo existe para que `npm run dev:all` lo arranque junto al resto.",
+  "scripts": {
+    "dev": "node scripts/cargo.mjs run",
+    "build": "node scripts/cargo.mjs build --release",
+    "check": "cargo fmt --check && node scripts/cargo.mjs clippy --all-targets -- -D warnings && node scripts/cargo.mjs test"
+  }
+}

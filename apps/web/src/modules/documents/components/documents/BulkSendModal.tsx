@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
+import { Alert, Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
 import { Mail, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { documentEmailApi } from '../../api';
@@ -77,7 +77,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
             <Mail size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
+            <h2 className="text-lg font-bold text-fg-default font-display">
               {t('doc.bulk.title')}
             </h2>
             <p className="text-xs text-ink-500 dark:text-ink-400">
@@ -87,9 +87,9 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
         </div>
 
         {missingEmailCount > 0 && (
-          <div className="p-2.5 rounded-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200">
-            ⚠ {t('doc.bulk.missingEmail', { n: missingEmailCount, total: items.length })}
-          </div>
+          <Alert tone="warning">
+            {t('doc.bulk.missingEmail', { n: missingEmailCount, total: items.length })}
+          </Alert>
         )}
 
         <div className="space-y-3">
@@ -120,7 +120,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
         </div>
 
         {/* Lista de documentos */}
-        <div className="border border-line dark:border-ink-700 rounded-sm overflow-hidden">
+        <div className="border border-border-default rounded-sm overflow-hidden">
           <div className="bg-line-2/60 dark:bg-ink-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
             {t('doc.bulk.docsToSend')}
           </div>
@@ -135,21 +135,19 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
                   <span className="font-mono text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-xs">
                     {it.docType}
                   </span>
-                  <span className="font-mono font-bold text-ink-900 dark:text-slate-100">
+                  <span className="font-mono font-bold text-fg-default">
                     {it.docCode || it.docId.slice(0, 8)}
                   </span>
-                  <span className="flex-1 truncate text-ink-700 dark:text-slate-200">
-                    {it.partnerName || '—'}
-                  </span>
+                  <span className="flex-1 truncate text-fg-body">{it.partnerName || '—'}</span>
                   <span className="text-[10px] text-ink-400 truncate">
                     {it.partnerEmail || t('doc.bulk.noEmail')}
                   </span>
                   {r ? (
                     r.ok ? (
-                      <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                      <CheckCircle2 size={14} className="text-success shrink-0" />
                     ) : (
                       <span
-                        className="flex items-center gap-1 text-rose-600 text-[10px]"
+                        className="flex items-center gap-1 text-danger text-[10px]"
                         title={r.error}
                       >
                         <XCircle size={14} /> {r.error?.slice(0, 20)}

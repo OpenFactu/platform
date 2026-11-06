@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, usePopup, useToast } from '@openfactu/ui';
@@ -9,10 +10,13 @@ import { LabelPrintButton } from '@/modules/document-templates/components/LabelP
 import StockDetailModal from '../components/StockDetailModal';
 import { validateBarcode } from '@/utils/barcodeValidation';
 import { useItemForm } from '../hooks/useItemForm';
+import { useSupplierOptions } from '../hooks/useSupplierOptions';
 import { ItemGeneralFields } from '../components/ItemGeneralFields';
 import { ItemLogisticsFields } from '../components/ItemLogisticsFields';
 import { ItemWebFields } from '../components/ItemWebFields';
 import { AlternativeUomsPanel } from '../components/AlternativeUomsPanel';
+import { ItemCostPanel } from '../components/ItemCostPanel';
+import { canSeeItemCosts } from '../domain/itemCost';
 import { categoriesApi, itemsApi, uomApi, warehousesApi, zonesApi } from '../api';
 import type { Category } from '../domain/category';
 import type { Uom } from '../domain/uom';
@@ -41,6 +45,7 @@ export const ItemDetail: React.FC = () => {
     user?.role === 'SUPERUSER' || user?.role === 'ADMIN' || user?.permissions?.['/items']?.write;
 
   const form = useItemForm();
+  const suppliers = useSupplierOptions();
   const [item, setItem] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -170,15 +175,17 @@ export const ItemDetail: React.FC = () => {
             className="flex-1 min-w-0"
             size="md"
             breadcrumbs={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/items')}
-                className="w-fit gap-1"
-              >
-                <ArrowLeft size={12} /> {t('inventory.itemDetail.catalog')}
-              </Button>
+              <PageBack onBack={() => navigate('/items')}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/items')}
+                  className="w-fit gap-1"
+                >
+                  <ArrowLeft size={12} /> {t('inventory.itemDetail.catalog')}
+                </Button>
+              </PageBack>
             }
             title={
               <>
@@ -258,8 +265,18 @@ export const ItemDetail: React.FC = () => {
             set={form.set}
             warehouses={warehouses}
             zones={zones}
+            suppliers={suppliers}
           />
         </Card>
+        {canSeeItemCosts(user) && (
+          <Card
+            className="xl:col-span-2"
+            title={t('inventory.itemDetail.sections.costs')}
+            subtitle={t('inventory.itemDetail.sections.costsSubtitle')}
+          >
+            <ItemCostPanel item={item} />
+          </Card>
+        )}
         <Card
           title={t('inventory.itemDetail.sections.web')}
           subtitle={t('inventory.itemDetail.sections.webSubtitle')}

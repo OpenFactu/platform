@@ -66,6 +66,11 @@ const ALL_SCOPES = [
     description: 'settings.apiTokens.scopes.writeMastersDesc',
   },
   {
+    id: 'write:bancos',
+    label: 'settings.apiTokens.scopes.writeBanking',
+    description: 'settings.apiTokens.scopes.writeBankingDesc',
+  },
+  {
     id: 'mcp:read',
     label: 'settings.apiTokens.scopes.mcpRead',
     description: 'settings.apiTokens.scopes.mcpReadDesc',

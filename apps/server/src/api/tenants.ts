@@ -1,10 +1,11 @@
 import { Router, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { eq, or } from 'drizzle-orm';
-import { AuthService } from '../core/auth/AuthService';
+import { resolveSession } from '../core/auth/sessions';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { SchemaManager } from '../core/tenant/SchemaManager';
 import { setCompanyConfig } from '../core/config/companyConfig';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 import * as schema from '../db/schema';
 import { logAudit } from '../utils/audit';
 
@@ -16,13 +17,22 @@ interface AuthPayload {
   tenantId?: string | null;
 }
 
-function requireAuth(req: any, res: Response, next: NextFunction) {
+async function requireAuth(req: any, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
   const token = authHeader.split(' ')[1];
-  const payload: AuthPayload | null = AuthService.verifyToken(token);
-  if (!payload) return res.status(401).json({ error: 'Token inválido' });
-  req.authPayload = payload;
+  let resolved: Awaited<ReturnType<typeof resolveSession>>;
+  try {
+    resolved = await resolveSession(token);
+  } catch (e: any) {
+    console.error('[tenants] No se pudo resolver la sesión:', e?.message);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+  if ('error' in resolved) {
+    const code = resolved.error === 'INVALID' ? 'UNAUTHORIZED' : resolved.error;
+    return res.status(401).json({ error: 'Token inválido', code });
+  }
+  req.authPayload = resolved.payload as AuthPayload;
   next();
 }
 
@@ -119,19 +129,27 @@ router.post('/', requireAdmin, async (req: any, res) => {
     // Persistir config inicial en SystemConfig del nuevo tenant
     try {
       const tenantDb = ClientFactory.getClient(schemaName);
+      const country = body.country || '';
+      const [countryRow] = country
+        ? await publicDb.select().from(schema.countries).where(eq(schema.countries.code, country))
+        : [];
+      const currency = body.currency || countryRow?.currency || 'EUR';
       await setCompanyConfig(tenantDb, {
         name,
         taxId: nif || '',
         address: body.address || '',
         city: body.city || '',
         zipCode: body.zipCode || '',
-        country: body.country || 'ES',
+        country,
         email: body.email || '',
         phone: body.phone || '',
         website: body.website || '',
-        currency: body.currency || 'EUR',
+        currency,
         fiscalYearStart: body.fiscalYearStart || '01-01',
       });
+      await LocalizationInstaller.setBaseCurrency(tenantDb, currency);
+      // La normativa del país, si hay un plugin instalado que la aporte.
+      await LocalizationInstaller.adoptForCountry(tenantId, schemaName, country);
     } catch (err: any) {
       console.warn('[Tenants] No se pudo sembrar datos de empresa en SystemConfig:', err.message);
     }

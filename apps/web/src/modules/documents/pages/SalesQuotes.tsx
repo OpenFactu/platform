@@ -8,6 +8,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -31,7 +32,6 @@ import {
   Pencil,
   FileText,
   Copy,
-  Download,
   Eye,
   Check,
   X,
@@ -46,12 +46,13 @@ import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 
 import { usePluginLineFields } from '@/hooks/usePluginLineFields';
-import { useDocument, DocKind, DocSide } from '@openfactu/common';
+import { DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
 import { formatDocCode } from '@/utils/docCode';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
@@ -90,7 +91,7 @@ const QuoteList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`${API}/${id}/pdf`);
+      await openPdf(`${API}/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -174,7 +175,7 @@ const QuoteList: React.FC<{
     { label: t('doc.quotes.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
   ];
@@ -338,7 +339,7 @@ const QuoteForm: React.FC<{
                 <PartnerField
                   label={t('doc.partner.customer')}
                   value={state.partnerId}
-                  onChange={setState.setPartnerId}
+                  onChange={actions.selectPartner}
                   partners={masters.partners}
                   placeholder={t('doc.common.selectCustomer')}
                 />
@@ -346,7 +347,9 @@ const QuoteForm: React.FC<{
                   label={t('doc.common.date')}
                   required
                   value={state.date}
-                  onChange={(v) => setState.setDate(v ?? '')}
+                  onChange={(v) =>
+                    editingCode ? setState.setDate(v ?? '') : actions.selectDate(v ?? '')
+                  }
                 />
                 <DatePicker
                   label={t('doc.quotes.validUntil')}
@@ -426,7 +429,8 @@ const QuoteDetail: React.FC<{
   const columns = useMemo(
     () =>
       buildDetailLineColumns({
-        kind: DocKind.Order,
+        // Un presupuesto no se entrega: lleva cantidad, no pedido y entregado.
+        kind: DocKind.Invoice,
         side: DocSide.Sale,
         masters,
         fmt,
@@ -449,6 +453,8 @@ const QuoteDetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.quotes.breadcrumb')}
       title={docCode}
+      cancelledAt={quote.cancelledAt}
+      cancelReason={quote.cancelReason}
       status={statusBadge(quote.status)}
       actions={
         <DocumentActionBar
@@ -524,7 +530,7 @@ const QuoteDetail: React.FC<{
                 variant="secondary"
                 size="sm"
                 onClick={() => onStatusChange('A')}
-                className="h-9 gap-2 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+                className="h-9 gap-2 text-success border-success"
               >
                 <Check size={14} /> {t('doc.quotes.accept')}
               </Button>
@@ -532,7 +538,7 @@ const QuoteDetail: React.FC<{
                 variant="secondary"
                 size="sm"
                 onClick={() => onStatusChange('R')}
-                className="h-9 gap-2 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
+                className="h-9 gap-2 text-danger border-danger"
               >
                 <X size={14} /> {t('doc.quotes.reject')}
               </Button>
@@ -573,12 +579,9 @@ const QuoteDetail: React.FC<{
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-lg">
-            <FileText size={16} className="text-sky-600 dark:text-sky-300 shrink-0" />
-            <p className="text-xs text-sky-800 dark:text-sky-200 font-medium leading-tight">
-              {t('doc.quotes.offerNotice')}
-            </p>
-          </div>
+          <Alert tone="info" icon={<FileText size={16} />}>
+            {t('doc.quotes.offerNotice')}
+          </Alert>
         </Card>
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">

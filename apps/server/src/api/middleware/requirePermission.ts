@@ -139,6 +139,30 @@ export function requirePermission(path: string, action?: PermissionAction) {
 }
 
 /**
+ * Vale con cualquiera de esos permisos. Para lo que usan dos perfiles distintos,
+ * como las rutas del conductor: el suyo propio o el de la oficina. `roles` deja
+ * pasar además un rol que ya implica el acceso.
+ */
+export function requireAnyPermission(paths: string[], roles: string[] = []) {
+  return async (req: any, res: Response, next: NextFunction) => {
+    req[AUTHORIZED] = true;
+    if (req.apiToken) return next();
+    if (!req.user?.id) return res.status(401).json({ error: 'No autorizado' });
+    if (roles.includes(req.user.role)) return next();
+    try {
+      const permissions = await effectivePermissionsOf(req);
+      if (permissions === null) return next();
+      const needed = actionForMethod(req.method);
+      if (paths.some((path) => permissions[path]?.[needed])) return next();
+      return res.status(403).json({ error: 'No tienes permiso para esto.' });
+    } catch (e: any) {
+      console.error('[Permisos] Error resolviendo permisos:', e?.message);
+      return res.status(500).json({ error: 'No se pudieron comprobar los permisos.' });
+    }
+  };
+}
+
+/**
  * Marca la petición como autorizada sin exigir permiso de módulo. Para los
  * endpoints de apoyo que usan TODAS las pantallas (catálogos de países,
  * divisas, la config de marca, las notificaciones propias): denegarlos por

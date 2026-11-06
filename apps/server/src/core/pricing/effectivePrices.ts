@@ -1,5 +1,5 @@
 /**
- * Precio efectivo de venta (SIN IVA) de unos artículos para un cliente:
+ * Precio efectivo de venta (SIN impuestos) de unos artículos para un cliente:
  * el de su tarifa si la tiene y el artículo está en ella; si no, el precio base.
  * Lo comparten la tienda pública y el CRM.
  */

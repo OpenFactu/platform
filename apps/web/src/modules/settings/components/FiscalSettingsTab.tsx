@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Input, Button, Checkbox, ColorInput, FileDropzone, useToast } from '@openfactu/ui';
+import { Card, Input, Button, Checkbox, FileDropzone, useToast } from '@openfactu/ui';
 import {
   Landmark,
   Coins,
@@ -16,21 +16,8 @@ import { FiscalCatalogTable } from '@/components/fiscal/FiscalCatalogTable';
 import { PaymentTermsEditor } from '@/modules/accounting/components/PaymentTermsEditor';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
+import { useLocalization } from '@/context/LocalizationContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
-
-/** Paleta de arranque para el color principal del PDF. */
-const PDF_COLOR_PRESETS = [
-  '#0D9488',
-  '#2563EB',
-  '#7C3AED',
-  '#DB2777',
-  '#DC2626',
-  '#EA580C',
-  '#CA8A04',
-  '#16A34A',
-  '#0F172A',
-  '#64748B',
-];
 
 /**
  * Pestaña "Fiscal" dentro de Configuración de Empresa. Gestiona los
@@ -41,6 +28,7 @@ export const FiscalSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const { t } = useI18n();
+  const { info: localization } = useLocalization();
   // PUT /api/config/fiscal exige ADMIN o SUPERUSER en el backend
   // (adminMiddleware, apps/server/src/api/config.ts).
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
@@ -58,7 +46,6 @@ export const FiscalSettingsTab: React.FC = () => {
     company_bank_swift: '',
     company_fiscal_regime: '',
     company_invoice_footer: '',
-    company_invoice_color: '#0D9488',
     signature_name: '',
     signature_role: '',
     signature_image_url: '',
@@ -102,9 +89,31 @@ export const FiscalSettingsTab: React.FC = () => {
     }
   };
 
+  const activePacks = localization?.packs ?? [];
+  const connectors = localization?.fiscalConnectors ?? [];
+
   return (
     <div className="space-y-6">
-      {/* ─── Datos bancarios + régimen + color ─── */}
+      {/* ─── Datos bancarios + régimen ─── */}
+      <Card>
+        <h3 className="text-sm font-bold text-fg-default mb-2">
+          {t('app.localization.activePacks')}
+        </h3>
+        {activePacks.length > 0 ? (
+          <p className="text-sm text-fg-body">
+            {activePacks.map((pack) => `${pack.name} (${pack.version})`).join(', ')}
+          </p>
+        ) : (
+          <p className="text-sm text-warning-fg">{t('app.localization.noPack')}</p>
+        )}
+        <p className="text-xs text-fg-muted mt-2">
+          {t('app.localization.connectors')}:{' '}
+          {connectors.length > 0
+            ? connectors.map((connector) => connector.name).join(', ')
+            : t('app.localization.noConnectors')}
+        </p>
+      </Card>
+
       <Card>
         <div className="p-6 space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2">
@@ -151,14 +160,6 @@ export const FiscalSettingsTab: React.FC = () => {
                 placeholder={t('settingsCompany.fiscal.invoiceFooterPlaceholder')}
               />
             </div>
-            {/* ColorInput ya trae muestra + campo hex; el par de controles
-                (selector de color nativo + Input) que había aquí era eso a mano. */}
-            <ColorInput
-              label={t('settingsCompany.fiscal.pdfColor')}
-              value={bank.company_invoice_color}
-              onChange={(v) => setBank({ ...bank, company_invoice_color: v })}
-              presets={PDF_COLOR_PRESETS}
-            />
           </div>
           <div className="flex flex-col items-end gap-2">
             {!isAdmin && (

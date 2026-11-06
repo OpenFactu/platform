@@ -1,0 +1,312 @@
+{
+  "messaging": {
+    "nav": {
+      "label": "Mensajes",
+      "description": "Chat del equipo: conversaciones directas y de grupo, ficheros y documentos compartidos.",
+      "messages": "Mensajes",
+      "channels": "Canales",
+      "meetings": "Reuniones"
+    },
+    "open": "Abrir mensajes",
+    "openWithUnread": "Abrir mensajes ({count} sin leer)",
+    "openFullPage": "Abrir en pantalla completa",
+    "unknownUser": "Usuario",
+    "emptyGroup": "Grupo sin participantes",
+    "loading": "Cargando mensajes…",
+    "disabled": {
+      "title": "Mensajes no disponible",
+      "hint": "Los mensajes no están activados en esta empresa o tu usuario no tiene permiso. Un administrador puede activarlos en Aplicaciones."
+    },
+    "error": {
+      "title": "No se pudo conectar con la mensajería",
+      "hint": "El servicio de mensajes no responde. Vuelve a intentarlo en unos segundos."
+    },
+    "retry": "Reintentar",
+    "newConversation": {
+      "button": "Nueva conversación",
+      "title": "Nueva conversación",
+      "direct": "Con una persona",
+      "group": "Grupo",
+      "person": "Persona",
+      "personPlaceholder": "Busca a alguien del equipo",
+      "people": "Participantes",
+      "peoplePlaceholder": "Elige a quién añadir",
+      "groupTitle": "Nombre del grupo",
+      "groupTitlePlaceholder": "Ej. Equipo de ventas",
+      "create": "Empezar",
+      "noMembers": "No hay más personas en la empresa."
+    },
+    "documents": {
+      "types": {
+        "SINV": "Factura",
+        "PINV": "Factura de compra",
+        "SO": "Pedido de venta",
+        "PO": "Pedido de compra",
+        "SDN": "Albarán",
+        "PDN": "Albarán de compra"
+      },
+      "shared": "Documento compartido",
+      "share": "Compartir documento",
+      "shareTitle": "Compartir un documento",
+      "searchPlaceholder": "Número o cliente…",
+      "minChars": "Escribe al menos dos caracteres.",
+      "noResults": "No hay documentos que coincidan.",
+      "open": "Abrir",
+      "restricted": "Sin acceso"
+    },
+    "members": {
+      "button": "Participantes",
+      "title": "Participantes del grupo",
+      "rename": "Nombre del grupo",
+      "add": "Añadir personas",
+      "addPlaceholder": "Elige a quién añadir",
+      "remove": "Quitar",
+      "leave": "Salir del grupo",
+      "save": "Guardar",
+      "owner": "Propietario",
+      "you": "Tú"
+    },
+    "errors": {
+      "generic": "No se pudo completar la acción.",
+      "message_empty": "El mensaje está vacío.",
+      "message_too_long": "El mensaje es demasiado largo.",
+      "invalid_payload": "El contenido del mensaje no es válido.",
+      "direct_needs_one_peer": "Elige a una persona.",
+      "group_needs_peers": "Añade al menos a otra persona al grupo.",
+      "too_many_participants": "Demasiados participantes.",
+      "title_too_long": "El nombre del grupo es demasiado largo.",
+      "participants_not_in_tenant": "Alguna de esas personas no es de esta empresa.",
+      "only_owner_can_remove": "Solo el propietario del grupo puede quitar a otros.",
+      "only_author": "Solo puedes cambiar tus propios mensajes.",
+      "not_editable": "Este mensaje no se puede editar.",
+      "read_only": "Tu usuario solo puede leer los mensajes.",
+      "reply_not_found": "El mensaje al que respondes ya no está.",
+      "conversation_not_found": "Esa conversación ya no existe o has salido de ella.",
+      "message_not_found": "Ese mensaje ya no existe.",
+      "invalid_token": "Telegram no reconoce ese token. Cópialo otra vez de @BotFather.",
+      "provider_unreachable": "No se pudo conectar con Telegram. Inténtalo en un momento.",
+      "manage_required": "Solo un administrador puede conectar canales.",
+      "customers_required": "No tienes permiso para atender a clientes.",
+      "unsupported_by_channel": "Este canal no admite ese tipo de mensaje.",
+      "conversation_not_editable": "Esta conversación no se puede modificar.",
+      "contact_not_found": "Ese cliente ya no existe.",
+      "invalid_meeting": "Revisa los datos de la reunión: asunto, horario y enlace.",
+      "unknown_meeting_provider": "Ese tipo de reunión no está disponible.",
+      "only_organizer": "Solo quien organiza la reunión puede cambiarla.",
+      "meeting_cancelled": "La reunión ya está cancelada.",
+      "meeting_not_found": "Esa reunión ya no existe.",
+      "calls_required": "No tienes permiso para videollamadas.",
+      "calls_not_supported": "Las conversaciones con clientes no admiten llamada.",
+      "video_unavailable": "El servicio de vídeo no está disponible.",
+      "invite_not_found": "Ese enlace ya no existe.",
+      "call_not_found": "La llamada ya ha terminado."
+    },
+    "channels": {
+      "title": "Canales de clientes",
+      "hint": "Conecta los canales por los que te escriben los clientes. Las conversaciones llegan a Mensajes y las atiende quien tenga el permiso «Mensajes de clientes».",
+      "names": {
+        "internal": "Equipo",
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
+      },
+      "status": {
+        "active": "Conectado",
+        "error": "Con problemas",
+        "disabled": "Desactivado"
+      },
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "disconnectTitle": "¿Desconectar el bot?",
+      "disconnectHint": "Dejarán de llegar mensajes nuevos por Telegram. Las conversaciones que ya hay se quedan.",
+      "adminOnly": "Solo un administrador puede conectar el bot de la empresa.",
+      "notDelivered": "No se pudo entregar por el canal",
+      "telegram": {
+        "description": "Los clientes escriben al bot de la empresa y el equipo contesta desde Mensajes.",
+        "step1": "En Telegram, abre @BotFather y envíale /newbot.",
+        "step2": "Ponle el nombre de la empresa y un usuario que acabe en «bot».",
+        "step3": "Copia el token que te da y pégalo aquí.",
+        "token": "Token del bot",
+        "connectedAs": "Conectado como {name}",
+        "openBot": "Abrir el bot",
+        "shareHint": "Comparte el enlace del bot con tus clientes (en la web, en las facturas, en el correo) para que te escriban por ahí."
+      }
+    },
+    "contacts": {
+      "linkTitle": "Vincular con un interlocutor",
+      "linkHint": "Así sabrás qué cliente del ERP es y podrás abrir su ficha desde la conversación.",
+      "partner": "Interlocutor",
+      "partnerPlaceholder": "Busca por nombre, código o identificación fiscal",
+      "noPartners": "No hay interlocutores que coincidan.",
+      "link": "Vincular",
+      "unlink": "Desvincular",
+      "openPartner": "Abrir la ficha"
+    },
+    "meetings": {
+      "schedule": "Programar reunión",
+      "scheduleTitle": "Programar una reunión",
+      "rescheduleTitle": "Reprogramar la reunión",
+      "save": "Guardar cambios",
+      "titleLabel": "Asunto",
+      "titlePlaceholder": "Repaso del pedido, demo, llamada…",
+      "date": "Día",
+      "time": "Hora",
+      "duration": "Duración",
+      "minutes": "{n} min",
+      "link": "Enlace de la reunión",
+      "linkHint": "Pega el enlace de Meet, Teams, Zoom o la herramienta que uséis.",
+      "problems": {
+        "title": "Ponle un asunto.",
+        "when": "Elige día y hora.",
+        "past": "Esa hora ya ha pasado.",
+        "url": "Tiene que ser un enlace que empiece por https://.",
+        "conversation": "Elige al menos a una persona.",
+        "customerAlone": "Un cliente va solo: no puede entrar en un grupo con el equipo."
+      },
+      "text": "Reunión",
+      "cancelledText": "Reunión cancelada",
+      "phase": {
+        "upcoming": "Próxima",
+        "live": "Ahora",
+        "ended": "Terminada",
+        "cancelled": "Cancelada"
+      },
+      "join": "Unirse",
+      "addToCalendar": "Al calendario",
+      "reschedule": "Reprogramar",
+      "cancel": "Cancelar reunión",
+      "cancelTitle": "¿Cancelar la reunión?",
+      "cancelMessage": "«{title}» quedará cancelada para todos los de la conversación.",
+      "cancelConfirm": "Cancelar reunión",
+      "calendar": {
+        "title": "Reuniones",
+        "empty": "No hay reuniones en estas fechas. Pulsa un hueco para programar una.",
+        "conversation": "Participantes",
+        "conversationPlaceholder": "Personas, grupos o un cliente…",
+        "viewConversation": "Ver conversación",
+        "loadError": "No se pudieron cargar las reuniones.",
+        "newGroupHint": "Se creará un grupo con el asunto de la reunión."
+      },
+      "providers": {
+        "keirost": "Sala de Keirost",
+        "link": "Enlace externo"
+      }
+    },
+    "calls": {
+      "title": "Videollamada",
+      "start": "Videollamada",
+      "joinOngoing": "Entrar en la llamada en curso",
+      "connecting": "Conectando…",
+      "previewTitle": "Antes de entrar",
+      "join": "Entrar",
+      "mic": "Micrófono",
+      "camera": "Cámara",
+      "defaultDevice": "Predeterminado",
+      "device": {
+        "audioinput": "Micrófono",
+        "videoinput": "Cámara"
+      },
+      "muteMic": "Silenciar micrófono",
+      "unmuteMic": "Activar micrófono",
+      "camOff": "Apagar cámara",
+      "camOn": "Encender cámara",
+      "share": "Compartir pantalla",
+      "stopShare": "Dejar de compartir",
+      "hangUp": "Colgar",
+      "minimize": "Minimizar",
+      "expand": "Ampliar",
+      "muted": "Silenciado",
+      "screenOf": "Pantalla de {name}",
+      "incoming": "{name} te está llamando",
+      "accept": "Contestar",
+      "decline": "Ignorar",
+      "peopleInside": "Dentro: {n}",
+      "nobodyInside": "Aún no hay nadie dentro.",
+      "ended": "Videollamada · {duration}",
+      "lessThanMinute": "menos de 1 min",
+      "minutes": "{n} min",
+      "hours": "{h} h {m} min",
+      "problems": {
+        "insecure": "El navegador solo permite la cámara y el micrófono por HTTPS.",
+        "permission": "El navegador no tiene permiso para usar la cámara o el micrófono.",
+        "no_device": "No se ha encontrado cámara o micrófono.",
+        "device_busy": "Otra aplicación está usando la cámara o el micrófono.",
+        "connection_failed": "No se pudo conectar el vídeo. Puede que tu red bloquee UDP: avisa a quien administre Keirost.",
+        "connection_lost": "Se perdió la conexión y has salido de la llamada.",
+        "call_full": "La llamada está llena.",
+        "call_not_found": "La llamada ya ha terminado.",
+        "calls_required": "No tienes permiso para videollamadas.",
+        "video_unavailable": "El servicio de vídeo no está disponible.",
+        "generic": "No se pudo entrar en la llamada."
+      },
+      "diag": {
+        "title": "Videollamadas",
+        "up": "El servicio de vídeo está en marcha.",
+        "down": "El servicio de vídeo no ha podido abrir su puerto UDP. Revisa el log de la mensajería.",
+        "https": "Esta página va por HTTPS: el navegador dará cámara y micro.",
+        "noHttps": "Esta página no va por HTTPS: el navegador no dará cámara ni micro.",
+        "publicIp": "Se anuncia {address} (configurada en MESSAGING_RTC_PUBLIC_IP).",
+        "localIp": "Se anuncia {address}, detectada: vale dentro de esta red. Con Docker o para gente de fuera, define MESSAGING_RTC_PUBLIC_IP.",
+        "turn": "TURN activo, para redes que bloquean UDP.",
+        "noTurn": "Sin TURN: desde redes que bloquean UDP no se podrá conectar."
+      },
+      "inCourse": "Llamada en curso",
+      "chat": "Chat",
+      "settings": "Vista y calidad",
+      "pin": "Fijar",
+      "unpin": "Dejar de fijar",
+      "current": "Actual",
+      "layouts": {
+        "grid": "Cuadrícula",
+        "speaker": "Orador",
+        "sidebar": "Barra lateral"
+      },
+      "quality": {
+        "auto": "Calidad automática",
+        "medium": "Calidad media",
+        "low": "Calidad baja (ahorra datos)"
+      },
+      "you": "Tú",
+      "chatHint": "Solo lo ven los que están en la llamada, y se borra al colgar.",
+      "chatPlaceholder": "Escribe a la llamada…",
+      "chatSend": "Enviar",
+      "guestName": "{name} (invitado)"
+    },
+    "guest": {
+      "title": "Entrar en la videollamada",
+      "name": "Tu nombre",
+      "ask": "Pedir entrar",
+      "waitingTitle": "Esperando",
+      "waitingHint": "Alguien de la llamada tiene que dejarte pasar.",
+      "rejected": {
+        "title": "No has podido entrar",
+        "hint": "Te han rechazado o el enlace ya no vale."
+      },
+      "invalid": {
+        "title": "Este enlace no vale",
+        "hint": "Ha caducado o lo han revocado. Pide uno nuevo a quien te invitó."
+      },
+      "full": {
+        "title": "Hay demasiada gente esperando",
+        "hint": "Prueba de nuevo en un rato."
+      },
+      "ended": {
+        "title": "La llamada ha terminado",
+        "hint": "Ya puedes cerrar esta página."
+      },
+      "invite": "Invitar",
+      "inviteTitle": "Invitar a gente de fuera",
+      "inviteCallHint": "Cualquiera con el enlace puede pedir entrar sin cuenta, y alguien de dentro tiene que dejarle pasar. Solo ve la llamada y su chat. Deja de valer al terminar la llamada.",
+      "inviteMeetingHint": "Cualquiera con el enlace puede pedir entrar sin cuenta, y alguien de dentro tiene que dejarle pasar. Solo ve la llamada y su chat. Vale hasta que termine la reunión.",
+      "createLink": "Crear enlace",
+      "link": "Enlace",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "activeLinks": "Enlaces activos",
+      "expires": "Caduca el {date}",
+      "revoke": "Revocar",
+      "wantsIn": "{name} quiere entrar",
+      "admit": "Dejar pasar",
+      "reject": "Rechazar"
+    }
+  }
+}

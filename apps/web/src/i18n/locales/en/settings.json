@@ -3,10 +3,11 @@
     "nav": {
       "configuration": "Settings",
       "profile": "My profile",
+      "security": "Security",
       "company": "Company",
       "users": "Users",
       "templates": "PDF templates",
-      "customFields": "Custom fields",
+      "customFields": "Tables and fields",
       "dashboardWidgets": "Dashboard widgets",
       "automations": "Automations",
       "webhooks": "Webhooks",
@@ -21,7 +22,9 @@
         "customization": "Customization",
         "integrations": "Integrations",
         "devicesSystem": "Devices and system"
-      }
+      },
+      "securityPolicy": "Access security",
+      "loginProviders": "Sign-in providers"
     },
     "devices": {
       "loadError": "Could not load this company's kiosks.",
@@ -76,6 +79,9 @@
       "title": "Two-factor authentication (2FA)",
       "checking": "Checking…",
       "statusOn": "Enabled",
+      "appTitle": "Authenticator app",
+      "appHintOn": "When you sign in we ask for the 6-digit code from the app.",
+      "appHintOff": "With Google Authenticator, Microsoft Authenticator or similar.",
       "statusOff": "Disabled",
       "description": "Add an extra layer of security by requiring a code from your authenticator app when signing in.",
       "disable": "Disable",
@@ -97,7 +103,8 @@
       "disableSubtitle": "Enter a code to confirm",
       "disableHelp": "Enter a code from your app (or a backup code) to disable two-factor authentication.",
       "code": "Code",
-      "codePlaceholder": "123456 or backup code"
+      "codePlaceholder": "123456 or backup code",
+      "requiredByPolicy": "One of your companies requires two-step verification: it cannot be turned off."
     },
     "webhooks": {
       "events": {
@@ -153,6 +160,8 @@
         "readMastersDesc": "GET customers/suppliers and items (stock, batches, units)",
         "writeMasters": "Write master data",
         "writeMastersDesc": "Create/edit/delete customers/suppliers and items",
+        "writeBanking": "Banking",
+        "writeBankingDesc": "Accounts, statements, reconciliation and batches",
         "mcpRead": "MCP — read",
         "mcpReadDesc": "MCP server (Claude Desktop/Code): search customers/items, list documents",
         "mcpSql": "MCP — read-only SQL",
@@ -224,6 +233,19 @@
       "preferencesSection": "Preferences",
       "language": "Language",
       "languageHelp": "Interface language. Saved to your profile, so it follows you on any device.",
+      "themeSection": "Your theme",
+      "themeUsingCompany": "You're seeing the company theme.",
+      "themeUsingPersonal": "You're seeing your own theme: it follows you on any device and when you switch company.",
+      "themeScope": "Only you see it. The logo, name, PDFs and public pages still belong to the company.",
+      "themeCompany": "Company theme",
+      "themeCompanyHelp": "Whatever the company has chosen. Clears your theme and mode.",
+      "themeMode": "Mode",
+      "themeModeHelp": "\"Theme default\" uses the mode each theme was designed for.",
+      "themeModeAuto": "Theme default",
+      "themeModeLight": "Light",
+      "themeModeDark": "Dark",
+      "themeSaveError": "Couldn't save the theme",
+      "themeEnforced": "This company requires everyone to use its theme. If you had chosen one, it's kept and comes back in any company that allows it.",
       "signatureSection": "PDF signature",
       "signatureHelp": "Enter your name and job title. Optionally upload an image of your signature (PNG or JPG, max. 5 MB). If you fill in these fields, they take precedence over the company signature on your PDFs.",
       "signerName": "Signer name",
@@ -364,6 +386,53 @@
       "historyTitle": "History · {name}",
       "noRuns": "No runs yet",
       "noRunsHint": "Use “Run now” to test it without waiting for the trigger."
+    },
+    "securityPolicy": {
+      "title": "Access security",
+      "subtitle": "How people sign in to this company: second factor, session length and passwords.",
+      "readOnly": "You can only view this policy.",
+      "loadError": "Could not load the access policy.",
+      "saved": "Policy saved",
+      "save": "Save changes",
+      "discard": "Discard",
+      "ssoRequired": "SSO only",
+      "ssoRequiredHint": "Nobody will be able to sign in any other way. An active single sign-on provider is required.",
+      "mfa": {
+        "title": "Two-step verification",
+        "description": "Who must use a second factor. Anyone without one must set it up when signing in.",
+        "off": "No",
+        "admins": "Administrators",
+        "all": "Everyone"
+      },
+      "session": {
+        "title": "Session",
+        "description": "How long an open session lasts and when it closes from inactivity.",
+        "maxDays": "Maximum length (days)",
+        "maxDaysHint": "From {min} to {max}.",
+        "idleHours": "Inactivity (hours)",
+        "idleHoursHint": "From {min} to {max}."
+      },
+      "methods": {
+        "title": "Ways to sign in",
+        "description": "Which methods people may use to sign in. At least one must remain.",
+        "password": "Password",
+        "passkey": "Passkey",
+        "emailCode": "Email code",
+        "sso": "Single sign-on (SSO)"
+      },
+      "passwords": {
+        "title": "Password rules",
+        "description": "Applied when a password is created or changed. Existing passwords are untouched.",
+        "enable": "Require password rules",
+        "minLength": "Minimum length",
+        "minLengthHint": "From {min} to {max} characters.",
+        "blockCommon": "Reject common passwords"
+      },
+      "errors": {
+        "invalid": "The policy is not valid. Check the values.",
+        "lockoutTitle": "This policy cannot be saved",
+        "saveFailed": "Could not save the policy"
+      }
     }
   }
 }

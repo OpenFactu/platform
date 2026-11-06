@@ -41,6 +41,9 @@ export default {
   // Etiquetas de PERMISSION_CATALOG: rellenan el hueco de los mensajes de
   // permiso de arriba (el `{0}` se traduce recursivamente).
   Artículos: 'Items',
+  'Costes de artículos': 'Item costs',
+  'Ver el coste medio y los márgenes; con escritura, poner coste en una entrada manual.':
+    'See the average cost and margins; with write access, set a cost on a manual receipt.',
   Categorías: 'Categories',
   'Unidades de medida': 'Units of measure',
   Impuestos: 'Taxes',
@@ -79,7 +82,7 @@ export default {
   'Sumas y saldos': 'Trial balance',
   'Pérdidas y ganancias': 'Profit and loss',
   'Balance de situación': 'Balance sheet',
-  'Libro de IVA': 'VAT book',
+  'Libros e informes fiscales': 'Tax books and reports',
   'Portada · Gestión': 'Overview · Management',
   'Margen por cliente': 'Margin by customer',
   'Margen por artículo': 'Margin by item',

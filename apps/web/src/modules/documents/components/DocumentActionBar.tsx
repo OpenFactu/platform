@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, type FloatingAction } from '@openfactu/ui';
-import { Download, Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
+import { Trash2, Tag, Mail, type LucideIcon, FileText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useI18n } from '@/i18n/I18nContext';
 import { useMobilePageActions } from '@/context/MobilePageActionsContext';
@@ -63,7 +63,7 @@ export const DocumentActionBar: React.FC<Props> = ({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
 
-  // Móvil: todo al botón flotante de la pantalla (MobileBottomNav). La acción
+  // Móvil: todo al botón flotante de la pantalla (MobileActionButton). La acción
   // principal va aparte para quedar la última, junto al pulgar, y cancelar la
   // primera, lejos de él.
   const mobileActions: FloatingAction[] = [
@@ -83,7 +83,7 @@ export const DocumentActionBar: React.FC<Props> = ({
     {
       id: 'pdf',
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={19} />,
+      icon: <FileText size={19} />,
       onClick: async () => {
         if (await pdf.start()) setPickerOpen(true);
       },

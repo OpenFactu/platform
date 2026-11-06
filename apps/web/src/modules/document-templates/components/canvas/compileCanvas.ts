@@ -55,46 +55,26 @@ export function compileCanvas(layout: CanvasLayout, options: CompileOptions = {}
 
   const metaComment = buildMetaComment(layout);
   const pageCss = buildPageCss(layout);
-  // Posicionamos cada banda absolutamente con un `top` acumulado para que:
-  // 1) no haya gaps entre bloques (evita la página en blanco que aparece
-  //    cuando el flujo en bloque sobrepasa la altura de página por milímetros);
-  // 2) el tamaño final del body sea exactamente la suma de alturas de las
-  //    bandas, sin líneas base ni colapsos de margen imprevistos.
-  let cursor = 0;
-  const bandsHtml = layout.bands
-    // Las bandas ocultas no se emiten NI acumulan altura (si acumularan, dejarían
-    // un hueco vertical y desplazarían todo lo que va debajo).
-    .filter((b) => !b.hidden)
-    .map((b) => {
-      const html = renderBand(b, cursor);
-      cursor += b.height;
-      return html;
-    })
+  // Las bandas van una detrás de otra: la que lleva una tabla de líneas crece con
+  // sus filas y empuja a las siguientes, de modo que un documento largo sigue en
+  // otra página en lugar de cortarse. Sin filas de más, cada banda mide lo que dice.
+  // Las bandas ocultas no se emiten NI acumulan altura.
+  const bandsHtml = printedBands(layout)
+    .map((b) => renderBand(b))
     .join('\n');
-  const totalHeightMm = cursor;
 
   const watermarkHtml = renderWatermark(layout);
 
   return `<!DOCTYPE html>
 ${metaComment}
-<html lang="es">
+<html lang="{{label "htmlLang"}}">
 <head>
 <meta charset="UTF-8">
 <title>${escapeHtml(docType)} {{doc.docCode}}</title>
 <style>
 ${pageCss}
 ${BASE_CSS}
-.page-root { position: relative; width: 100%; height: ${totalHeightMm}mm; overflow: hidden; }
-.watermark {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform-origin: center center;
-  pointer-events: none;
-  user-select: none;
-  white-space: nowrap;
-  z-index: 0;
-}
+.page-root { position: relative; width: 100%; }
 .band { z-index: 1; }
 ${extraCss}
 </style>
@@ -108,6 +88,24 @@ ${bandsHtml}
 </html>`;
 }
 
+/** Un elemento suelto, sin posición ni tamaño: en el lienzo los da su caja. */
+export function compileElement(el: CanvasElement): string {
+  return renderElement({ ...el, x: 0, y: 0, w: 100, h: 100 } as CanvasElement);
+}
+
+export const compileWatermark = (layout: CanvasLayout) => renderWatermark(layout);
+
+/**
+ * Las bandas que se imprimen. Las vacías del final no: solo ocuparían sitio, y si no caben
+ * sacarían una hoja en blanco. Las ocultas no se emiten ni acumulan altura.
+ */
+function printedBands(layout: CanvasLayout): Band[] {
+  const bands = layout.bands.filter((b) => !b.hidden);
+  let last = bands.length;
+  while (last > 0 && bands[last - 1].elements.every((el) => el.hidden)) last--;
+  return bands.slice(0, last);
+}
+
 function renderWatermark(layout: CanvasLayout): string {
   const w = layout.watermark;
   if (!w || !w.enabled || !w.text) return '';
@@ -118,20 +116,25 @@ function renderWatermark(layout: CanvasLayout): string {
   const fontWeight = w.fontWeight ?? 'bold';
   // `text` se emite en crudo para permitir expresiones tipo `{{doc.status}}`.
   // Quien configure la plantilla controla su contenido — es entrada de confianza.
-  return `<div class="watermark" style="color:${color};opacity:${opacity};font-size:${fontSize}pt;font-weight:${fontWeight};transform:translate(-50%,-50%) rotate(${rotation}deg);">${w.text}</div>`;
+  return `<div class="watermark-clip"><div class="watermark" style="color:${color};opacity:${opacity};font-size:${fontSize}pt;font-weight:${fontWeight};transform:translate(-50%,-50%) rotate(${rotation}deg);">${w.text}</div></div>`;
 }
 
 // ---------- bandas y elementos ----------
 
-function renderBand(band: Band, topMm: number): string {
-  const inner = band.elements
-    .filter((el) => !el.hidden)
-    .map((el) => renderElement(el))
-    .join('\n');
-  return `<section class="band band-${band.kind}" data-band="${band.kind}" style="position:absolute;left:0;right:0;top:${topMm}mm;height:${band.height}mm;">
+function renderBand(band: Band): string {
+  const visible = band.elements.filter((el) => !el.hidden);
+  const inner = visible.map((el) => renderElement(el)).join('\n');
+  const size = visible.some(flowsInBand)
+    ? `min-height:${band.height}mm;overflow:visible;break-inside:auto;`
+    : `height:${band.height}mm;`;
+  return `<section class="band band-${band.kind}" data-band="${band.kind}" style="${size}">
 ${inner}
 </section>`;
 }
+
+/** Lo que va en el flujo de su banda: crece con su contenido y empuja lo que venga detrás. */
+export const flowsInBand = (el: CanvasElement) =>
+  !el.hidden && (el.kind === 'linesTable' || !!el.flow);
 
 function renderElement(el: CanvasElement): string {
   switch (el.kind) {
@@ -271,7 +274,12 @@ function renderField(el: FieldElement): string {
   // producidos por el editor de texto rico → se emiten sin escapar.
   const prefix = el.prefix ? (el.rich ? el.prefix : escapeHtml(el.prefix)) : '';
   const suffix = el.suffix ? (el.rich ? el.suffix : escapeHtml(el.suffix)) : '';
-  return `<div class="${elClass('field', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${prefix}${expr}${suffix}</div>`;
+  // Sin valor no se escribe lo que lo acompaña: un "Teléfono: " suelto no dice nada.
+  const content =
+    prefix || suffix
+      ? `{{#if ${sanitizePath(el.path)} includeZero=true}}${prefix}${expr}${suffix}{{/if}}`
+      : expr;
+  return `<div class="${elClass('field', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${content}</div>`;
 }
 
 function renderLinesTable(el: LinesTableElement): string {
@@ -282,7 +290,10 @@ function renderLinesTable(el: LinesTableElement): string {
       ? `queries.${sanitizePath(el.source.slice('query:'.length))}`
       : 'lines';
 
-  const wrapperStyle = `${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}`;
+  // La tabla va en el flujo de la banda (no con posición fija) para poder crecer.
+  // `padding-top` y no `margin-top`: un margen se saldría de la banda.
+  const flowStyle = `position:relative;margin-left:${el.x}mm;padding-top:${el.y}mm;width:${el.w}mm;overflow:visible;`;
+  const wrapperStyle = `${flowStyle}${styleToCss(el.style)}${elExtra(el)}`;
 
   // ----- Layout clave-valor: lista vertical etiqueta:valor (una agrupación por línea) -----
   if (el.layout === 'keyValue') {
@@ -297,7 +308,7 @@ function renderLinesTable(el: LinesTableElement): string {
 <div class="kv-group">${kvRows}</div>
 {{/each}}
 {{#unless ${iter}.length}}
-<div class="lines-empty">Sin líneas</div>
+<div class="lines-empty">{{label "noLines"}}</div>
 {{/unless}}
 </div>`;
   }
@@ -311,21 +322,32 @@ function renderLinesTable(el: LinesTableElement): string {
     el.borderColor ? `--lt-border:${cssColor(el.borderColor)};` : '',
   ].join('');
 
+  const onlyIf = (c: LinesTableColumn, cell: string) =>
+    c.onlyIf ? `{{#if @root.${sanitizePath(c.onlyIf)}}}${cell}{{/if}}` : cell;
+  const numeric = (c: LinesTableColumn) => (c.align === 'right' ? ' class="num"' : '');
+
   const header =
     el.showHeader === false
       ? ''
       : `<thead><tr>${cols
           .map((c) => {
             const hs = styleToCss(c.headerStyle ?? c.style);
-            return `<th style="width:${c.widthPct}%;text-align:${c.align ?? 'left'};${hs}">${escapeHtml(c.label)}</th>`;
+            return onlyIf(
+              c,
+              `<th${numeric(c)} style="width:${c.widthPct}%;text-align:${c.align ?? 'left'};${hs}">${escapeHtml(c.label)}</th>`,
+            );
           })
           .join('')}</tr></thead>`;
 
   const bodyCells = cols
-    .map(
-      (c) =>
-        `<td style="text-align:${c.align ?? 'left'};${styleToCss(c.style)}">${buildFieldExpression(c.path, c.format)}</td>`,
-    )
+    .map((c) => {
+      const detail = c.detailPath ? sanitizePath(c.detailPath) : '';
+      const below = detail ? `{{#if ${detail}}}<br><small>{{${detail}}}</small>{{/if}}` : '';
+      return onlyIf(
+        c,
+        `<td${numeric(c)} style="text-align:${c.align ?? 'left'};${styleToCss(c.style)}">${buildFieldExpression(c.path, c.format)}${below}</td>`,
+      );
+    })
     .join('');
 
   return `<div class="${elClass('linesTable', el)}" style="${wrapperStyle}">
@@ -336,7 +358,7 @@ ${header}
 <tr>${bodyCells}</tr>
 {{/each}}
 {{#unless ${iter}.length}}
-<tr><td colspan="${cols.length}" class="lines-empty">Sin líneas</td></tr>
+<tr><td colspan="${cols.length}" class="lines-empty">{{label "noLines"}}</td></tr>
 {{/unless}}
 </tbody>
 </table>
@@ -347,25 +369,30 @@ function renderTotals(el: TotalsElement): string {
   const showSubtotal = el.showSubtotal !== false;
   const showTax = el.showTaxBreakdown !== false;
   const showTotal = el.showTotal !== false;
+  const neutral = el.variant === 'neutral';
+  const colon = neutral ? ':' : '';
+  const taxBase = neutral ? ' {{label "taxOn"}} {{formatCurrency base}}:' : '';
 
   const rows: string[] = [];
   if (showSubtotal) {
     rows.push(
-      `<div class="totals-row"><span class="totals-label">Subtotal</span><span class="totals-value">{{formatCurrency doc.subtotal}}</span></div>`,
+      `<div class="totals-row"><span class="totals-label">{{label "taxBase"}}${colon}</span><span class="totals-value">{{formatCurrency doc.subtotal}}</span></div>`,
     );
   }
   if (showTax) {
     rows.push(
-      `{{#each doc.taxBreakdown}}<div class="totals-row"><span class="totals-label">IVA {{rate}}%</span><span class="totals-value">{{formatCurrency amount}}</span></div>{{/each}}`,
+      `{{#each doc.taxBreakdown}}<div class="totals-row totals-row-tax"><span class="totals-label">{{#if name}}{{name}}{{else}}{{label "vat"}}{{/if}} {{rate}}%${taxBase}</span><span class="totals-value">{{formatCurrency tax}}</span></div>{{/each}}`,
+      // Sin esta fila, el total no cuadra con lo de encima cuando hay retención.
+      `{{#if doc.withholdingAmount}}<div class="totals-row"><span class="totals-label">{{label "withholding"}}{{#if doc.withholdingRate}} ({{doc.withholdingRate}}%){{/if}}${colon}</span><span class="totals-value">− {{formatCurrency doc.withholdingAmount}}</span></div>{{/if}}`,
     );
   }
   if (showTotal) {
     rows.push(
-      `<div class="totals-row totals-row-grand"><span class="totals-label">Total</span><span class="totals-value">{{formatCurrency doc.total}}</span></div>`,
+      `<div class="totals-row totals-row-grand"><span class="totals-label">{{label "grandTotal"}}</span><span class="totals-value">{{formatCurrency doc.total}}</span></div>`,
     );
   }
 
-  return `<div class="${elClass('totals', el)}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}">
+  return `<div class="${elClass('totals', el)}${neutral ? ' totals--neutral' : ''}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}">
 ${rows.join('\n')}
 </div>`;
 }
@@ -465,15 +492,19 @@ function renderCurrentDate(el: CurrentDateElement): string {
 
 // ---------- helpers de estilo ----------
 
-function positionStyle(el: { x: number; y: number; w: number; h: number }): string {
+function positionStyle(el: { x: number; y: number; w: number; h: number; flow?: boolean }): string {
+  // `padding-top` y no `margin-top`: un margen se saldría de la banda.
+  if (el.flow) {
+    return `position:relative;margin-left:${el.x}mm;padding-top:${el.y}mm;width:${el.w}mm;overflow:visible;`;
+  }
   return `position:absolute;left:${el.x}mm;top:${el.y}mm;width:${el.w}mm;height:${el.h}mm;`;
 }
 
 /** Clase CSS del nodo raíz de un elemento, incluyendo su `className` opcional. */
-function elClass(kind: string, el: { className?: string }): string {
+function elClass(kind: string, el: { className?: string; flow?: boolean }): string {
   // Sanitizamos para no romper el atributo class (comillas/ángulos).
   const extra = el.className ? ` ${el.className.replace(/["'<>]/g, '').trim()}` : '';
-  return `el el-${kind}${extra}`;
+  return `el el-${kind}${el.flow ? ' el-flow' : ''}${extra}`;
 }
 
 /** Declaraciones CSS inline extra de un elemento, listas para anexar al `style`. */
@@ -502,10 +533,8 @@ function styleToCss(style?: ElementStyle): string {
   if (style.backgroundColor) parts.push(`background-color:${style.backgroundColor};`);
   if (style.textAlign) parts.push(`text-align:${style.textAlign};`);
   if (style.padding != null) parts.push(`padding:${style.padding}px;`);
-  // Solo emitimos borde si hay un estilo de línea real, igual que el preview del
-  // canvas. Antes bastaba con que `borderColor`/`borderWidth` estuvieran puestos
-  // (con `borderStyle ?? 'solid'`), por lo que aparecía un borde en el PDF que en
-  // el editor no se veía (p.ej. al tocar solo el color de borde).
+  // Solo emitimos borde si hay un estilo de línea real: tocar solo el color del borde
+  // no debe hacer que aparezca uno.
   if (style.borderStyle && style.borderStyle !== 'none') {
     parts.push(
       `border:${style.borderWidth ?? 1}px ${style.borderStyle} ${style.borderColor ?? '#000'};`,
@@ -516,22 +545,55 @@ function styleToCss(style?: ElementStyle): string {
 }
 
 /**
- * Estilo de "caja de texto" que replica el preview del canvas (`ElementPreview`):
- * flexbox con centrado vertical y `justify-content` según `textAlign`, más los
- * defaults de tamaño (10pt) y padding (2px). Así el texto/campo/resumen/fecha se
- * ve igual en el editor y en el PDF (incluida la alineación del texto rico).
+ * Estilo de "caja de texto": flexbox con centrado vertical y `justify-content` según
+ * `textAlign`, más los defaults de tamaño (10pt) y padding (2px).
  */
 function textBoxStyle(el: { style?: ElementStyle }): string {
   const a = el.style?.textAlign;
   const justify = a === 'center' ? 'center' : a === 'right' ? 'flex-end' : 'flex-start';
   const fs = el.style?.fontSize ? '' : 'font-size:10pt;';
   const pad = el.style?.padding != null ? '' : 'padding:2px;';
-  // `white-space:pre-wrap` + `overflow-wrap:break-word` replican las clases
-  // Tailwind `whitespace-pre-wrap break-words` que usa el preview del canvas
-  // (ElementPreview). Sin esto, los espacios múltiples que el usuario ve tal
-  // cual en el editor/canvas se colapsan a uno solo en el PDF (comportamiento
-  // HTML por defecto), rompiendo el WYSIWYG que este helper dice garantizar.
-  return `display:flex;align-items:center;justify-content:${justify};white-space:pre-wrap;overflow-wrap:break-word;${fs}${pad}${styleToCss(el.style)}`;
+  const vertical =
+    el.style?.verticalAlign === 'top'
+      ? 'flex-start'
+      : el.style?.verticalAlign === 'bottom'
+        ? 'flex-end'
+        : 'center';
+  // `white-space:pre-wrap`: sin esto, los espacios múltiples que se escriben en el
+  // editor se colapsan a uno solo (comportamiento HTML por defecto).
+  return `display:flex;align-items:${vertical};justify-content:${justify};white-space:pre-wrap;overflow-wrap:break-word;${fs}${pad}${styleToCss(el.style)}`;
+}
+
+/**
+ * Cuánto contenido cabe en cada hoja, en mm: lo usan el PDF y el lienzo. Puppeteer pinta los
+ * números de página y el pie con códigos en el margen inferior, así que hay que reservarlo:
+ * si es 0 quedan invisibles. Las hojas siguientes a la primera (tablas largas) llevan los
+ * márgenes de arriba y abajo, porque el contenido ya no sale de una posición fija. En la
+ * primera, el de abajo solo se aplica si no obliga a saltar de hoja a lo que cabía entero.
+ */
+export function pageFlow(layout: CanvasLayout) {
+  const reserved =
+    layout.showDocQr || layout.showDocBarcode ? 28 : layout.pageNumbers?.enabled ? 12 : 0;
+  const { height } = resolvePageDimensions(layout);
+  const contentHeight = printedBands(layout).reduce((a, b) => a + b.height, 0);
+  const firstBottom = Math.max(
+    reserved,
+    Math.min(layout.margins.bottom, Math.max(0, height - contentHeight)),
+  );
+  const nextBottom = Math.max(reserved, layout.margins.bottom);
+  return {
+    firstBottom,
+    nextBottom,
+    firstPage: height - firstBottom,
+    nextPage: height - layout.margins.top - nextBottom,
+  };
+}
+
+/** Lo que el documento define para todo el papel: lo usan el texto, las tablas, los totales y el cierre. */
+export function documentColorsCss(layout: CanvasLayout): string {
+  const colors = layout.documentColors;
+  if (!colors) return '';
+  return `color: ${cssColor(colors.text)}; --doc-accent: ${cssColor(colors.accent)}; --doc-ink: ${cssColor(colors.ink)}; --doc-muted: ${cssColor(colors.muted)}; --doc-image-filter: none;`;
 }
 
 function buildPageCss(layout: CanvasLayout): string {
@@ -540,14 +602,8 @@ function buildPageCss(layout: CanvasLayout): string {
   // directamente sobre la página sin un área imprimible reducida. Los
   // `layout.margins` se usan sólo como guía visual dentro del diseñador.
   //
-  // Excepción: si hay números de página, Puppeteer los renderiza en el
-  // margen inferior de la página — si éste es 0 quedan invisibles. Reservamos
-  // 12mm en el `bottom` para el pie del renderer.
-  //
-  // Tamaño: para A4/Letter usamos el keyword CSS estándar. Para tiquets,
-  // etiquetas y `Custom` emitimos las dimensiones explícitas en mm — Puppeteer
-  // las respeta gracias a `preferCSSPageSize: true` en PdfRenderer.
-  const bottom = layout.pageNumbers?.enabled ? 12 : 0;
+  const { firstBottom, nextBottom } = pageFlow(layout);
+  const colors = documentColorsCss(layout);
   const sizeCss =
     layout.pageSize === 'A4' || layout.pageSize === 'Letter'
       ? layout.pageSize
@@ -555,8 +611,9 @@ function buildPageCss(layout: CanvasLayout): string {
           const { width, height } = resolvePageDimensions(layout);
           return `${width}mm ${height}mm`;
         })();
-  return `@page { size: ${sizeCss}; margin: 0 0 ${bottom}mm 0; }
-body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }`;
+  return `@page { size: ${sizeCss}; margin: ${layout.margins.top}mm 0 ${nextBottom}mm 0; }
+@page :first { margin: 0 0 ${firstBottom}mm 0; }
+body { margin: 0; padding: 0; font-family: ${layout.fontFamily ?? PAPER_FONT};${layout.lineHeight ? ` line-height: ${layout.lineHeight};` : ''}${colors ? ` ${colors}` : ''} }`;
 }
 
 /**
@@ -583,6 +640,7 @@ function buildMetaComment(layout: CanvasLayout): string {
   const meta: Record<string, unknown> = {
     showDocQr: layout.showDocQr === true,
     showDocBarcode: layout.showDocBarcode === true,
+    ...(layout.style ? { style: layout.style } : {}),
   };
   if (Object.keys(footerOverrides).length > 0) meta.footer = footerOverrides;
   // Solo incluimos `pageSize` en el meta si es uno de los formatos estándar
@@ -594,7 +652,11 @@ function buildMetaComment(layout: CanvasLayout): string {
   return `<!--OPENFACTU-META:${JSON.stringify(meta)}-->`;
 }
 
-const BASE_CSS = `.band { position: relative; width: 100%; overflow: hidden; }
+export const PAPER_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const BASE_CSS = `.band { position: relative; width: 100%; overflow: hidden; break-inside: avoid; }
+.lines-table thead { display: table-header-group; }
+.lines-table tr { break-inside: avoid; }
 .el { box-sizing: border-box; overflow: hidden; }
 .lines-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .lines-table th, .lines-table td { padding: var(--lt-cell-pad, 4px 6px); border-bottom: 1px solid var(--lt-border, #e5e7eb); font-size: 9pt; }
@@ -603,13 +665,35 @@ const BASE_CSS = `.band { position: relative; width: 100%; overflow: hidden; }
 .lines-table--striped tbody tr:nth-child(even) { background: #f8fafc; }
 .lines-table--compact th, .lines-table--compact td { padding: var(--lt-cell-pad, 1px 4px); font-size: 8pt; }
 .lines-table--borderless th, .lines-table--borderless td { border: none; }
+.lines-table--neutral { table-layout: auto; line-height: 1.4; }
+.lines-table--neutral th { background: var(--lt-header-bg, none); padding: 4px 6px 4px 0; font-size: 9pt; font-weight: 700; color: var(--doc-ink, inherit); border-bottom: 1px solid var(--lt-border, var(--doc-accent, #000)); }
+.lines-table--neutral td { padding: 4px 6px 4px 0; font-size: 9pt; vertical-align: top; border-bottom: 0.5pt solid var(--lt-border, var(--doc-muted, #000)); }
+.lines-table--neutral .num { padding-right: 0; padding-left: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lines-table small { font-weight: normal; }
 .lines-empty { text-align: center; color: #94a3b8; font-style: italic; }
 .kv-group { margin-bottom: 4px; }
 .kv-row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; font-size: 9pt; }
 .kv-label { color: #64748b; font-weight: 600; }
 .kv-value { font-variant-numeric: tabular-nums; }
 .totals-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10pt; }
-.totals-row-grand { border-top: 1px solid #000; font-weight: 700; font-size: 11pt; }`;
+.totals-row-grand { border-top: 1px solid var(--doc-accent, #000); font-weight: 700; font-size: 11pt; }
+.totals--neutral .totals-row { gap: 12px; padding: 2px 0; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.totals--neutral .totals-row-tax { color: var(--doc-accent, inherit); }
+.totals--neutral .totals-row-grand { font-size: 12pt; margin-top: 4px; padding-top: 5px; color: var(--doc-ink, inherit); }
+.watermark-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.watermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 0;
+}`;
+
+/** Las reglas de los elementos: las mismas en el PDF y en el lienzo del diseñador. */
+export const ELEMENT_CSS = BASE_CSS;
 
 // ---------- helpers de expresión ----------
 
@@ -629,6 +713,10 @@ function buildFieldExpression(path: string, format?: FieldElement['format']): st
       return `{{formatDate ${safePath}}}`;
     case 'percent':
       return `{{formatNumber ${safePath}}}%`;
+    case 'percentRaw':
+      return `{{${safePath}}}%`;
+    case 'discount':
+      return `{{#if discountRate}}{{formatNumber discountRate 2}}%{{else}}{{#if discountAmount}}{{formatCurrency discountAmount}}{{/if}}{{/if}}`;
     case 'address':
       // Triple-brace para preservar los saltos de línea (`<br/>`) que emite
       // el helper al formatear una dirección multilínea.
@@ -650,7 +738,7 @@ function sanitizePath(path: string): string {
 
 // ---------- escaping ----------
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -664,7 +752,8 @@ function escapeAttr(s: string): string {
 }
 
 function normalizeColumnWidths(columns: LinesTableColumn[]): LinesTableColumn[] {
-  const total = columns.reduce((acc, c) => acc + c.widthPct, 0);
+  // Una columna condicional se suma cuando sale: no debe encoger a las demás cuando no.
+  const total = columns.filter((c) => !c.onlyIf).reduce((acc, c) => acc + c.widthPct, 0);
   if (total === 0) {
     const even = 100 / Math.max(columns.length, 1);
     return columns.map((c) => ({ ...c, widthPct: even }));

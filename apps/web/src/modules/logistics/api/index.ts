@@ -1,8 +1,9 @@
 export { carriersApi } from './carriersApi';
 export type { CarrierInput } from './carriersApi';
-export { shipmentsApi, incidentsApi, geocodeApi } from './shipmentsApi';
+export { shipmentsApi, incidentsApi, geocodeApi, logisticsApi } from './shipmentsApi';
 export type { ShipmentInput } from './shipmentsApi';
-export { routesApi } from './routesApi';
+export { routesApi, driverApi } from './routesApi';
+export type { DeliveryProofInput } from './routesApi';
 export type { RouteInput } from './routesApi';
 export { packagesApi } from './packagesApi';
 export type { PackageInput } from './packagesApi';

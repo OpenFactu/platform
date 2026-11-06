@@ -4,7 +4,7 @@
  *
  * Por qué existe: en este repo la lógica de alta vive dentro de los handlers de
  * Express, acoplada a `req` (ver `partners.ts`, que genera el código por
- * prefijo de grupo, valida NIF/IBAN, escribe los campos `p_*` de plugins y
+ * prefijo de grupo, valida identificación fiscal/IBAN, escribe los campos `p_*` de plugins y
  * audita, todo en el handler). No hay capa de servicio que reutilizar. Cuando
  * el chat de IA necesitó dar de alta interlocutores acabó DUPLICANDO esa
  * lógica en `core/ai/tools/erpEntityTools.ts` — y su propia cabecera lo admite.

@@ -21,9 +21,14 @@ export interface PartnerFormData {
   defaultPaymentMethodId: string;
   defaultPaymentTermId: string;
   defaultWithholdingRate: string | number;
+  defaultTaxGroupId: string;
+  creditLimit: string | number;
+  dunningExcluded: boolean;
   iban: string;
   bankName: string;
   bankSwift: string;
+  mandateRef: string;
+  mandateDate: string;
 }
 
 export const EMPTY_PARTNER: PartnerFormData = {
@@ -41,9 +46,14 @@ export const EMPTY_PARTNER: PartnerFormData = {
   defaultPaymentMethodId: '',
   defaultPaymentTermId: '',
   defaultWithholdingRate: '',
+  defaultTaxGroupId: '',
+  creditLimit: '',
+  dunningExcluded: false,
   iban: '',
   bankName: '',
   bankSwift: '',
+  mandateRef: '',
+  mandateDate: '',
 };
 
 function toFormData(p: Partner): PartnerFormData {
@@ -62,9 +72,14 @@ function toFormData(p: Partner): PartnerFormData {
     defaultPaymentMethodId: p.defaultPaymentMethodId || '',
     defaultPaymentTermId: p.defaultPaymentTermId || '',
     defaultWithholdingRate: p.defaultWithholdingRate ?? '',
+    defaultTaxGroupId: p.defaultTaxGroupId || '',
+    creditLimit: p.creditLimit ?? '',
+    dunningExcluded: !!p.dunningExcluded,
     iban: p.iban || '',
     bankName: p.bankName || '',
     bankSwift: p.bankSwift || '',
+    mandateRef: p.mandateRef || '',
+    mandateDate: p.mandateDate ? String(p.mandateDate).slice(0, 10) : '',
   };
 }
 

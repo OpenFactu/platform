@@ -1,37 +1,24 @@
 /**
- * Adapter "manual" — no llama a ningún API externa.
- *
- * Funciona como placeholder: genera tracking numbers aleatorios y devuelve
- * respuestas simuladas. Sirve como base para carriers sin integración
- * (transporte propio, rutas internas) y como ejemplo de implementación.
+ * Transportista sin integración: no hay API a la que llamar. El número lo escribe
+ * quien despacha y no hay etiqueta. Nunca se inventa ninguno de los dos.
  */
-
-import crypto from 'crypto';
-import type {
-  ICarrierAdapter,
-  CreateShipmentInput,
-  CreateShipmentResult,
-  TrackingSnapshot,
-} from '../ICarrierAdapter';
+import type { ICarrierAdapter } from '../ICarrierAdapter';
 
 export const ManualAdapter: ICarrierAdapter = {
   id: 'manual',
   name: 'Manual (sin integración)',
+  manual: true,
   credentialFields: [],
 
-  async createShipment(_account, _input: CreateShipmentInput): Promise<CreateShipmentResult> {
-    const trackingNumber = `MAN-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
-    return { trackingNumber };
+  async createShipment() {
+    throw new Error('Un transportista manual no crea envíos: el número lo escribe el usuario.');
   },
 
-  async fetchTracking(_account, _trackingNumber): Promise<TrackingSnapshot> {
-    // Adapter manual: sin API, devolvemos snapshot neutro.
-    return { status: 'pending', description: 'Gestión manual — sin datos externos' };
+  async fetchTracking() {
+    throw new Error('Un transportista manual no tiene seguimiento.');
   },
 
-  async generateLabel(_account, trackingNumber): Promise<Buffer> {
-    // PDF placeholder — en la vida real se generaría el PDF propio.
-    const placeholder = `Etiqueta manual ${trackingNumber}\n\n(Pendiente de implementar PDF)`;
-    return Buffer.from(placeholder, 'utf-8');
+  async generateLabel() {
+    throw new Error('Un transportista manual no tiene etiqueta.');
   },
 };

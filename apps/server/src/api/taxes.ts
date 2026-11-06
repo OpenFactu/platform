@@ -3,8 +3,12 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { requirePermission } from './middleware/requirePermission';
 
 const router = Router();
+
+// Leer no pide permiso (ver el montaje en server.ts): lo usan todos los documentos
+// y las fichas. Escribir sí, y por eso cada ruta de escritura lo declara.
 
 // GET all tax groups
 router.get('/', async (req: any, res) => {
@@ -32,7 +36,7 @@ router.get('/:id', async (req: any, res) => {
 });
 
 // POST new tax group
-router.post('/', async (req: any, res) => {
+router.post('/', requirePermission('/taxes'), async (req: any, res) => {
   const { code, rate } = req.body;
   try {
     const id = crypto.randomUUID();
@@ -56,7 +60,7 @@ router.post('/', async (req: any, res) => {
 });
 
 // PATCH update tax group
-router.patch('/:id', async (req: any, res) => {
+router.patch('/:id', requirePermission('/taxes'), async (req: any, res) => {
   const { code, rate } = req.body;
   const { id } = req.params;
   try {
@@ -86,7 +90,7 @@ router.patch('/:id', async (req: any, res) => {
 });
 
 // DELETE tax group
-router.delete('/:id', async (req: any, res) => {
+router.delete('/:id', requirePermission('/taxes'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const [old] = await req.tenantClient

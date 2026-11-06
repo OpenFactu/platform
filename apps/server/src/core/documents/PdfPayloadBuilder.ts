@@ -11,7 +11,12 @@ import type {
   PartnerAddressObject,
 } from '@openfactu/pdf';
 import { amountToWords } from '../../utils/numberToWords';
-import { tr, type Locale } from '../../i18n';
+import { intlLocale, tr, type Locale } from '../../i18n';
+import { PluginTranslations } from '../plugins/PluginTranslations';
+import { LocalizationRegistry } from '../localization/LocalizationRegistry';
+import { TaxEngine } from '../tax/TaxEngine';
+import { linkedFieldText } from '../customFields/linkableObjects';
+import { UserDocTypes, formatFieldValue, isFieldVisibleInPdf, isUserDocType } from './UserDocTypes';
 
 /**
  * Helper que construye un objeto de tablas desde el registry.
@@ -254,6 +259,116 @@ async function attachmentToDataUri(tenantDb: any, att: any): Promise<string | nu
   }
 }
 
+/** Lee los ajustes de la empresa, buscando cada clave también bajo el prefijo de su sección. */
+async function loadCompanyConfig(db: any) {
+  const companyRows = await db.select().from(schema.systemConfigs);
+  const cfg: Record<string, string> = {};
+  for (const r of companyRows) cfg[r.key] = r.value || '';
+  // Buscamos la clave en varios sitios: el endpoint `/api/config/fiscal`
+  // añade prefijo `fiscal_` a todas sus claves — así `signature_name` se
+  // guarda como `fiscal_signature_name`. Igual con branding/format.
+  // Priorizamos la clave directa y luego los prefijos de sección.
+  return (snake: string, camel: string): string | null =>
+    cfg[snake] ||
+    cfg[camel] ||
+    cfg[`fiscal_${snake}`] ||
+    cfg[`branding_${snake}`] ||
+    cfg[`format_${snake}`] ||
+    null;
+}
+
+async function companyPayload(
+  db: any,
+  header: any,
+  configVal: (snake: string, camel: string) => string | null,
+): Promise<any> {
+  return {
+    name: configVal('company_name', 'companyName') || 'Mi Empresa',
+    taxId: configVal('company_tax_id', 'companyTaxId'),
+    address: configVal('company_address', 'companyAddress'),
+    phone: configVal('company_phone', 'companyPhone'),
+    email: configVal('company_email', 'companyEmail'),
+    website: configVal('company_website', 'companyWebsite'),
+    logoUrl: configVal('company_logo_url', 'companyLogoUrl'),
+    iban: configVal('company_iban', 'companyIban'),
+    bankName: configVal('company_bank_name', 'companyBankName'),
+    bankSwift: configVal('company_bank_swift', 'companyBankSwift'),
+    invoiceFooter: configVal('company_invoice_footer', 'companyInvoiceFooter'),
+    signature: await resolveSignature({
+      db,
+      header,
+      configVal,
+    }),
+  };
+}
+
+/**
+ * Cantidad de una línea. La columna se llama `quantity` en todas las tablas, pero
+ * en las líneas de pedido Drizzle la expone como `orderedQty`.
+ */
+export function lineQuantity(line: any): number {
+  return Number(line.quantity ?? line.orderedQty);
+}
+
+/** Etiquetas del PDF: traducciones de plugins y terminología de la normativa de la empresa. */
+function documentLabels(tenantId: string | null | undefined, locale: Locale) {
+  const terms = LocalizationRegistry.terminologyFor(tenantId ?? undefined, locale);
+  return {
+    ...PluginTranslations.pdfLabelsFor(tenantId ?? undefined, locale),
+    vat: terms.tax,
+    'col.vat': terms.tax,
+    companyTaxId: terms.taxId,
+    withholding: terms.withholding,
+  };
+}
+
+/** Un abono se titula con su tipo de documento y dice a qué factura corrige y por qué. */
+async function rectificationTexts(db: any, header: any, docType: DocType, locale: Locale) {
+  if (!header.rectifiesInvoiceId) return { labels: {}, legalTexts: [] as string[] };
+  const [type] = header.documentTypeId
+    ? await db
+        .select({ name: schema.documentTypes.name })
+        .from(schema.documentTypes)
+        .where(eq(schema.documentTypes.id, header.documentTypeId))
+    : [];
+  return {
+    labels: type ? { [`docTitle.${docType}`]: type.name } : {},
+    legalTexts: [
+      tr(locale, 'Rectifica la factura {ref}. Motivo: {reason}', {
+        ref: header.rectifyRef || '',
+        reason: header.rectifyReason || '',
+      }),
+    ],
+  };
+}
+
+function shortHash(source: string): string {
+  return crypto.createHash('sha256').update(source).digest('hex').slice(0, 12).toUpperCase();
+}
+
+/**
+ * Desglose con el nombre propio de cada impuesto, si algún plugin se lo dio. Sin
+ * nombres (lo normal) devuelve null y vale el desglose por tipo de la cabecera.
+ */
+function namedTaxBreakdown(rows: any[]): TaxBreakdownEntry[] | null {
+  const taxes = rows.filter((r) => !r.isWithholding);
+  if (!taxes.some((r) => r.label)) return null;
+  const groups = new Map<string, TaxBreakdownEntry>();
+  for (const r of taxes) {
+    const key = `${r.label ?? ''}|${Number(r.rate)}`;
+    const group = groups.get(key) ?? {
+      name: r.label ?? undefined,
+      rate: Number(r.rate),
+      base: 0,
+      tax: 0,
+    };
+    group.base += Number(r.base);
+    group.tax += Number(r.amount);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 export class PdfPayloadBuilder {
   public static async build(
     docType: DocType,
@@ -261,7 +376,14 @@ export class PdfPayloadBuilder {
     db: any,
     /** Idioma de las etiquetas, estados y formatos del PDF. */
     locale: Locale = 'es',
+    /** Empresa, para aplicar la terminología y los textos legales de su normativa. */
+    tenantId?: string | null,
+    /** Rol de quien lo pide: un campo de tabla propia puede tener la lectura limitada. */
+    userRole?: string,
   ): Promise<DocumentPdfPayload> {
+    if (isUserDocType(docType) && !DocumentRegistry.has(docType)) {
+      return this.buildUserDocument(docType, documentId, db, locale, tenantId, userRole);
+    }
     const map = getDocTables(docType);
     const config = map.config;
 
@@ -277,7 +399,8 @@ export class PdfPayloadBuilder {
       .leftJoin(schema.accountingPeriods, eq(map.header.periodId, schema.accountingPeriods.id))
       .where(eq(map.header.id, documentId));
 
-    if (!headerRow) throw new Error(`Documento ${documentId} no encontrado`);
+    if (!headerRow)
+      throw Object.assign(new Error(`Documento ${documentId} no encontrado`), { statusCode: 404 });
     const header: any = { ...headerRow.header };
 
     // Leer columnas custom `p_*` del header. Drizzle solo proyecta lo que
@@ -483,43 +606,33 @@ export class PdfPayloadBuilder {
     }
 
     // 8. Company info desde SystemConfig
-    const companyRows = await db.select().from(schema.systemConfigs);
-    const cfg: Record<string, string> = {};
-    for (const r of companyRows) cfg[r.key] = r.value || '';
-    // Buscamos la clave en varios sitios: el endpoint `/api/config/fiscal`
-    // añade prefijo `fiscal_` a todas sus claves — así `signature_name` se
-    // guarda como `fiscal_signature_name`. Igual con branding/format.
-    // Priorizamos la clave directa y luego los prefijos de sección.
-    const configVal = (snake: string, camel: string): string | null =>
-      cfg[snake] ||
-      cfg[camel] ||
-      cfg[`fiscal_${snake}`] ||
-      cfg[`branding_${snake}`] ||
-      cfg[`format_${snake}`] ||
-      null;
+    const configVal = await loadCompanyConfig(db);
 
     // 8b. Plugin fields — campos custom de la cabecera
     const pluginFieldRows = await db.select().from(schema.pluginFields);
     const headerTableName = config.headerPgName;
-    const isVisibleInPdf = (pf: any) =>
-      !pf.visibleIn ||
-      !Array.isArray(pf.visibleIn) ||
-      pf.visibleIn.length === 0 ||
-      pf.visibleIn.includes('pdf');
     const headerPluginFields = pluginFieldRows
       .filter((pf: any) => pf.tableName === headerTableName)
-      .filter(isVisibleInPdf);
+      .filter(isFieldVisibleInPdf);
     const customFields: Record<string, any> = {};
+    const linkContext = tenantId
+      ? { db, publicDb: ClientFactory.getClient('public'), tenantId }
+      : null;
     for (const pf of headerPluginFields) {
       if (header[pf.fieldName] != null) {
-        customFields[pf.label || pf.fieldName] = header[pf.fieldName];
+        // Un campo enlazado se imprime con el nombre de lo que apunta, no con su id.
+        const value =
+          pf.fieldType === 'REFERENCE' && linkContext
+            ? await linkedFieldText(linkContext, pf, header[pf.fieldName])
+            : header[pf.fieldName];
+        customFields[pf.label || pf.fieldName] = value;
       }
     }
 
     const lineTableName = headerTableName + 'Line';
     const linePluginFields = pluginFieldRows
       .filter((pf: any) => pf.tableName === lineTableName)
-      .filter(isVisibleInPdf);
+      .filter(isFieldVisibleInPdf);
 
     // 9. Líneas — ordenar y mapear
     const lines: DocumentLineData[] = lineRows
@@ -547,10 +660,14 @@ export class PdfPayloadBuilder {
           itemCode: it?.code || '',
           itemName: it?.name || 'Artículo',
           itemDescription: it?.description || null,
-          quantity: Number(l.quantity),
+          quantity: lineQuantity(l),
           uom: uomCode,
           price: Number(l.price),
-          taxRate: (taxRateMap.get(l.taxGroupId) as number) ?? 0,
+          discountRate: Number(l.discountRate || 0),
+          discountAmount: Number(l.discountAmount || 0),
+          // El tipo guardado en la línea es el que se aplicó, aunque el grupo cambie después.
+          taxRate:
+            l.taxRate != null ? Number(l.taxRate) : ((taxRateMap.get(l.taxGroupId) as number) ?? 0),
           lineTotal: Number(l.lineTotal),
           category,
           batches: batchesMap.get(l.id) || [],
@@ -561,11 +678,14 @@ export class PdfPayloadBuilder {
     // 10. Total en letras
     const totalInWords = amountToWords(Number(header.total), locale);
 
+    // 11. Lo que depende de la normativa de la empresa
+    const taxRows = await TaxEngine.loadDocumentTaxes(db, config.tableName, documentId);
+
     const payload: DocumentPdfPayload = {
       doc: {
         id: header.id,
         docCode: formatDocCode(headerRow.seriesPrefix, headerRow.periodCode, header.docNum),
-        date: new Date(header.date).toLocaleDateString(locale === 'en' ? 'en-GB' : 'es-ES'),
+        date: new Date(header.date).toLocaleDateString(intlLocale(locale)),
         status: header.status,
         statusLabel: tr(
           locale,
@@ -585,7 +705,7 @@ export class PdfPayloadBuilder {
             ? Number((header as any).withholdingRate)
             : null,
         totalInWords,
-        taxBreakdown: parseTaxBreakdown(header.taxBreakdown),
+        taxBreakdown: namedTaxBreakdown(taxRows) ?? parseTaxBreakdown(header.taxBreakdown),
         billToAddress: header.billToAddress || null,
         shipToAddress: header.shipToAddress || null,
         baseDocCode,
@@ -611,26 +731,9 @@ export class PdfPayloadBuilder {
         website: partner?.website || null,
         priceListName,
       },
-      company: {
-        name: configVal('company_name', 'companyName') || 'Mi Empresa',
-        taxId: configVal('company_tax_id', 'companyTaxId'),
-        address: configVal('company_address', 'companyAddress'),
-        phone: configVal('company_phone', 'companyPhone'),
-        email: configVal('company_email', 'companyEmail'),
-        website: configVal('company_website', 'companyWebsite'),
-        logoUrl: configVal('company_logo_url', 'companyLogoUrl'),
-        iban: configVal('company_iban', 'companyIban'),
-        bankName: configVal('company_bank_name', 'companyBankName'),
-        bankSwift: configVal('company_bank_swift', 'companyBankSwift'),
-        invoiceFooter: configVal('company_invoice_footer', 'companyInvoiceFooter'),
-        signature: await resolveSignature({
-          db,
-          header,
-          configVal,
-        }),
-      } as any,
+      company: await companyPayload(db, header, configVal),
       lines,
-      generatedAt: new Date().toLocaleString(locale === 'en' ? 'en-GB' : 'es-ES'),
+      generatedAt: new Date().toLocaleString(intlLocale(locale)),
     };
 
     // ─── Trazabilidad del documento ───────────────────────────────────
@@ -651,12 +754,7 @@ export class PdfPayloadBuilder {
         b: l.batches?.map((b: any) => `${b.batchNum}:${b.quantity}`) || [],
       })),
     });
-    const docHash = crypto
-      .createHash('sha256')
-      .update(hashSource)
-      .digest('hex')
-      .slice(0, 12)
-      .toUpperCase();
+    const docHash = shortHash(hashSource);
 
     // `qrPayload` — string compacto verificable. Formato:
     //   KR|{docType}|{docCode}|{hash}|{total}
@@ -664,9 +762,119 @@ export class PdfPayloadBuilder {
     // doc si está en el mismo tenant.
     const qrPayload = `KR|${docType}|${payload.doc.docCode}|${docHash}|${payload.doc.total.toFixed(2)}`;
 
+    const rectification = await rectificationTexts(db, header, docType, locale);
     const hasBatches = lines.some((l: any) => Array.isArray(l.batches) && l.batches.length > 0);
+    const hasDiscounts = lines.some(
+      (l) => Number(l.discountRate) > 0 || Number(l.discountAmount) > 0,
+    );
 
-    return { ...payload, locale, docHash, qrPayload, hasBatches } as DocumentPdfPayload;
+    return {
+      ...payload,
+      locale,
+      docHash,
+      qrPayload,
+      hasBatches,
+      hasDiscounts,
+      currency: configVal('company_currency', 'companyCurrency') || undefined,
+      labels: { ...documentLabels(tenantId, locale), ...rectification.labels },
+      legalTexts: [
+        ...LocalizationRegistry.legalTextsFor(tenantId ?? undefined, docType, locale),
+        ...rectification.legalTexts,
+      ],
+    } as DocumentPdfPayload;
+  }
+
+  /**
+   * Un registro de una tabla propia de tipo documento: sus datos son los campos de
+   * la tabla. Sin `documentId` salen los nombres de los campos, para previsualizar
+   * una plantilla cuando la tabla aún no tiene registros.
+   */
+  public static async buildUserDocument(
+    docType: string,
+    documentId: string | null,
+    db: any,
+    locale: Locale = 'es',
+    tenantId?: string | null,
+    userRole?: string,
+  ): Promise<DocumentPdfPayload> {
+    const type = await UserDocTypes.find(tenantId, docType);
+    if (!type) {
+      throw Object.assign(new Error(`Tipo de documento ${docType} no encontrado`), {
+        statusCode: 404,
+      });
+    }
+    const row = documentId ? await UserDocTypes.readRow(db, docType, documentId) : null;
+    if (documentId && !row) {
+      throw Object.assign(new Error(`Documento ${documentId} no encontrado`), { statusCode: 404 });
+    }
+
+    const configVal = await loadCompanyConfig(db);
+    const currency = configVal('company_currency', 'companyCurrency') || undefined;
+    const definitions = await UserDocTypes.fieldsFor(tenantId as string, docType, userRole);
+    const fieldList = await Promise.all(
+      definitions.map(async (field) => {
+        const caption = field.label || field.fieldName;
+        const raw = row?.[field.fieldName];
+        const value = !row
+          ? `[${caption}]`
+          : field.fieldType === 'REFERENCE'
+            ? await UserDocTypes.referenceValue(db, field, raw)
+            : formatFieldValue(field, raw, locale, currency);
+        return { name: field.fieldName, caption, value };
+      }),
+    );
+    const fields = Object.fromEntries(fieldList.map((f) => [f.name, f.value]));
+
+    const id = row?.id ?? 'preview';
+    const docCode =
+      (type.displayField && fields[type.displayField]) || String(id).slice(0, 8).toUpperCase();
+    const docHash = shortHash(JSON.stringify({ docType, id, fields }));
+
+    return {
+      doc: {
+        id,
+        docCode,
+        date: new Date(row?.createdAt ?? Date.now()).toLocaleDateString(intlLocale(locale)),
+        status: '',
+        statusLabel: '',
+        subtotal: 0,
+        taxTotal: 0,
+        total: 0,
+        totalInWords: '',
+        taxBreakdown: [],
+        billToAddress: null,
+        shipToAddress: null,
+        baseDocCode: null,
+        title: type.label,
+        fields,
+        fieldList,
+      },
+      partner: {
+        id: '',
+        name: '',
+        foreignName: null,
+        taxId: null,
+        address: null,
+        billingAddress: null,
+        shippingAddress: null,
+        email: null,
+        phone: null,
+        website: null,
+        priceListName: null,
+      },
+      // Sin cabecera de documento no hay creador: la firma es la de la empresa.
+      company: await companyPayload(db, {}, configVal),
+      lines: [],
+      generatedAt: new Date().toLocaleString(intlLocale(locale)),
+      locale,
+      docHash,
+      qrPayload: `KR|${docType}|${docCode}|${docHash}|0.00`,
+      hasBatches: false,
+      hasDiscounts: false,
+      currency,
+      labels: documentLabels(tenantId, locale),
+      legalTexts: LocalizationRegistry.legalTextsFor(tenantId ?? undefined, docType, locale),
+    } as DocumentPdfPayload;
   }
 
   /**
@@ -760,6 +968,9 @@ export class PdfPayloadBuilder {
   }
 
   public static async findLatestSampleId(docType: DocType, db: any): Promise<string | null> {
+    if (isUserDocType(docType) && !DocumentRegistry.has(docType)) {
+      return UserDocTypes.latestRowId(db, docType);
+    }
     const map = getDocTables(docType);
     const [row] = await db
       .select({ id: map.header.id })

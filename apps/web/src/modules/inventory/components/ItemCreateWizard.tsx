@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Loader, Modal, Stepper, usePopup, useToast } from '@openfactu/ui';
 import { validateBarcode } from '@/utils/barcodeValidation';
 import { useItemForm } from '../hooks/useItemForm';
+import { useSupplierOptions } from '../hooks/useSupplierOptions';
 import { ItemGeneralFields } from './ItemGeneralFields';
 import { ItemLogisticsFields } from './ItemLogisticsFields';
 import { ItemWebFields } from './ItemWebFields';
@@ -49,6 +50,7 @@ export const ItemCreateWizard: React.FC<Props> = ({
   const { t } = useI18n();
   const popup = usePopup();
   const form = useItemForm();
+  const suppliers = useSupplierOptions();
   const [step, setStep] = useState(1);
 
   useEffect(() => {
@@ -129,6 +131,7 @@ export const ItemCreateWizard: React.FC<Props> = ({
               set={form.set}
               warehouses={warehouses}
               zones={zones}
+              suppliers={suppliers}
             />
           </div>
         )}

@@ -18,6 +18,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
+import { recordCostEntry, type CostMovementKind } from './itemCost';
 
 /** Upsert en itemWarehouseStocks sumando `delta`. */
 async function addWarehouseStock(client: any, itemId: string, warehouseId: string, delta: number) {
@@ -48,7 +49,7 @@ async function addWarehouseStock(client: any, itemId: string, warehouseId: strin
     await client.insert(schema.itemWarehouseStocks).values({
       itemId,
       warehouseId,
-      stock: Math.max(0, delta),
+      stock: delta,
       updatedAt: new Date(),
     });
   }
@@ -92,7 +93,7 @@ async function addZoneStock(
       itemId,
       warehouseId,
       zoneId,
-      stock: Math.max(0, delta),
+      stock: delta,
       updatedAt: new Date(),
     });
   }
@@ -149,7 +150,7 @@ async function addBatchStock(
       itemId,
       batchNum,
       warehouseId,
-      quantity: Math.max(0, delta),
+      quantity: delta,
       updatedAt: new Date(),
     });
   }
@@ -240,6 +241,12 @@ export async function postTransferReceived(client: any, transferId: string) {
 }
 
 // ── Entradas ────────────────────────────────────────────────────────────
+/** Por qué entra, para el historial del coste. */
+function entryCostKind(sourceDocType?: string | null): CostMovementKind {
+  if (sourceDocType === 'InventoryCount') return 'count';
+  return sourceDocType ? 'sales_return' : 'receipt';
+}
+
 export async function postReceipt(client: any, receiptId: string) {
   const [doc] = await client
     .select()
@@ -251,6 +258,18 @@ export async function postReceipt(client: any, receiptId: string) {
     .from(schema.goodsReceiptLines)
     .where(eq(schema.goodsReceiptLines.receiptId, receiptId));
   for (const l of lines) {
+    // Con coste recalcula la media; sin él, la mercancía entra a la que haya.
+    if (l.unitCost != null) {
+      await recordCostEntry(client, {
+        itemId: l.itemId,
+        kind: entryCostKind(doc.sourceDocType),
+        quantity: Number(l.quantity),
+        unitCost: Number(l.unitCost),
+        docType: 'GoodsReceipt',
+        docId: receiptId,
+        lineId: l.id,
+      });
+    }
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, Number(l.quantity));
     if (l.batchNum) {
       await ensureBatch(client, l.itemId, l.batchNum, Number(l.quantity));
@@ -271,8 +290,19 @@ export async function postIssue(client: any, issueId: string) {
     .from(schema.goodsIssueLines)
     .where(eq(schema.goodsIssueLines.issueId, issueId));
   for (const l of lines) {
+    const [item] = await client
+      .select({ averageCost: schema.items.averageCost })
+      .from(schema.items)
+      .where(eq(schema.items.id, l.itemId));
+    if (Number(item?.averageCost) > 0) {
+      await client
+        .update(schema.goodsIssueLines)
+        .set({ unitCost: item.averageCost })
+        .where(eq(schema.goodsIssueLines.id, l.id));
+    }
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, -Number(l.quantity));
     if (l.batchNum) {
+      await ensureBatch(client, l.itemId, l.batchNum, -Number(l.quantity));
       await addBatchStock(client, l.itemId, l.batchNum, doc.warehouseId, -Number(l.quantity));
     }
   }

@@ -1,9 +1,12 @@
+// Primero: captura el aviso de `/profile/security?linked=…` antes de que las pestañas toquen la URL.
+import './shared/auth/securityNotice';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { PluginProvider } from './context/PluginContext';
 import { AuthProvider } from './context/AuthContext';
+import { LocalizationProvider } from './context/LocalizationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { I18nProvider } from './i18n/I18nContext';
 import { ToastProvider } from '@openfactu/ui';
@@ -27,11 +30,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <I18nProvider>
       <ToastProvider>
         <AuthProvider>
-          <ThemeProvider>
-            <PluginProvider>
-              <App />
-            </PluginProvider>
-          </ThemeProvider>
+          <LocalizationProvider>
+            <ThemeProvider>
+              <PluginProvider>
+                <App />
+              </PluginProvider>
+            </ThemeProvider>
+          </LocalizationProvider>
         </AuthProvider>
       </ToastProvider>
     </I18nProvider>

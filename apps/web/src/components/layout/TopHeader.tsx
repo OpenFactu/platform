@@ -2,9 +2,11 @@ import React from 'react';
 import { ArrowLeft, Boxes, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useMobileNav } from '../../context/MobileNavContext';
+import { useHeaderBackFor } from '../../context/HeaderBackContext';
 import { useTabs } from '../../context/TabsContext';
 import { GlobalSearch } from '../GlobalSearch';
 import { NotificationBell } from './NotificationBell';
+import { MessagingButton } from '@/modules/messaging/components/MessagingButton';
 import { MobileModuleSwitcher } from './MobileModuleSwitcher';
 import { useI18n } from '@/i18n/I18nContext';
 
@@ -18,7 +20,11 @@ export const TopHeader: React.FC = () => {
   const { branding } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
   const { tabs, activeTabId, closeTab } = useTabs();
+  const pageBack = useHeaderBackFor(activeTabId);
   const { t } = useI18n();
+  const activePath = tabs.find((tab) => tab.id === activeTabId)?.path?.split('?')[0] ?? '/';
+  // Cerrar la última pestaña lleva al inicio: solo en el inicio no hay a dónde volver.
+  const hasBack = !!pageBack || tabs.length > 1 || activePath !== '/';
 
   return (
     <header className="h-14 bg-bg-card border-b border-border-default flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">
@@ -31,10 +37,10 @@ export const TopHeader: React.FC = () => {
         <Menu size={20} />
       </button>
 
-      {/* Móvil: volver a la pantalla anterior (la barra de pestañas no se ve) */}
-      {tabs.length > 1 && (
+      {/* Móvil: la única flecha de volver (ver PageBack); la barra de pestañas no se ve. */}
+      {hasBack && (
         <button
-          onClick={() => activeTabId && closeTab(activeTabId)}
+          onClick={() => (pageBack ? pageBack() : activeTabId && closeTab(activeTabId))}
           className="md:hidden p-2 -ml-1 rounded-xs text-fg-muted hover:text-accent hover:bg-bg-hover transition-colors"
           aria-label={t('app.header.back')}
         >
@@ -82,6 +88,7 @@ export const TopHeader: React.FC = () => {
           búsqueda la que ceda ancho y no estos, que son iconos y no admiten
           recorte. */}
       <div className="flex items-center gap-0.5 ml-auto shrink-0">
+        <MessagingButton />
         <NotificationBell />
       </div>
     </header>

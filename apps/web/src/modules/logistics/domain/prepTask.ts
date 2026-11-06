@@ -8,6 +8,8 @@ export interface PickingTask {
   notes: string | null;
   warehouseId: string | null;
   zoneId: string | null;
+  /** Falta ya corregida en el albarán: la tarea no se puede cambiar. */
+  shortageQty?: number | null;
 }
 
 export interface PrepResyncResult {

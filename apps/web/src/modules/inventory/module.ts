@@ -15,6 +15,15 @@ const Warehouses = lazy(() =>
 const StockMovements = lazy(() =>
   import('./pages/StockMovements').then((m) => ({ default: m.StockMovements })),
 );
+const InventoryCounts = lazy(() =>
+  import('./pages/InventoryCounts').then((m) => ({ default: m.InventoryCounts })),
+);
+const InventoryCountDetail = lazy(() =>
+  import('./pages/InventoryCountDetail').then((m) => ({ default: m.InventoryCountDetail })),
+);
+const Replenishment = lazy(() =>
+  import('./pages/Replenishment').then((m) => ({ default: m.Replenishment })),
+);
 
 export const inventoryModule: ModuleManifest = {
   nav: {
@@ -33,6 +42,12 @@ export const inventoryModule: ModuleManifest = {
         id: 'stock-movements',
         label: 'inventory.nav.stockMovements',
         path: '/inventory/movements',
+      },
+      { id: 'inventory-counts', label: 'inventory.nav.counts', path: '/inventory/counts' },
+      {
+        id: 'replenishment',
+        label: 'inventory.nav.replenishment',
+        path: '/inventory/replenishment',
       },
     ],
   },
@@ -78,6 +93,27 @@ export const inventoryModule: ModuleManifest = {
       title: 'inventory.routes.stockMovements',
       iconName: 'ArrowRightLeft',
       permissionPath: '/inventory/movements',
+    },
+    {
+      pattern: '/inventory/counts',
+      Component: InventoryCounts,
+      title: 'inventory.routes.counts',
+      iconName: 'ClipboardList',
+      permissionPath: '/inventory/counts',
+    },
+    {
+      pattern: '/inventory/counts/:id',
+      Component: InventoryCountDetail,
+      title: 'inventory.routes.countDetail',
+      iconName: 'ClipboardList',
+      permissionPath: '/inventory/counts',
+    },
+    {
+      pattern: '/inventory/replenishment',
+      Component: Replenishment,
+      title: 'inventory.routes.replenishment',
+      iconName: 'ShoppingCart',
+      permissionPath: '/inventory/replenishment',
     },
   ],
 };

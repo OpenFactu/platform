@@ -4,14 +4,14 @@ export interface LaborCostRow {
   key: string;
   label: string;
   gross: number;
-  ssEr: number;
+  socialEmployer: number;
   total: number;
   count: number;
 }
 
 export interface LaborCostResponse {
   rows: LaborCostRow[];
-  totals: { gross: number; ssEr: number; total: number };
+  totals: { gross: number; socialEmployer: number; total: number };
 }
 
 export interface ProductivityRow {

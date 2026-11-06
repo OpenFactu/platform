@@ -37,7 +37,9 @@ const DecimalInput: React.FC<{
   disabled?: boolean;
   placeholder?: string;
   className?: string;
-}> = ({ value, onCommit, format, disabled, placeholder, className }) => {
+  /** Admite el signo menos: un precio puede ser una línea de descuento. */
+  allowNegative?: boolean;
+}> = ({ value, onCommit, format, disabled, placeholder, className, allowNegative }) => {
   const [editing, setEditing] = React.useState(false);
   const [text, setText] = React.useState('');
 
@@ -46,19 +48,19 @@ const DecimalInput: React.FC<{
   return (
     <Input
       type="text"
-      inputMode="decimal"
+      inputMode={allowNegative ? 'text' : 'decimal'}
       value={display}
       disabled={disabled}
       onFocus={(e) => {
         setEditing(true);
-        setText(value == null || value === '' || Number(value) === 0 ? '' : String(value));
+        setText(format(value));
         e.target.select();
       }}
       onChange={(e) => {
         const raw = e.target.value;
         // Solo dígitos y un separador decimal (coma o punto). Deja escribir
         // estados intermedios como "", "0", "0,", "1.".
-        if (!/^\d*[.,]?\d*$/.test(raw)) return;
+        if (!(allowNegative ? /^-?\d*[.,]?\d*$/ : /^\d*[.,]?\d*$/).test(raw)) return;
         setText(raw);
         const parsed = parseFloat(raw.replace(',', '.'));
         onCommit(Number.isFinite(parsed) ? parsed : 0);
@@ -117,6 +119,25 @@ interface BuilderOpts {
 
 const cellBase = 'tabular-nums';
 
+/**
+ * Un número para editarlo: con el separador decimal de la empresa, sin miles y sin ceros de
+ * más. Si tiene decimales lleva al menos `min`, para que un 3,2 de precio se lea 3,20.
+ */
+function editableNumber(
+  value: number | string | null | undefined,
+  fmt: BuilderOpts['fmt'],
+  { min = 0, max = 6 }: { min?: number; max?: number } = {},
+): string {
+  if (value == null || value === '' || Number(value) === 0) return '';
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  const [whole, decimals = ''] = num.toFixed(max).split('.');
+  const trimmed = decimals.replace(/0+$/, '');
+  if (!trimmed) return whole;
+  const separator = fmt.number(1.5, 1).replace(/\d/g, '') || '.';
+  return `${whole}${separator}${trimmed.padEnd(min, '0')}`;
+}
+
 export function moneyCell(value: number | string, fmt: BuilderOpts['fmt']): React.ReactNode {
   return <span className={`font-medium text-fg-body ${cellBase}`}>{fmt.money(value)}</span>;
 }
@@ -163,15 +184,15 @@ function BatchBadge({
         onViewBatch?.(line);
       }}
       title={t('doc.lines.traceCount', { label, assigned, required })}
-      className={`ml-auto inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-lg border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] shrink-0 ${
+      className={`ml-auto inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-sm border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] shrink-0 ${
         balanced
-          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
-          : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20'
+          ? 'bg-success-bg text-success-fg border-success hover:brightness-95'
+          : 'bg-info-bg text-info-fg border-info hover:brightness-95'
       }`}
     >
       <IconLead size={12} className="shrink-0" />
       <span>{label}</span>
-      <span className="inline-flex items-center gap-0.5 font-mono tabular-nums bg-white/70 dark:bg-black/30 rounded-md px-1.5 py-0.5 text-[10px] shadow-inner">
+      <span className="inline-flex items-center gap-0.5 font-mono tabular-nums bg-bg-card rounded-xs px-1.5 py-0.5 text-[10px] shadow-inner">
         {item?.manageBy === 'S' ? count : assigned.toFixed(0)}
         <span className="opacity-50">/</span>
         {required.toFixed(0)}
@@ -204,7 +225,11 @@ export function renderArticleCell(
 
 function locationCell(line: any, zones?: any[]): React.ReactNode {
   const zoneName = zones?.find((z: any) => z.id === line.zoneId)?.name;
-  return <span className="text-[11px] font-medium text-fg-muted">{zoneName || t('doc.lines.defaultLocation')}</span>;
+  return (
+    <span className="text-[11px] font-medium text-fg-muted">
+      {zoneName || t('doc.lines.defaultLocation')}
+    </span>
+  );
 }
 
 function progressCell(
@@ -215,11 +240,7 @@ function progressCell(
   const curN = Number(current) || 0;
   const tgtN = Number(target) || 0;
   const color =
-    curN <= 0
-      ? 'text-fg-subtle'
-      : curN + 0.0001 >= tgtN
-        ? 'text-emerald-600 dark:text-emerald-300'
-        : 'text-amber-600 dark:text-amber-300';
+    curN <= 0 ? 'text-fg-subtle' : curN + 0.0001 >= tgtN ? 'text-success' : 'text-warning';
   return <span className={`font-bold tabular-nums ${color}`}>{fmt.number(curN, 2)}</span>;
 }
 
@@ -292,6 +313,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
 
   columns.push({
     header: t('doc.lines.lineTotal'),
+    card: 'meta',
     width: '16%',
     align: 'right',
     cell: (l: any) => {
@@ -386,6 +408,14 @@ interface FormBuilderOpts {
   onViewBatch?: (line: any) => void;
   onDuplicateLine?: (idx: number) => void;
   fmt: BuilderOpts['fmt'];
+  /** Línea que viene de otro documento pero cuya cantidad sí se elige (abono). */
+  editableBaseQuantity?: boolean;
+  /** El total de la línea resta en vez de sumar (abono). */
+  negativeTotals?: boolean;
+  /** Sin asignar lotes en la línea: los reparte el servidor (abono). */
+  hideBatches?: boolean;
+  /** Columnas propias del documento, justo antes del total. */
+  extraColumns?: TableColumn<any>[];
   /** Getter cacheado de UoMs disponibles por itemId (hook useItemUoms) */
   getItemUoms?: (itemId: string) => AvailableUom[];
   /** Si 'line' añade columnas Almacén + Ubicación por línea en todos los kinds. */
@@ -476,17 +506,13 @@ function FormArticleCell({
           const partial = hasTrace && !balanced;
           const tone = balanced ? 'emerald' : partial ? 'amber' : hasTrace ? 'indigo' : 'amber';
           const toneCls: Record<string, string> = {
-            emerald:
-              'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/20',
-            amber:
-              'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20',
-            indigo:
-              'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20',
+            emerald: 'bg-success-bg text-success-fg border-success hover:brightness-95',
+            amber: 'bg-warning-bg text-warning-fg border-warning hover:brightness-95',
+            indigo: 'bg-info-bg text-info-fg border-info hover:brightness-95',
           };
           const IconLead = item?.manageBy === 'S' ? Layers3 : Package;
           const IconTrail = balanced ? CheckCircle2 : partial ? AlertTriangle : Plus;
-          const label =
-            item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
+          const label = item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
           return (
             <button
               type="button"
@@ -499,12 +525,12 @@ function FormArticleCell({
                   ? t('doc.lines.traceCount', { label, assigned, required })
                   : t('doc.lines.assignTrace')
               }
-              className={`group inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-lg border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] ${toneCls[tone]}`}
+              className={`group inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-sm border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] ${toneCls[tone]}`}
             >
               <IconLead size={12} className="shrink-0" />
               <span>{label}</span>
               {hasTrace ? (
-                <span className="inline-flex items-center gap-0.5 font-mono tabular-nums bg-white/70 dark:bg-black/30 rounded-md px-1.5 py-0.5 text-[10px] shadow-inner">
+                <span className="inline-flex items-center gap-0.5 font-mono tabular-nums bg-bg-card rounded-xs px-1.5 py-0.5 text-[10px] shadow-inner">
                   {item?.manageBy === 'S' ? count : assigned.toFixed(0)}
                   <span className="opacity-50">/</span>
                   {required.toFixed(item?.manageBy === 'S' ? 0 : 0)}
@@ -565,7 +591,11 @@ function ZoneSelectCell({
     { label: t('doc.lines.noLocationOption'), value: '' },
     ...filtered.map((z: any) => {
       const sz = stockZones?.find((s) => s.zoneId === z.id);
-      return { label: z.name, value: z.id, secondaryLabel: sz ? t('doc.lines.unitsShort', { n: sz.stock }) : undefined };
+      return {
+        label: z.name,
+        value: z.id,
+        secondaryLabel: sz ? t('doc.lines.unitsShort', { n: sz.stock }) : undefined,
+      };
     }),
   ];
   return (
@@ -612,7 +642,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
         actions={actions}
         onAssignBatch={onAssignBatch}
         onViewBatch={onViewBatch}
-        tracksBatches={kind !== 'order'}
+        tracksBatches={kind !== 'order' && !opts.hideBatches}
       />
     ),
   });
@@ -664,6 +694,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'right',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
+      const qtyLocked = locked && !opts.editableBaseQuantity;
       const item = masters.items.find((i: any) => i.id === line.itemId);
       const uomCode = item?.uomCode || item?.uom?.code;
       const availUoms = getItemUoms && line.itemId ? getItemUoms(line.itemId) : [];
@@ -696,10 +727,10 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
           <DecimalInput
             value={line.quantity}
             onCommit={(num) => actions.updateLine(idx, 'quantity', num)}
-            format={(v) => (v == null || v === '' || Number(v) === 0 ? '' : String(v))}
-            disabled={locked}
+            format={(v) => editableNumber(v, fmt)}
+            disabled={qtyLocked}
             placeholder="0"
-            className={`flex-1 min-w-0 text-right font-bold tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
+            className={`flex-1 min-w-0 text-right font-bold tabular-nums h-9 ${qtyLocked ? disabledInputCls : ''}`}
           />
           {hasAlternatives ? (
             <Select
@@ -726,23 +757,12 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'right',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
-      // Evita mostrar "200.0000" para un 200: recortar ceros a la derecha
-      // dejando como mínimo 2 decimales si los tiene.
-      const formatPriceForEdit = (v: any): string => {
-        if (v == null || v === '' || Number(v) === 0) return '';
-        const num = Number(v);
-        if (!Number.isFinite(num)) return String(v);
-        const s = num
-          .toFixed(4)
-          .replace(/(\.\d*?[1-9])0+$/, '$1')
-          .replace(/\.0+$/, '');
-        return s;
-      };
       return (
         <DecimalInput
           value={line.price}
           onCommit={(num) => actions.updateLine(idx, 'price', num)}
-          format={formatPriceForEdit}
+          format={(v) => editableNumber(v, fmt, { min: 2, max: 4 })}
+          allowNegative
           disabled={locked}
           placeholder="0,00"
           className={`w-full text-right font-medium tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
@@ -757,8 +777,8 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'center',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
-      // Sin IVA asignado ⇒ mostramos el grupo 0% real (evita duplicar un "0%"
-      // placeholder junto al IVA0 del maestro).
+      // Sin impuesto asignado ⇒ mostramos el grupo 0% real (evita duplicar un "0%"
+      // placeholder junto al del maestro).
       const zeroGroup = (masters.taxGroups ?? []).find((t: any) => Number(t.rate) === 0);
       return (
         <SearchableSelect
@@ -774,18 +794,23 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     },
   });
 
+  columns.push(...(opts.extraColumns ?? []));
+
   columns.push({
     header: t('doc.lines.total'),
+    card: 'meta',
     width: kind === 'deliveryNote' ? '12%' : '14%',
     align: 'right',
     cell: (line: any) => {
       const tax = masters.taxGroups?.find((t: any) => t.id === line.taxGroupId);
       const rate = tax ? Number(tax.rate) : 0;
       const base = Number(line.quantity || 0) * Number(line.price || 0);
-      const total = base * (1 + rate / 100);
+      const total = (opts.negativeTotals ? -1 : 1) * base * (1 + rate / 100);
       return (
         <span
-          className={`font-black tabular-nums ${line.baseId ? 'text-fg-subtle' : 'text-fg-default'}`}
+          className={`font-black tabular-nums ${
+            line.baseId && !opts.negativeTotals ? 'text-fg-subtle' : 'text-fg-default'
+          }`}
         >
           {fmt.money(total)}
         </span>
@@ -908,18 +933,27 @@ export function statusBadgeProps(
   if (kind === DocKind.Invoice) {
     if (status === 'D') return { label: t('doc.status.draft'), variant: 'warning' };
     if (status === DocStatus.Open) return { label: t('doc.status.posted'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.Order) {
+    if (status === 'D') return { label: t('doc.status.draft'), variant: 'neutral' };
     if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
     if (status === DocStatus.Partial) return { label: t('doc.status.partial'), variant: 'info' };
     if (status === DocStatus.Closed) return { label: t('doc.status.closed'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.DeliveryNote) {
     if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
     if (status === DocStatus.Closed) return { label: t('doc.status.invoiced'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
+  if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
+  if (status === 'A') return { label: t('doc.status.accepted'), variant: 'success' };
+  if (status === 'R') return { label: t('doc.status.rejected'), variant: 'error' };
+  if (status === DocStatus.Closed) return { label: t('doc.status.closed'), variant: 'success' };
+  if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
   return { label: status, variant: 'neutral' };
 }

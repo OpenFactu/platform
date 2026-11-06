@@ -4,9 +4,16 @@ import crypto from 'crypto';
 import { ClientFactory } from './ClientFactory';
 import { sql, eq, and } from 'drizzle-orm';
 import * as schema from '../../db/schema';
-import { getDefaultTemplate, getDefaultTemplateName, DEFAULT_TEMPLATE_NAMES } from '@openfactu/pdf';
+import {
+  getDefaultTemplate,
+  getDefaultTemplateName,
+  extractMetaFromHtml,
+  DEFAULT_TEMPLATE_NAMES,
+  DEFAULT_VISUAL_OPTIONS,
+} from '@openfactu/pdf';
 import { DocumentRegistry, type DocumentTypeConfig } from '../documents/DocumentRegistry';
 import { seedDefaults } from './seedDefaults';
+import { hasDesignedElements } from '../documents/templateFactory';
 
 /**
  * HTML de plantilla de fábrica para un tipo. Los 6 core van SIN overrides
@@ -19,6 +26,31 @@ function factoryTemplateHtml(config: DocumentTypeConfig): string {
     title: config.label,
     partnerLabel: config.partnerLabel ?? (config.side === 'sales' ? 'Cliente' : 'Proveedor'),
   });
+}
+
+const NEUTRAL_PDF_MARKER = 'pdf_neutral_adopted';
+
+/** Ordena las claves para comparar opciones sin depender del orden en que se guardaron. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => [k, canonical(v)]),
+    );
+  }
+  return value;
+}
+
+/** ¿Lleva esta plantilla las opciones visuales de serie, sin que nadie las cambiara? */
+function hasStockVisualOptions(html: string): boolean {
+  const meta = extractMetaFromHtml(html);
+  if (!meta) return false;
+  // El título y la etiqueta del tercero dependen del tipo de documento, no del diseño.
+  const { customTitle: _title, partnerLabel: _label, ...options } = meta;
+  const { customTitle: _t, partnerLabel: _l, ...stock } = DEFAULT_VISUAL_OPTIONS;
+  return JSON.stringify(canonical(options)) === JSON.stringify(canonical(stock));
 }
 
 /**
@@ -194,6 +226,15 @@ export class MigrationManager {
             eq(schema.documentTemplates.isFactoryDefault, true),
           ),
         );
+      // Un diseño sobre la estándar es de la empresa aunque siga marcada de fábrica: lo
+      // dejaba así el diseñador antes de quitar esa marca al guardar.
+      const designed = !!existing && hasDesignedElements(existing.canvasLayout);
+      if (designed) {
+        await db
+          .update(schema.documentTemplates)
+          .set({ isFactoryDefault: false })
+          .where(eq(schema.documentTemplates.id, existing.id));
+      }
       const html = factoryTemplateHtml(config);
       const hasSignature = html.includes('signature-block');
       if (!hasSignature) {
@@ -201,10 +242,16 @@ export class MigrationManager {
           `[Templates] ⚠ Plantilla ${docType} sin bloque signature-block — revisa @openfactu/pdf dist`,
         );
       }
-      if (existing) {
+      if (existing && !designed) {
+        // `canvasLayout`: un lienzo vacío lo dejaba el autoguardado con solo abrir el diseñador.
         await db
           .update(schema.documentTemplates)
-          .set({ html, name: getDefaultTemplateName(docType, config.label) })
+          .set({
+            html,
+            name: getDefaultTemplateName(docType, config.label),
+            canvasLayout: null,
+            legacyHtml: true,
+          })
           .where(eq(schema.documentTemplates.id, existing.id));
       } else {
         // No hay fila de fábrica para este docType (tenant nuevo, o backfill
@@ -232,7 +279,47 @@ export class MigrationManager {
       }
       updated++;
     }
+    await this.adoptNeutralTemplates(schemaName);
     return updated;
+  }
+
+  /**
+   * El formato neutro pasa a ser el predeterminado en las empresas que usaban el
+   * estándar anterior sin haberlo tocado. La migración 060 dejó esas filas sin
+   * marcar como "de fábrica", así que el resync no las alcanza. Se reconocen por
+   * conservar el nombre y todas las opciones visuales de serie; lo personalizado
+   * no cambia. Una sola vez: si alguien vuelve a elegir la anterior, se respeta.
+   */
+  private static async adoptNeutralTemplates(schemaName: string): Promise<void> {
+    const db = ClientFactory.getClient(schemaName);
+    const [done] = await db
+      .select({ id: schema.systemConfigs.id })
+      .from(schema.systemConfigs)
+      .where(eq(schema.systemConfigs.key, NEUTRAL_PDF_MARKER));
+    if (done) return;
+
+    for (const config of DocumentRegistry.getAll()) {
+      const rows = await db
+        .select()
+        .from(schema.documentTemplates)
+        .where(eq(schema.documentTemplates.docType, config.docType));
+      const factory = rows.find((r: any) => r.isFactoryDefault);
+      const current = rows.find((r: any) => r.isDefault);
+      if (!factory || !current || current.id === factory.id) continue;
+      if (current.name !== factory.name || !hasStockVisualOptions(current.html)) continue;
+      await db
+        .update(schema.documentTemplates)
+        .set({ isDefault: false })
+        .where(eq(schema.documentTemplates.id, current.id));
+      await db
+        .update(schema.documentTemplates)
+        .set({ isDefault: true })
+        .where(eq(schema.documentTemplates.id, factory.id));
+    }
+
+    await db
+      .insert(schema.systemConfigs)
+      .values({ id: crypto.randomUUID(), key: NEUTRAL_PDF_MARKER, value: 'true' });
   }
 
   /**

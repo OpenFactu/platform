@@ -7,27 +7,22 @@ import {
   NumberInput,
   Modal,
   Badge,
-  Loader,
+  EmptyState,
   SearchableSelect,
+  Table,
   useToast,
   usePopup,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
-import { Plus, Trash2, Lock, Warehouse, Boxes } from 'lucide-react';
+import type { RowAction, TableColumn } from '@openfactu/ui';
+import { Plus, Trash2, Lock, Boxes, Package as PackageIcon, Printer } from 'lucide-react';
+import { openPdf } from '@/utils/downloadPdf';
+import { packageTone } from '../domain/packageStatus';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
 import { useI18n } from '@/i18n/I18nContext';
 import type { Package, PackageLine } from '../domain/package';
 import type { StagingArea } from '../domain/stagingArea';
 import type { Item } from '@/modules/inventory/domain/item';
-
-const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
-  open: 'warning',
-  sealed: 'info',
-  shipped: 'info',
-  delivered: 'success',
-  returned: 'error',
-};
 
 export const PackagesTab: React.FC = () => {
   const { token, user } = useAuth();
@@ -154,7 +149,6 @@ export const PackagesTab: React.FC = () => {
   };
 
   const boxMap = new Map(boxes.map((b) => [b.id, b] as const));
-  const areaMap = new Map(areas.map((a) => [a.id, a] as const));
 
   // Opciones de los desplegables de maestros: una vez por render en lugar de
   // una por fila de la lista.
@@ -175,6 +169,85 @@ export const PackagesTab: React.FC = () => {
     [allItems],
   );
 
+  const columns: TableColumn<Package>[] = [
+    {
+      header: t('logistics.packages.columns.code'),
+      cell: (p) => <span className="font-mono text-xs text-fg-default">{p.code}</span>,
+    },
+    {
+      header: t('logistics.packages.columns.status'),
+      cell: (p) => (
+        <Badge variant={packageTone(p.status)}>{t(`logistics.packages.status.${p.status}`)}</Badge>
+      ),
+    },
+    {
+      header: t('logistics.packages.columns.shipment'),
+      cell: (p) => (
+        <div>
+          <div className="font-mono text-xs">{(p.shipmentCode as string) || '—'}</div>
+          <div className="text-xs text-fg-muted truncate max-w-[240px]">
+            {(p.counterparty as string) || ''}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: t('logistics.packages.columns.box'),
+      cell: (p) => {
+        const box = p.boxItemId ? boxMap.get(p.boxItemId) : null;
+        return (
+          <span className="text-xs text-fg-muted">
+            {[box?.name, p.weightKg != null ? `${p.weightKg} kg` : null]
+              .filter(Boolean)
+              .join(' · ') || '—'}
+          </span>
+        );
+      },
+    },
+    {
+      header: t('logistics.packages.area'),
+      cell: (p) => (
+        <SearchableSelect
+          options={areaOptions}
+          value={p.stagingAreaId || ''}
+          onChange={(v) => moveToArea(p.id, v || null)}
+          disabled={p.status === 'shipped' || p.status === 'delivered'}
+          placeholder={t('logistics.packages.noArea')}
+          clearable
+          className="w-44"
+        />
+      ),
+    },
+  ];
+
+  const rowActions = (p: Package): RowAction[] => [
+    {
+      label: t('logistics.packages.boxContents'),
+      icon: <Boxes size={14} />,
+      onClick: () => openLines(p),
+    },
+    {
+      label: t('logistics.packages.label'),
+      icon: <Printer size={14} />,
+      onClick: () => openPdf(`/api/logistics/packages/${p.id}/label.pdf`),
+    },
+    ...(p.status === 'open'
+      ? [
+          {
+            label: t('logistics.packages.seal'),
+            icon: <Lock size={14} />,
+            onClick: () => seal(p.id),
+          },
+        ]
+      : []),
+    {
+      label: t('logistics.common.delete'),
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => remove(p.id),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end">
@@ -183,87 +256,20 @@ export const PackagesTab: React.FC = () => {
         </Button>
       </div>
 
-      {loading ? (
-        <div className="py-10 flex justify-center">
-          <Loader />
-        </div>
-      ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          {t('logistics.packages.empty')}
+      {!loading && rows.length === 0 ? (
+        <Card bodyClassName="py-10">
+          <EmptyState icon={<PackageIcon size={28} />} title={t('logistics.packages.empty')} />
         </Card>
       ) : (
-        <Card bodyClassName="p-0">
-          <ul>
-            {rows.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
-              >
-                <Badge variant={STATUS_BADGE[p.status] || 'neutral'}>{p.status}</Badge>
-                <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
-                  {p.code}
-                </code>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                    {p.boxItemId && boxMap.get(p.boxItemId) && (
-                      <span>
-                        {t('logistics.packages.boxLabel', { name: boxMap.get(p.boxItemId)!.name })}
-                      </span>
-                    )}
-                    {p.weightKg != null && <span>· {p.weightKg} kg</span>}
-                  </div>
-                </div>
-
-                {/* Selector inline para mover el paquete entre acopios: los
-                    acopios vienen del servidor → SearchableSelect. */}
-                <div
-                  className="flex items-center gap-1.5 shrink-0"
-                  title={t('logistics.packages.moveToArea')}
-                >
-                  <Warehouse size={13} className="text-slate-400" />
-                  <SearchableSelect
-                    options={areaOptions}
-                    value={p.stagingAreaId || ''}
-                    onChange={(v) => moveToArea(p.id, v || null)}
-                    disabled={p.status === 'shipped' || p.status === 'delivered'}
-                    placeholder={t('logistics.packages.noArea')}
-                    clearable
-                    className="w-44"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openLines(p)}
-                  title={t('logistics.packages.boxContents')}
-                >
-                  <Boxes size={13} />
-                </Button>
-                {p.status === 'open' && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => seal(p.id)}
-                    title={t('logistics.packages.seal')}
-                  >
-                    <Lock size={13} />
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => remove(p.id)}
-                  title={t('logistics.common.delete')}
-                >
-                  <Trash2 size={13} />
-                </Button>
-              </li>
-            ))}
-          </ul>
+        <Card noPadding className="overflow-hidden">
+          <Table
+            className="max-md:p-3"
+            columns={columns}
+            data={rows}
+            isLoading={loading}
+            rowActions={rowActions}
+            skeletonRowHeight={24}
+          />
         </Card>
       )}
 
@@ -277,7 +283,7 @@ export const PackagesTab: React.FC = () => {
           <div>
             {/* Artículos y acopios vienen del servidor → SearchableSelect (no
                 tiene prop `label`, se conserva el <label> suelto). */}
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.packages.boxField')}
             </label>
             <SearchableSelect
@@ -288,11 +294,11 @@ export const PackagesTab: React.FC = () => {
               clearable
             />
             {boxes.length === 0 && (
-              <p className="text-[11px] text-amber-600 mt-1">{t('logistics.packages.noBoxes')}</p>
+              <p className="text-[11px] text-warning mt-1">{t('logistics.packages.noBoxes')}</p>
             )}
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.packages.area')}
             </label>
             <SearchableSelect
@@ -333,7 +339,7 @@ export const PackagesTab: React.FC = () => {
             {/* Formulario de añadir artículo */}
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
                   {t('logistics.packages.item')}
                 </label>
                 <SearchableSelect
@@ -364,14 +370,12 @@ export const PackagesTab: React.FC = () => {
             </div>
 
             {(linesFor.status === 'shipped' || linesFor.status === 'delivered') && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-300">
-                {t('logistics.packages.boxShipped')}
-              </p>
+              <p className="text-[11px] text-warning ">{t('logistics.packages.boxShipped')}</p>
             )}
 
             {/* Lista de contenido actual */}
             {lines.length === 0 ? (
-              <Card bodyClassName="py-8 text-center text-sm text-slate-500">
+              <Card bodyClassName="py-8 text-center text-sm text-fg-muted">
                 {t('logistics.packages.emptyBox')}
               </Card>
             ) : (
@@ -411,7 +415,7 @@ export const PackagesTab: React.FC = () => {
               </Card>
             )}
 
-            <div className="text-[11px] text-slate-500 flex items-center justify-between pt-2 border-t border-border-subtle">
+            <div className="text-[11px] text-fg-muted flex items-center justify-between pt-2 border-t border-border-subtle">
               <span>
                 {t('logistics.packages.totalLines')} <b>{lines.length}</b>
               </span>

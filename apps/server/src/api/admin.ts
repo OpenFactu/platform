@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import { ENCRYPTED_EXTENSION, isEncryptedBackup } from '../core/backup/backupCrypto';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -18,7 +19,7 @@ import { TenantBackup, defaultUploadsBase } from '../core/tenant/TenantBackup';
 import { defaultBackupsBasePath } from '../core/backup/BackupDestination';
 import { ErpDataExporter } from '../core/export/ErpDataExporter';
 import { MigrationManager } from '../core/tenant/MigrationManager';
-import { seedAccountingDefaults } from '../core/accounting/seedAccountingDefaults';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 
 const router = Router();
 const upload = multer({
@@ -74,11 +75,15 @@ router.get('/tenants/:id/export', async (req: any, res) => {
     // ?includeUploads=false  → omite los archivos adjuntos (más rápido y ligero)
     const includeUploads = req.query.includeUploads !== 'false';
     const buf = await TenantBackup.exportToZip(req.params.id, { includeUploads });
-    res.setHeader('Content-Type', 'application/zip');
+    const extension = isEncryptedBackup(buf) ? ENCRYPTED_EXTENSION : '.zip';
+    res.setHeader(
+      'Content-Type',
+      extension === '.zip' ? 'application/zip' : 'application/octet-stream',
+    );
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="tenant_${req.params.id}_${Date.now()}.zip"`,
+      `attachment; filename="tenant_${req.params.id}_${Date.now()}${extension}"`,
     );
     res.end(buf);
   } catch (e: any) {
@@ -196,13 +201,19 @@ router.get('/tenants/:id/export-data', async (req: any, res) => {
 });
 
 /**
- * POST /api/admin/seed-accounting — siembra plan contable mínimo (PGC
- * abreviado) + mapeos de cuenta por defecto. Idempotente. Pensado para
- * que un usuario no contable pueda probar la contabilidad en un clic.
+ * POST /api/admin/seed-accounting — instala el plan contable y los mapeos de
+ * cuenta de los paquetes de localización activos. Idempotente. Pensado para que
+ * un usuario no contable pueda probar la contabilidad en un clic.
  */
 router.post('/seed-accounting', async (req: any, res) => {
   try {
-    const result = await seedAccountingDefaults(req.tenantClient);
+    const result = await LocalizationInstaller.applyAccounting(req.tenantId, req.tenantClient);
+    if (result.packs.length === 0) {
+      return res.status(409).json({
+        error:
+          'Ningún paquete de localización activo aporta plan contable. Activa el plugin de tu país o crea las cuentas a mano.',
+      });
+    }
     res.json({ ok: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

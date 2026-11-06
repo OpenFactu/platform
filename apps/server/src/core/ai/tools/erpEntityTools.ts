@@ -19,6 +19,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { eq, like, desc } from 'drizzle-orm';
+import { TaxIdValidators } from '../../geo/TaxIdValidators';
 import * as schema from '../../../db/schema';
 import { validateTaxId } from '@openfactu/common';
 import { validateIban, normalizeIban } from '../../../utils/ibanValidation';
@@ -37,6 +38,7 @@ function genCode(prefix: string) {
 async function checkTaxId(
   nif: string | null | undefined,
   countryCode: string | null | undefined,
+  tenantId?: string,
 ): Promise<string | null> {
   if (!nif || !countryCode) return null;
   try {
@@ -47,12 +49,12 @@ async function checkTaxId(
       .where(eq(schema.countries.code, countryCode.toUpperCase()));
     if (!country) return null;
     if (!validateTaxId(nif, country as any)) {
-      return `El ${country.taxIdLabel || 'NIF'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
+      return `El ${country.taxIdLabel || 'identificador fiscal'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
     }
   } catch {
     /* ignorar errores de lookup */
   }
-  return null;
+  return TaxIdValidators.check(tenantId, countryCode, nif);
 }
 
 /**
@@ -158,14 +160,16 @@ export function buildErpActionTools(ctx: ChatToolContext) {
   if (hasModuleAccess(ctx, '/partners', 'write')) {
     tools.create_partner = tool({
       description:
-        'Crea un interlocutor (cliente/proveedor) nuevo. El código se autogenera si no lo indicas (con el prefijo del grupo si das groupId, o un código genérico si no). Valida el NIF según el país si das ambos. Requiere confirmación.',
+        'Crea un interlocutor (cliente/proveedor) nuevo. El código se autogenera si no lo indicas (con el prefijo del grupo si das groupId, o un código genérico si no). Valida la identificación fiscal según el país si das ambos. Requiere confirmación.',
       inputSchema: z.object({
         name: z.string().describe('Nombre o razón social'),
         nif: z.string().optional(),
         countryCode: z
           .string()
           .optional()
-          .describe('Código ISO de país (p.ej. "ES") — necesario para validar el NIF'),
+          .describe(
+            'Código ISO de país (p.ej. "ES") — necesario para validar la identificación fiscal',
+          ),
         email: z.string().optional(),
         phone: z.string().optional(),
         website: z.string().optional(),
@@ -192,7 +196,7 @@ export function buildErpActionTools(ctx: ChatToolContext) {
         bankName?: string;
         bankSwift?: string;
       }) => {
-        const taxErr = await checkTaxId(input.nif, input.countryCode);
+        const taxErr = await checkTaxId(input.nif, input.countryCode, ctx.tenantId);
         if (taxErr) return { ok: false, error: taxErr };
 
         let iban = input.iban;
@@ -266,7 +270,7 @@ export function buildErpActionTools(ctx: ChatToolContext) {
 
     tools.create_partners_bulk = tool({
       description:
-        'Crea VARIOS interlocutores (clientes/proveedores) de golpe — úsala cuando el usuario pegue o adjunte una lista/Excel/CSV con muchos interlocutores, en vez de llamar a create_partner fila por fila (eso pediría una confirmación por cada uno). Cada fila puede llevar su propia dirección. Mismas reglas que create_partner (código autogenerado, validación de NIF/IBAN), pero en un único paso de confirmación para todo el lote. Si una fila falla (NIF inválido, código duplicado…) las demás se crean igualmente — revisa el resultado por fila que devuelve. Máximo 300 interlocutores por llamada; si hay más, divide en varias llamadas.',
+        'Crea VARIOS interlocutores (clientes/proveedores) de golpe — úsala cuando el usuario pegue o adjunte una lista/Excel/CSV con muchos interlocutores, en vez de llamar a create_partner fila por fila (eso pediría una confirmación por cada uno). Cada fila puede llevar su propia dirección. Mismas reglas que create_partner (código autogenerado, validación de identificación fiscal/IBAN), pero en un único paso de confirmación para todo el lote. Si una fila falla (identificación fiscal inválido, código duplicado…) las demás se crean igualmente — revisa el resultado por fila que devuelve. Máximo 300 interlocutores por llamada; si hay más, divide en varias llamadas.',
       inputSchema: z.object({
         partners: z
           .array(partnerRowSchema)
@@ -292,7 +296,7 @@ export function buildErpActionTools(ctx: ChatToolContext) {
         for (let i = 0; i < input.partners.length; i++) {
           const row = input.partners[i];
           try {
-            const taxErr = await checkTaxId(row.nif, row.countryCode);
+            const taxErr = await checkTaxId(row.nif, row.countryCode, ctx.tenantId);
             if (taxErr) throw new Error(taxErr);
 
             let iban = row.iban;

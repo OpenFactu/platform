@@ -197,6 +197,9 @@ export default {
   'No se puede enviar desde "{0}"': 'Cannot ship from status "{0}"',
   'No se puede recibir desde "{0}"': 'Cannot receive from status "{0}"',
   'Almacén es obligatorio': 'Warehouse is required',
+  'Ya está confirmado: no se puede borrar.': 'It is already confirmed: it cannot be deleted.',
+  'El coste de una línea no puede ser negativo.': 'A line cost cannot be negative.',
+  'No tienes permiso para poner costes.': 'You do not have permission to set costs.',
   'Motivo inválido: {0}': 'Invalid reason: {0}',
   'Ya posteado (status: {0})': 'Already posted (status: {0})',
   'Traspaso no encontrado': 'Transfer not found',
@@ -289,6 +292,8 @@ export default {
   'Sin firma': 'No signature',
   'Error al subir la foto': 'Error uploading photo',
   'Sin foto de perfil': 'No profile photo',
+  'Tema no válido': 'Invalid theme',
+  'Modo de tema no válido': 'Invalid theme mode',
 
   // ── userTables.ts ─────────────────────────────────────────────────────
   'Nombre inválido. Letras/dígitos/"_", 2–41 chars.':

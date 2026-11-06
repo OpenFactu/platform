@@ -3,7 +3,7 @@ export interface BrandingConfig {
   colorAccent: string;
   logoUrl: string;
   appName: string;
-  /** Id del catálogo de fuentes de la web (FONT_OPTIONS); 'sans' es el default. */
+  /** Id del catálogo de fuentes de la web (FONT_OPTIONS); vacío = la del tema. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
   /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
@@ -16,6 +16,8 @@ export interface BrandingConfig {
   /** Id de MOTION_CHARACTERS (sober, smooth, expressive, playful). */
   motionCharacter: string;
   motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
+  /** Todos ven este tema aunque tengan uno elegido en su perfil, que se conserva. */
+  enforceTheme: boolean;
 }
 
 export interface FormatConfig {
@@ -79,6 +81,8 @@ export interface FlagsConfig {
   crmEnabled: boolean;
   /** Módulo Formularios (formularios y encuestas con enlace público). Off por defecto. */
   formsEnabled: boolean;
+  /** Mensajes: chat del equipo (servicio aparte, `apps/messaging`). Off por defecto. */
+  messagingEnabled: boolean;
   /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por
    *  pedido). On por defecto: es como funcionaba hasta ahora. */
   quoteDirectInvoiceEnabled: boolean;
@@ -89,7 +93,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   colorAccent: '#0D9488',
   logoUrl: '',
   appName: 'Keirost',
-  fontFamily: 'sans',
+  fontFamily: '',
   themeMode: 'light',
   themePreset: '',
   radius: '',
@@ -97,6 +101,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   textScale: 1,
   motionCharacter: '',
   motionSpeed: '',
+  enforceTheme: false,
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -134,6 +139,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   websiteEnabled: false,
   crmEnabled: false,
   formsEnabled: false,
+  messagingEnabled: false,
   quoteDirectInvoiceEnabled: true,
 };
 

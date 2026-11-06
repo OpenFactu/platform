@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import * as schema from '../../../db/schema';
+import { statusError } from '../documentRules';
 import type { LineHookContext, BatchDetailHookContext } from '../DocumentEngine';
 
 /**
@@ -16,10 +17,12 @@ import type { LineHookContext, BatchDetailHookContext } from '../DocumentEngine'
  * (SDN, SINV directa).
  */
 export async function assertStockAvailable(ctx: LineHookContext) {
-  const { flags, itemInfo, baseQty, baseAlreadyMovedStock } = ctx;
-  if (baseAlreadyMovedStock) return;
+  const { flags, itemInfo, baseQty, baseAlreadyMovedStock, deferStock } = ctx;
+  // Un borrador no saca nada todavía: se mira al asentarlo.
+  if (baseAlreadyMovedStock || deferStock) return;
   if (!flags.allowNegativeStock && Number(itemInfo.stock) < baseQty) {
-    throw new Error(
+    throw statusError(
+      409,
       `Stock insuficiente para el artículo ${itemInfo.name}. Disponible: ${itemInfo.stock}, Requerido: ${baseQty}`,
     );
   }
@@ -34,7 +37,8 @@ export async function assertStockAvailable(ctx: LineHookContext) {
  * explícitos al recibir mercancía.
  */
 export async function resolveBatchDetailsFifo(ctx: LineHookContext) {
-  const { tx, flags, itemInfo, line, warehouseId, baseQty, baseAlreadyMovedStock } = ctx;
+  const { tx, flags, itemInfo, line, warehouseId, baseQty, baseAlreadyMovedStock, deferStock } =
+    ctx;
 
   // La línea viene de un documento que ya asignó/movió sus lotes — no
   // auto-asignamos otros distintos; si el caller no los copia, el motor
@@ -42,8 +46,10 @@ export async function resolveBatchDetailsFifo(ctx: LineHookContext) {
   if (baseAlreadyMovedStock) return undefined;
 
   if (!flags.autoConfirmBatches) {
-    throw new Error(`El artículo ${itemInfo.name} requiere selección de lote/serie.`);
+    throw statusError(400, `El artículo ${itemInfo.name} requiere selección de lote/serie.`);
   }
+  // Se eligen al asentar, con lo que haya entonces.
+  if (deferStock) return undefined;
 
   const availableBatches = warehouseId
     ? await tx
@@ -88,7 +94,8 @@ export async function resolveBatchDetailsFifo(ctx: LineHookContext) {
   }
 
   if (remaining > 0) {
-    throw new Error(
+    throw statusError(
+      409,
       `Stock de lotes insuficiente para el artículo ${itemInfo.name}. Faltan ${remaining} unidades.`,
     );
   }
@@ -108,23 +115,26 @@ export async function assertZoneRequired(ctx: LineHookContext) {
   const { tx, line, itemInfo, warehouseId, flags, baseAlreadyMovedStock } = ctx;
   if (baseAlreadyMovedStock) return;
 
+  if (!line.zoneId && warehouseId && (await warehouseNeedsZone(tx, warehouseId, flags))) {
+    throw statusError(
+      400,
+      `La configuración del almacén exige indicar una Ubicación (Zona) para el artículo ${itemInfo.name}.`,
+    );
+  }
+}
+
+/** Si lo que entra en este almacén tiene que llevar ubicación. */
+export async function warehouseNeedsZone(tx: any, warehouseId: string, flags: any) {
   const [legacy] = await tx
     .select()
     .from(schema.systemConfigs)
     .where(eq(schema.systemConfigs.key, 'enforceWarehouseZones'));
-  const enforceZones = flags.enforceWarehouseZones || legacy?.value === 'true';
-
-  if (enforceZones && !line.zoneId && warehouseId) {
-    const zones = await tx
-      .select()
-      .from(schema.warehouseZones)
-      .where(eq(schema.warehouseZones.warehouseId, warehouseId));
-    if (zones.length > 0) {
-      throw new Error(
-        `La configuración del almacén exige indicar una Ubicación (Zona) para el artículo ${itemInfo.name}.`,
-      );
-    }
-  }
+  if (!flags.enforceWarehouseZones && legacy?.value !== 'true') return false;
+  const zones = await tx
+    .select()
+    .from(schema.warehouseZones)
+    .where(eq(schema.warehouseZones.warehouseId, warehouseId));
+  return zones.length > 0;
 }
 
 /**
@@ -148,12 +158,14 @@ export async function assertSerialUniqueness(ctx: BatchDetailHookContext) {
       ),
     );
   if (existingBatch && Number(existingBatch.quantity) > 0) {
-    throw new Error(
+    throw statusError(
+      409,
       `La serie ${batchDetail.batchNum} ya existe en stock para el artículo ${itemInfo.name}`,
     );
   }
   if (Number(batchDetail.quantity) !== 1) {
-    throw new Error(
+    throw statusError(
+      400,
       `Un artículo gestionado por Serie solo puede tener cantidad 1 por serie. Serie: ${batchDetail.batchNum}`,
     );
   }

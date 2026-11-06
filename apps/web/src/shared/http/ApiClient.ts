@@ -1,13 +1,15 @@
 import { ApiError, extractErrorMessage } from './ApiError';
 import { buildQuery, type QueryParams } from './queryString';
 import { getLocale, t } from '../../i18n/i18n';
+import { getDeviceId } from '../auth/deviceId';
+import { clientHeaderValue } from '../auth/clientKind';
 
 const TOKEN_KEY = 'openfactu_token';
 
 /** Decodifica el payload de un JWT sin verificarlo (solo para leer tenantId localmente). */
-function decodeTenantId(token: string): string | null {
+export function decodeTenantId(token: string): string | null {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
     return payload?.tenantId || null;
   } catch {
     return null;
@@ -22,6 +24,8 @@ export interface RequestOptions {
    * handler global (un login fallido es un 401 normal). Default: true.
    */
   auth?: boolean;
+  /** Si es true, un 401 no dispara el handler global (el logout y el refresh se ocupan solos). */
+  skipUnauthorizedHandler?: boolean;
   /** Headers extra puntuales (casos raros; los de auth los pone el cliente). */
   headers?: Record<string, string>;
 }
@@ -49,6 +53,7 @@ export class ApiClient {
   private token: string | null;
   private tenantId: string | null;
   private onUnauthorized: (() => void) | null = null;
+  private onTenantMismatch: (() => void) | null = null;
 
   constructor() {
     this.token = localStorage.getItem(TOKEN_KEY);
@@ -64,6 +69,14 @@ export class ApiClient {
   /** AuthContext registra aquí el logout para el manejo global de 401. */
   setOnUnauthorized(handler: (() => void) | null): void {
     this.onUnauthorized = handler;
+  }
+
+  /**
+   * 403 SWITCH_TENANT_REQUIRED: la sesión (compartida entre pestañas) ya está en otra empresa
+   * porque se cambió desde otra pestaña. AuthContext avisa y recarga.
+   */
+  setOnTenantMismatch(handler: (() => void) | null): void {
+    this.onTenantMismatch = handler;
   }
 
   get<T>(path: string, opts?: RequestOptions): Promise<T> {
@@ -156,7 +169,12 @@ export class ApiClient {
   ): Promise<Response> {
     const useAuth = opts?.auth !== false;
     const isForm = body instanceof FormData;
-    const headers: Record<string, string> = { 'Accept-Language': getLocale(), ...opts?.headers };
+    const headers: Record<string, string> = {
+      'Accept-Language': getLocale(),
+      'x-keirost-client': clientHeaderValue(),
+      'x-keirost-device': getDeviceId(),
+      ...opts?.headers,
+    };
     if (useAuth && this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
       if (this.tenantId) headers['x-tenant-id'] = this.tenantId;
@@ -175,13 +193,21 @@ export class ApiClient {
 
   private async throwIfNotOk(res: Response, opts?: RequestOptions): Promise<void> {
     if (res.ok) return;
-    if (res.status === 401 && opts?.auth !== false) this.onUnauthorized?.();
+    if (res.status === 401 && opts?.auth !== false && !opts?.skipUnauthorizedHandler) {
+      this.onUnauthorized?.();
+    }
     let parsed: unknown = null;
     const text = await res.text().catch(() => '');
     try {
       parsed = text ? JSON.parse(text) : null;
     } catch {
       parsed = text;
+    }
+    if (
+      res.status === 403 &&
+      (parsed as { code?: string } | null)?.code === 'SWITCH_TENANT_REQUIRED'
+    ) {
+      this.onTenantMismatch?.();
     }
     throw new ApiError(res.status, parsed, extractErrorMessage(res.status, parsed));
   }

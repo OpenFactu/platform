@@ -1,10 +1,22 @@
 import { Router } from 'express';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { DocumentRegistry } from '../core/documents/DocumentRegistry';
 
 const router = Router();
+
+/** El número más alto que ya ha usado una serie, para no volver a repetirlo. */
+async function highestUsedNumber(db: any, docType: string, seriesId: string): Promise<number> {
+  if (!DocumentRegistry.has(docType as any)) return 0;
+  const table = DocumentRegistry.get(docType as any).schemaTable;
+  const [row] = await db
+    .select({ used: sql<number>`MAX(${table.docNum})` })
+    .from(table)
+    .where(eq(table.seriesId, seriesId));
+  return Number(row?.used ?? 0);
+}
 
 router.get('/', async (req: any, res) => {
   try {
@@ -69,15 +81,32 @@ router.patch('/:id', async (req: any, res) => {
       .where(eq(schema.documentSeries.id, id));
     const { firstNumber, lastNumber, nextNumber, ...rest } = req.body;
     const payload: any = { ...rest };
-    const isManual =
-      (rest.numberingMode ?? (old as any)?.numberingMode) === 'MANUAL';
+    const isManual = (rest.numberingMode ?? (old as any)?.numberingMode) === 'MANUAL';
     if (firstNumber !== undefined && lastNumber !== undefined) {
       if (!isManual && Number(firstNumber) > Number(lastNumber))
         return res.status(400).json({ error: 'Rango incoherente: inicio mayor que fin.' });
       payload.firstNumber = Number(firstNumber);
       payload.lastNumber = Number(lastNumber);
     }
-    if (nextNumber !== undefined) payload.nextNumber = Number(nextNumber);
+    if (nextNumber !== undefined) {
+      const n = Number(nextNumber);
+      if (!isManual) {
+        const first = Number(firstNumber ?? old?.firstNumber);
+        const last = Number(lastNumber ?? old?.lastNumber);
+        if (!Number.isInteger(n) || n < first || n > last + 1) {
+          return res
+            .status(400)
+            .json({ error: 'El siguiente número asignado está fuera de rango.' });
+        }
+        const used = await highestUsedNumber(req.tenantClient, old?.docType, id);
+        if (n <= used) {
+          return res.status(409).json({
+            error: `El siguiente número no puede ser ${n}: la serie ya ha llegado al ${used}.`,
+          });
+        }
+      }
+      payload.nextNumber = n;
+    }
     const [series] = await req.tenantClient
       .update(schema.documentSeries)
       .set(payload)

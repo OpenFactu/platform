@@ -33,6 +33,7 @@ function stockMovement(opts: {
   typeHelp: string;
   codePrefix: string;
   quantityExample: string;
+  extraLineFields?: any[];
 }): ImportObjectConfig {
   return {
     id: opts.id,
@@ -100,6 +101,7 @@ function stockMovement(opts: {
           required: true,
           example: opts.quantityExample,
         },
+        ...(opts.extraLineFields ?? []),
         {
           key: 'lineZone',
           label: 'Zona',
@@ -223,6 +225,16 @@ export const stockAndPriceObjects: ImportObjectConfig[] = [
       'Entradas de mercancía. Es por donde se carga el inventario de apertura: suma stock y deja movimiento.',
     table: 'GoodsReceipt',
     router: () => goodsReceiptsRouter,
+    // Con el stock de apertura, es lo que da valor al inventario desde el primer día.
+    extraLineFields: [
+      {
+        key: 'lineUnitCost',
+        label: 'Coste unitario',
+        type: 'number',
+        bodyKey: 'unitCost',
+        example: '12,50',
+      },
+    ],
     types: ['internal', 'return', 'adjustment'],
     typeHelp:
       'Para un inventario de apertura, "adjustment". internal = hallazgo, return = devolución de cliente.',

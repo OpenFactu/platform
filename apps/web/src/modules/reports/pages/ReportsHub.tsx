@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@openfactu/ui';
 import { useI18n } from '@/i18n/I18nContext';
+import { useLocalization } from '@/context/LocalizationContext';
+import { reportsApi } from '../api';
 import {
   ScrollText,
   BookOpenCheck,
@@ -217,7 +219,21 @@ const CATEGORIES = {
 
 export const ReportsHub: React.FC<HubProps> = ({ category }) => {
   const { t } = useI18n();
+  const { info } = useLocalization();
   const cat = CATEGORIES[category];
+  const hasLegalReports = category === 'accounting' && !!info?.hasPluginReports;
+  const [legalReports, setLegalReports] = useState<
+    Array<{ id: string; title: string; description: string | null }>
+  >([]);
+
+  useEffect(() => {
+    if (!hasLegalReports) return;
+    reportsApi
+      .get<Array<{ id: string; title: string; description: string | null }>>('/api/reports/plugin')
+      .then(setLegalReports)
+      .catch(() => setLegalReports([]));
+  }, [hasLegalReports]);
+
   return (
     <div className="p-8 w-full space-y-6 animate-in fade-in duration-500">
       <PageHeader title={t(cat.title)} subtitle={t(cat.subtitle)} size="lg" />
@@ -229,6 +245,15 @@ export const ReportsHub: React.FC<HubProps> = ({ category }) => {
             {...item}
             title={t(item.title)}
             description={t(item.description)}
+          />
+        ))}
+        {(hasLegalReports ? legalReports : []).map((report) => (
+          <ReportCard
+            key={report.id}
+            title={report.title}
+            description={report.description ?? ''}
+            icon={Receipt}
+            path={`/reports/legal/${report.id}`}
           />
         ))}
       </div>

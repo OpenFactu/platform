@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, useToast, CopyButton, Spinner } from '@openfactu/ui';
+import { Badge, Button, Input, Modal, useToast, CopyButton, Spinner } from '@openfactu/ui';
+import { SecurityCard, SecurityRow, SecurityRows } from '../security/SecurityCard';
 import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
@@ -10,7 +11,10 @@ import { useI18n } from '@/i18n/I18nContext';
  * Flujo de alta: setup (QR) → enable (código) → muestra códigos de respaldo.
  * Flujo de baja: disable (código).
  */
-export const TwoFactorSettings: React.FC = () => {
+export const TwoFactorSettings: React.FC<{
+  /** Se llama al cerrar el alta ya completada (con los códigos de respaldo vistos). */
+  onEnabled?: () => void;
+}> = ({ onEnabled }) => {
   const { token } = useAuth();
   const toast = useToast();
   const { t } = useI18n();
@@ -88,7 +92,12 @@ export const TwoFactorSettings: React.FC = () => {
     try {
       const res = await coreApi.raw('POST', '/api/2fa/disable', { code: disableCode.trim() });
       const data = res.data;
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data?.code === 'MFA_REQUIRED_BY_POLICY') {
+          throw new Error(t('settings.twoFactor.requiredByPolicy'));
+        }
+        throw new Error(data.error);
+      }
       setEnabled(false);
       setDisableOpen(false);
       setDisableCode('');
@@ -103,6 +112,7 @@ export const TwoFactorSettings: React.FC = () => {
   };
 
   const closeSetup = () => {
+    if (backupCodes) onEnabled?.();
     setSetupOpen(false);
     setQr(null);
     setSecret('');
@@ -111,51 +121,54 @@ export const TwoFactorSettings: React.FC = () => {
   };
 
   return (
-    <Card className="p-6 space-y-4 border-border-subtle">
-      <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
-        <ShieldCheck size={14} /> {t('settings.twoFactor.title')}
-      </h2>
-
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              enabled
-                ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
-                : 'bg-bg-muted text-fg-subtle'
-            }`}
-          >
-            {enabled ? <ShieldCheck size={20} /> : <ShieldOff size={20} />}
-          </div>
-          <div>
-            <p className="text-sm font-black text-fg-default">
-              {enabled === null
-                ? t('settings.twoFactor.checking')
-                : enabled
-                  ? t('settings.twoFactor.statusOn')
-                  : t('settings.twoFactor.statusOff')}
-            </p>
-            <p className="text-[11px] text-fg-subtle font-medium max-w-sm">
-              {t('settings.twoFactor.description')}
-            </p>
-          </div>
-        </div>
-
-        {enabled ? (
+    <SecurityCard
+      title={t('settings.twoFactor.title')}
+      description={t('settings.twoFactor.description')}
+      action={
+        enabled ? (
           <Button
-            variant="danger"
+            variant="secondary"
+            size="sm"
+            className="gap-1.5"
             onClick={() => setDisableOpen(true)}
-            className="flex items-center gap-2"
           >
-            <ShieldOff size={16} /> {t('settings.twoFactor.disable')}
+            <ShieldOff size={14} /> {t('settings.twoFactor.disable')}
           </Button>
         ) : (
-          <Button onClick={startSetup} disabled={loading} className="flex items-center gap-2">
-            {loading ? <Spinner size="sm" tone="inherit" /> : <ShieldCheck size={16} />}
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={startSetup}
+            disabled={loading || enabled === null}
+          >
+            {loading ? <Spinner size="sm" tone="inherit" /> : <ShieldCheck size={14} />}
             {t('settings.twoFactor.enable')}
           </Button>
-        )}
-      </div>
+        )
+      }
+    >
+      <SecurityRows label={t('settings.twoFactor.title')}>
+        <SecurityRow
+          icon={
+            enabled ? <ShieldCheck size={16} className="text-success" /> : <ShieldOff size={16} />
+          }
+          title={t('settings.twoFactor.appTitle')}
+          badge={
+            enabled === null ? undefined : enabled ? (
+              <Badge variant="success">{t('settings.twoFactor.statusOn')}</Badge>
+            ) : (
+              <Badge variant="neutral">{t('settings.twoFactor.statusOff')}</Badge>
+            )
+          }
+          meta={
+            enabled === null
+              ? t('settings.twoFactor.checking')
+              : enabled
+                ? t('settings.twoFactor.appHintOn')
+                : t('settings.twoFactor.appHintOff')
+          }
+        />
+      </SecurityRows>
 
       {/* Modal de alta */}
       <Modal
@@ -264,6 +277,6 @@ export const TwoFactorSettings: React.FC = () => {
           </div>
         </div>
       </Modal>
-    </Card>
+    </SecurityCard>
   );
 };

@@ -142,6 +142,31 @@
       "new": "Nueva Categoría",
       "empty": "No hay categorías definidas todavía."
     },
+    "itemCost": {
+      "average": "Coste medio",
+      "last": "Última compra",
+      "stockValue": "Valor del stock",
+      "noCost": "Sin coste",
+      "noCostNotice": "Este artículo aún no tiene coste: lo tendrá con su primera compra o con una entrada manual con coste. Hasta entonces sus ventas salen sin coste y su margen parece mayor.",
+      "noHistory": "El coste todavía no ha cambiado.",
+      "cols": {
+        "date": "Fecha",
+        "reason": "Motivo",
+        "quantity": "Cantidad",
+        "unitCost": "Coste de la entrada",
+        "after": "Coste medio"
+      },
+      "kind": {
+        "opening": "Coste inicial",
+        "purchase": "Compra",
+        "receipt": "Entrada manual",
+        "sales_return": "Devolución de cliente",
+        "purchase_return": "Devolución a proveedor",
+        "undo_exit": "Salida anulada",
+        "undo_entry": "Entrada anulada",
+        "count": "Recuento"
+      }
+    },
     "itemDetail": {
       "manageBy": {
         "N": "Estándar",
@@ -166,6 +191,8 @@
       "sections": {
         "general": "General",
         "generalSubtitle": "Identificación, categoría, unidad y precio.",
+        "costs": "Coste",
+        "costsSubtitle": "Precio medio ponderado en toda la empresa, en moneda base.",
         "logistics": "Logística",
         "logisticsSubtitle": "Tipo, trazabilidad y ubicación por defecto.",
         "web": "Web",
@@ -194,6 +221,9 @@
       "noCategory": "-- Sin Categoría --",
       "baseUnit": "Unidad Base",
       "select": "-- Seleccionar --",
+      "taxGroup": "{tax}",
+      "noTaxGroup": "Sin {tax}",
+      "taxGroupHelp": "Pasa a la línea al elegir el artículo, salvo que el interlocutor tenga el suyo. Sin asignar, la línea entra al 0 %.",
       "basePrice": "Precio Base",
       "kindLabel": "Tipo de artículo",
       "kind": {
@@ -227,7 +257,7 @@
       "noBin": "(Sin ubicación)",
       "web": {
         "sellOnline": "Vender en la web",
-        "sellOnlineHint": "El artículo aparecerá en el bloque «Tienda» de tu web pública. El precio mostrado es el precio base con su IVA incluido.",
+        "sellOnlineHint": "El artículo aparecerá en el bloque «Tienda» de tu web pública. El precio mostrado es el precio base con su impuesto incluido.",
         "description": "Descripción para la web",
         "descriptionPlaceholder": "Texto que ven los visitantes (independiente de la descripción interna).",
         "images": "Imágenes del producto",
@@ -235,6 +265,16 @@
         "remove": "Quitar",
         "add": "Añadir",
         "imagesHint": "De la biblioteca de medios del módulo Website; la primera es la portada."
+      },
+      "replenishment": {
+        "title": "Reposición",
+        "hint": "Sale en Reposición cuando lo previsto baja del mínimo.",
+        "minStock": "Stock mínimo",
+        "reorderQty": "Cantidad a pedir",
+        "reorderHint": "Cuánto se pide de una vez. Vacío, lo que falte para llegar al mínimo.",
+        "supplier": "Proveedor habitual",
+        "noSupplier": "Sin proveedor",
+        "leadTime": "Plazo de entrega (días)"
       }
     },
     "items": {
@@ -295,7 +335,9 @@
       "categories": "Categorías",
       "uom": "Unidades",
       "warehouses": "Almacenes",
-      "stockMovements": "Movimientos"
+      "stockMovements": "Movimientos",
+      "counts": "Recuentos",
+      "replenishment": "Reposición"
     },
     "routes": {
       "items": "Catálogo",
@@ -303,7 +345,10 @@
       "categories": "Categorías",
       "uom": "Unidades",
       "warehouses": "Gestión Bins",
-      "stockMovements": "Movimientos de stock"
+      "stockMovements": "Movimientos de stock",
+      "counts": "Recuentos",
+      "countDetail": "Recuento",
+      "replenishment": "Reposición"
     },
     "stockDetail": {
       "title": "Detalle de Inventario",
@@ -324,6 +369,8 @@
       "close": "Cerrar"
     },
     "stockMovements": {
+      "unitCost": "Coste unitario",
+      "unitCostHint": "Opcional. Con coste, recalcula el coste medio del artículo.",
       "kinds": {
         "transfer": {
           "label": "Traspasos",
@@ -525,6 +572,142 @@
       "geoLocationPlaceholder": "Ej: Planta 2, Sector Sur",
       "cancel": "Cancelar",
       "create": "Crear almacén"
+    },
+    "counts": {
+      "title": "Recuentos de inventario",
+      "subtitle": "Contar lo que hay y corregir las diferencias, sin parar el almacén.",
+      "new": "Nuevo recuento",
+      "newTitle": "Nuevo recuento",
+      "code": "Código",
+      "scope": "Qué se cuenta",
+      "date": "Fecha",
+      "statusLabel": "Estado",
+      "status": {
+        "open": "Contando",
+        "review": "En revisión",
+        "closed": "Cerrado",
+        "cancelled": "Cancelado"
+      },
+      "listEmptyTitle": "Todavía no hay recuentos",
+      "listEmptyHint": "Abre uno para contar un almacén, una zona o una categoría.",
+      "warehouse": "Almacén",
+      "chooseWarehouse": "Elige un almacén",
+      "zone": "Zona",
+      "allZones": "Todo el almacén",
+      "category": "Categoría",
+      "allCategories": "Todas las categorías",
+      "blind": "A ciegas",
+      "blindHint": "Quien cuenta no ve lo que dice el sistema. Se ve al revisar.",
+      "blindBadge": "A ciegas",
+      "notes": "Notas",
+      "openAction": "Abrir recuento",
+      "cancelAction": "Cancelar",
+      "back": "Volver",
+      "loadError": "No se ha podido cargar el recuento",
+      "saveError": "No se ha podido guardar",
+      "notFound": "Recuento no encontrado",
+      "scan": "Escanear",
+      "scanned": "{item}: {quantity}",
+      "scanChoose": "Está en varias líneas: elige en cuál lo has contado.",
+      "addAction": "Añadir",
+      "addTitle": "Añadir lo que no estaba",
+      "changeItem": "Cambiar",
+      "searchItem": "Busca por código, nombre o código de barras",
+      "searchLine": "Buscar en las líneas",
+      "batch": "Lote",
+      "serial": "Serie",
+      "batchNeeded": "Este artículo va por lotes: di de qué lote es.",
+      "serialNeeded": "Este artículo va por series: di cuál es.",
+      "noBatch": "Sin lote",
+      "added": "Añadido",
+      "counted": "Contado",
+      "notCounted": "Sin contar",
+      "quantity": "Cantidad",
+      "expectedInline": "Esperado: {quantity} {unit}",
+      "progress": "{counted} de {total} líneas contadas",
+      "openedOn": "Abierto el {date}",
+      "filterLabel": "Qué líneas ver",
+      "filterPending": "Sin contar ({count})",
+      "filterCounted": "Contadas ({count})",
+      "filterDifference": "Con diferencia ({count})",
+      "filterAll": "Todas",
+      "finishAction": "Pasar a revisión",
+      "reopenAction": "Seguir contando",
+      "closeAction": "Cerrar y ajustar",
+      "cancelCount": "Cancelar recuento",
+      "saveAction": "Guardar",
+      "emptyTitle": "No hay nada que contar",
+      "emptyHint": "Aquí no consta stock. Si encuentras algo, añádelo o escanéalo.",
+      "noLinesHere": "Ninguna línea con este filtro",
+      "noLines": "Ninguna línea con este filtro",
+      "waitingReview": "Ya está contado. Falta que alguien revise las diferencias y lo cierre.",
+      "uncountedWarning": "Quedan {count} líneas sin contar: esas no se tocan al cerrar.",
+      "closed": "Recuento cerrado",
+      "closedSummary": "{count} líneas con diferencia. Movimientos: {documents}.",
+      "noDocuments": "ninguno",
+      "problemsTitle": "Todavía no se puede cerrar",
+      "item": "Artículo",
+      "where": "Dónde",
+      "noZone": "Sin ubicación",
+      "expected": "Al abrir",
+      "movedBefore": "Movido antes de contar",
+      "movedAfter": "Movido después",
+      "difference": "Diferencia",
+      "final": "Quedará",
+      "value": "Valor",
+      "goesTo": "Se aplica a",
+      "pickBatch": "Decir el lote",
+      "pendingBatch": "Falta el lote",
+      "batchTitle": "De qué lote es la diferencia",
+      "batchMissing": "Faltan {quantity} de {item}. Di de qué lote.",
+      "batchExtra": "Sobran {quantity} de {item}. Di de qué lote.",
+      "chooseBatch": "Elige",
+      "addRow": "Otro lote",
+      "removeRow": "Quitar",
+      "batchGap": "Faltan {quantity} por repartir.",
+      "confirm": {
+        "finish": {
+          "title": "Pasar a revisión",
+          "message": "Se deja de contar y quien revisa ve las diferencias. Quedan {pending} líneas sin contar.",
+          "action": "Pasar a revisión"
+        },
+        "close": {
+          "title": "Cerrar y ajustar el stock",
+          "message": "Saldrán los ajustes de {differences} líneas con diferencia, al coste medio. Lo no contado ({pending}) no se toca. No se puede deshacer.",
+          "action": "Cerrar y ajustar"
+        },
+        "cancel": {
+          "title": "Cancelar el recuento",
+          "message": "Lo contado se queda sin aplicar y el stock no cambia.",
+          "action": "Cancelar recuento"
+        }
+      }
+    },
+    "replenishment": {
+      "title": "Reposición",
+      "subtitle": "Lo previsto por debajo del mínimo: stock, menos comprometido, más pedido.",
+      "item": "Artículo",
+      "stock": "Stock",
+      "committed": "Comprometido",
+      "ordered": "Pedido",
+      "projected": "Previsto",
+      "minimum": "Mínimo",
+      "inDraft": "En borrador",
+      "supplier": "Proveedor",
+      "chooseSupplier": "Elige proveedor",
+      "toOrder": "A pedir",
+      "createOrders_one": "Crear {count} pedido en borrador",
+      "createOrders_other": "Crear {count} pedidos en borrador",
+      "createdTitle": "Pedidos creados en borrador",
+      "createdHint": "Revísalos y confírmalos: hasta entonces no cuentan como pedido.",
+      "openOrder": "Abrir pedido {num}",
+      "created_one": "{count} pedido creado",
+      "created_other": "{count} pedidos creados",
+      "loadError": "No se ha podido cargar la reposición",
+      "createError": "No se han podido crear los pedidos",
+      "emptyTitle": "Nada por debajo del mínimo",
+      "emptyHint": "Solo salen los artículos con stock mínimo: se pone en su ficha.",
+      "purchasesOff": "Las compras están desactivadas: se ve lo que falta, pero no se crean pedidos."
     }
   }
 }

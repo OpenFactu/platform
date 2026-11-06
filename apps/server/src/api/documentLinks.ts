@@ -21,7 +21,8 @@ import { and, eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DocType } from '@openfactu/common';
 import { DocumentRegistry } from '../core/documents/DocumentRegistry';
-import { walkChain } from '../core/documents/documentChain';
+import { hydrate, walkChain } from '../core/documents/documentChain';
+import { CREDIT_NOTE_SOURCE } from '../core/documents/creditNoteMoney';
 
 const router = Router();
 
@@ -65,23 +66,44 @@ router.get('/', async (req: any, res) => {
     }
 
     // Pagos vinculados (solo facturas).
-    let payments: Array<{ id: string; date: string; amount: number; reference: string | null }> =
-      [];
+    let payments: Array<{
+      id: string;
+      date: string;
+      amount: number;
+      reference: string | null;
+      /** Si es la aplicación de un abono, el otro documento: no es dinero que se mueva. */
+      linked?: { type: DocType; id: string; code: string };
+    }> = [];
     if (isInvoice) {
       const paymentFk =
         config!.side === 'sales'
           ? schema.payments.salesInvoiceId
           : schema.payments.purchaseInvoiceId;
       const ps = await req.tenantClient.select().from(schema.payments).where(eq(paymentFk, id));
-      payments = ps.map((p: any) => ({
-        id: p.id,
-        date: p.date,
-        amount: Number(p.amount),
-        reference: p.reference,
-      }));
+      const applied = ps.filter((p: any) => p.source === CREDIT_NOTE_SOURCE && p.sourceRef);
+      const linkedDocs = await hydrate(
+        req.tenantClient,
+        type,
+        applied.map((p: any) => p.sourceRef),
+      );
+      payments = ps.map((p: any) => {
+        const linked =
+          p.source === CREDIT_NOTE_SOURCE
+            ? linkedDocs.find((doc) => doc.id === p.sourceRef)
+            : undefined;
+        return {
+          id: p.id,
+          date: p.date,
+          amount: Number(p.amount),
+          reference: p.reference,
+          ...(linked ? { linked: { type: linked.type, id: linked.id, code: linked.code } } : {}),
+        };
+      });
     }
 
-    res.json({ parents, children, journalEntries, payments });
+    const [current] = config ? await hydrate(req.tenantClient, type, [id]) : [];
+
+    res.json({ current: current ?? null, parents, children, journalEntries, payments });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

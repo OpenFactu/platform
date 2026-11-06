@@ -45,7 +45,7 @@ export const Items: React.FC = () => {
   const toast = useToast();
   const { t } = useI18n();
 
-  // Escáner de código de barras (HID externo o cámara desde bottom-nav móvil)
+  // Escáner de código de barras (HID externo o cámara desde el botón flotante móvil)
   useBarcodeScanner(
     React.useCallback(
       (code: string) => {

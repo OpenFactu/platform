@@ -18,6 +18,7 @@ import {
   List,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
+import { useUserDocFieldGroups } from './useUserDocFieldGroups';
 
 const GROUP_ICON: Record<FieldGroup['icon'], React.ReactNode> = {
   FileText: <FileText size={14} />,
@@ -49,23 +50,28 @@ const TYPE_COLORS: Record<string, string> = {
 interface Props {
   onInsert?: (variablePath: string) => void;
   insertMode: 'insert' | 'copy';
+  docType?: string;
 }
 
-export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
+export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode, docType }) => {
   const [search, setSearch] = useState('');
   const toast = useToast();
   const { t } = useI18n();
 
+  const groups = useUserDocFieldGroups(docType) ?? FIELD_SCHEMA;
+
   const filteredGroups = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return FIELD_SCHEMA;
-    return FIELD_SCHEMA.map((group) => ({
-      ...group,
-      fields: group.fields.filter(
-        (f) => f.path.toLowerCase().includes(q) || f.description.toLowerCase().includes(q),
-      ),
-    })).filter((group) => group.fields.length > 0);
-  }, [search]);
+    if (!q) return groups;
+    return groups
+      .map((group) => ({
+        ...group,
+        fields: group.fields.filter(
+          (f) => f.path.toLowerCase().includes(q) || f.description.toLowerCase().includes(q),
+        ),
+      }))
+      .filter((group) => group.fields.length > 0);
+  }, [search, groups]);
 
   const handleFieldClick = async (field: FieldDef) => {
     const varText = `{{${field.path}}}`;

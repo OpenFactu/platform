@@ -4,6 +4,11 @@ import * as schema from '../../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../../utils/audit';
 import { JournalEngine } from '../../core/accounting/JournalEngine';
+import {
+  PayrollCalculators,
+  computeStandardPayroll,
+  payrollTotalsColumns,
+} from '../../core/hr/payrollCalculation';
 
 const router = Router();
 
@@ -13,32 +18,7 @@ const VALID_LINE_TYPE = new Set(['earning', 'deduction', 'employer_cost']);
 type LineRow = typeof schema.payrollLines.$inferSelect;
 type ConceptRow = typeof schema.payrollConcepts.$inferSelect;
 
-function lineAmount(line: LineRow, concept?: ConceptRow | null): number {
-  // Si la línea tiene amount fijado (>0 o explícito), respeta ese valor.
-  if (line.amount != null && line.amount !== '0') return Number(line.amount);
-  const calc = concept?.calculation || 'fixed';
-  if (calc === 'per_hour' && line.quantity != null && line.rate != null) {
-    return Number(line.quantity) * Number(line.rate);
-  }
-  if (calc === 'percent_of_base' && line.baseAmount != null && line.rate != null) {
-    return (Number(line.baseAmount) * Number(line.rate)) / 100;
-  }
-  return Number(line.amount || 0);
-}
-
-function isIrpfConcept(c?: ConceptRow | null): boolean {
-  if (!c) return false;
-  return /irpf/i.test(c.code) || /irpf/i.test(c.name);
-}
-function isSsEmployeeConcept(c?: ConceptRow | null): boolean {
-  if (!c) return false;
-  return c.kind === 'deduccion' && (/^ss/i.test(c.code) || /seguridad social/i.test(c.name));
-}
-function isSsEmployerConcept(c?: ConceptRow | null): boolean {
-  return c?.kind === 'aportacion_empresa';
-}
-
-async function recalcPayroll(client: any, payrollId: string) {
+export async function recalcPayroll(client: any, payrollId: string, tenantId?: string) {
   const lines: LineRow[] = await client
     .select()
     .from(schema.payrollLines)
@@ -50,82 +30,31 @@ async function recalcPayroll(client: any, payrollId: string) {
         .from(schema.payrollConcepts)
         .where(inArray(schema.payrollConcepts.id, conceptIds))
     : [];
-  const byId = new Map(concepts.map((c) => [c.id, c]));
 
-  // Determina kind y si una línea contribuye a la base gravable.
-  const kindOf = (l: LineRow, c?: ConceptRow | null) =>
-    c?.kind ??
-    (l.type === 'earning'
-      ? 'devengo'
-      : l.type === 'employer_cost'
-        ? 'aportacion_empresa'
-        : 'deduccion');
-
-  // Pass 1 — base gravable: solo devengos (excluyendo los explícitamente
-  // marcados como no sujetos a IRPF/SS si así lo indica el concepto).
-  let baseIrpf = 0;
-  let baseSs = 0;
-  let gross = 0;
-  for (const l of lines) {
-    const c = l.conceptId ? byId.get(l.conceptId) : null;
-    if (kindOf(l, c) !== 'devengo') continue;
-    const amt = lineAmount(l, c);
-    gross += amt;
-    if (c?.taxableIrpf !== false) baseIrpf += amt;
-    if (c?.taxableSs !== false) baseSs += amt;
-  }
-
-  // Pass 2 — para deducciones/aportaciones con cálculo "% de base", recomputar
-  // amount sobre la base correcta (IRPF: base IRPF; SS: base SS) y persistir.
-  for (const l of lines) {
-    const c = l.conceptId ? byId.get(l.conceptId) : null;
-    if (!c) continue;
-    if (c.calculation !== 'percent_of_base') continue;
-    const k = kindOf(l, c);
-    if (k === 'devengo') continue;
-    const base = isIrpfConcept(c) ? baseIrpf : baseSs;
-    const rate = Number(l.rate || c.defaultPercent || 0);
-    const newAmt = (base * rate) / 100;
-    const baseStr = String(base.toFixed(2));
-    const amtStr = String(newAmt.toFixed(2));
-    if (String(l.baseAmount || '') !== baseStr || String(l.amount || '') !== amtStr) {
-      await client
-        .update(schema.payrollLines)
-        .set({ baseAmount: baseStr, amount: amtStr, rate: String(rate) })
-        .where(eq(schema.payrollLines.id, l.id));
-      l.baseAmount = baseStr as any;
-      l.amount = amtStr as any;
+  let result = computeStandardPayroll(lines, concepts);
+  for (const calculator of PayrollCalculators.activeFor(tenantId)) {
+    const answer = await calculator({
+      tenantId: tenantId ?? '',
+      payrollId,
+      lines,
+      concepts,
+      standard: result,
+    });
+    if (answer) {
+      result = answer;
+      break;
     }
   }
 
-  // Pass 3 — sumar deducciones y aportaciones con los importes ya actualizados.
-  let irpf = 0;
-  let ssE = 0;
-  let ssEr = 0;
-  let otherDed = 0;
-  for (const l of lines) {
-    const c = l.conceptId ? byId.get(l.conceptId) : null;
-    const amt = lineAmount(l, c);
-    const k = kindOf(l, c);
-    if (k === 'devengo') continue;
-    if (k === 'aportacion_empresa') {
-      ssEr += amt;
-    } else {
-      if (isIrpfConcept(c)) irpf += amt;
-      else if (isSsEmployeeConcept(c)) ssE += amt;
-      else otherDed += amt;
-    }
+  for (const update of result.lineUpdates) {
+    await client
+      .update(schema.payrollLines)
+      .set({ baseAmount: update.baseAmount, amount: update.amount, rate: update.rate })
+      .where(eq(schema.payrollLines.id, update.id));
   }
-  const netPay = gross - irpf - ssE - otherDed;
   await client
     .update(schema.payrolls)
-    .set({
-      gross: String(gross.toFixed(2)),
-      irpfAmount: String(irpf.toFixed(2)),
-      ssEmployee: String(ssE.toFixed(2)),
-      ssEmployer: String(ssEr.toFixed(2)),
-      netPay: String(netPay.toFixed(2)),
-    })
+    .set(payrollTotalsColumns(result.totals))
     .where(eq(schema.payrolls.id, payrollId));
 }
 
@@ -197,10 +126,11 @@ router.post('/', async (req: any, res) => {
 
     const id = crypto.randomUUID();
     const gross = Number(req.body.gross || 0);
-    const irpf = Number(req.body.irpfAmount || 0);
-    const ssE = Number(req.body.ssEmployee || 0);
-    const ssEr = Number(req.body.ssEmployer || 0);
-    const netPay = req.body.netPay != null ? Number(req.body.netPay) : gross - irpf - ssE;
+    // Los nombres antiguos se siguen aceptando para quien use ya esta API.
+    const incomeTax = Number(req.body.incomeTaxTotal ?? req.body.irpfAmount ?? 0);
+    const socialE = Number(req.body.socialEmployeeTotal ?? req.body.ssEmployee ?? 0);
+    const socialEr = Number(req.body.socialEmployerTotal ?? req.body.ssEmployer ?? 0);
+    const netPay = req.body.netPay != null ? Number(req.body.netPay) : gross - incomeTax - socialE;
 
     const [row] = await req.tenantClient
       .insert(schema.payrolls)
@@ -211,9 +141,12 @@ router.post('/', async (req: any, res) => {
         periodYear,
         periodMonth,
         gross: String(gross),
-        irpfAmount: String(irpf),
-        ssEmployee: String(ssE),
-        ssEmployer: String(ssEr),
+        incomeTaxTotal: String(incomeTax),
+        socialEmployeeTotal: String(socialE),
+        socialEmployerTotal: String(socialEr),
+        irpfAmount: String(incomeTax),
+        ssEmployee: String(socialE),
+        ssEmployer: String(socialEr),
         netPay: String(netPay),
         status: 'draft',
         notes: req.body.notes || null,
@@ -250,8 +183,20 @@ router.patch('/:id', async (req: any, res) => {
     if (current.status !== 'draft')
       return res.status(400).json({ error: 'Solo se pueden editar nóminas en borrador' });
     const patch: Record<string, any> = {};
-    for (const k of ['gross', 'irpfAmount', 'ssEmployee', 'ssEmployer', 'netPay'] as const) {
+    for (const k of ['gross', 'netPay'] as const) {
       if (k in req.body) patch[k] = String(req.body[k] ?? 0);
+    }
+    // Cada total genérico con su columna anterior, hasta retirarlas.
+    for (const [neutral, legacy] of [
+      ['incomeTaxTotal', 'irpfAmount'],
+      ['socialEmployeeTotal', 'ssEmployee'],
+      ['socialEmployerTotal', 'ssEmployer'],
+    ] as const) {
+      const value = req.body[neutral] ?? req.body[legacy];
+      if (neutral in req.body || legacy in req.body) {
+        patch[neutral] = String(value ?? 0);
+        patch[legacy] = String(value ?? 0);
+      }
     }
     if ('notes' in req.body) patch.notes = req.body.notes;
     if ('contractId' in req.body) patch.contractId = req.body.contractId || null;
@@ -303,7 +248,7 @@ router.post('/:id/lines', async (req: any, res) => {
         accountId: resolvedAccount || null,
       })
       .returning();
-    await recalcPayroll(req.tenantClient, req.params.id);
+    await recalcPayroll(req.tenantClient, req.params.id, req.tenantId);
     res.json(row);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -345,7 +290,7 @@ router.patch('/:id/lines/:lineId', async (req: any, res) => {
       )
       .returning();
     if (!row) return res.status(404).json({ error: 'Línea no encontrada' });
-    await recalcPayroll(req.tenantClient, req.params.id);
+    await recalcPayroll(req.tenantClient, req.params.id, req.tenantId);
     res.json(row);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -362,7 +307,7 @@ router.delete('/:id/lines/:lineId', async (req: any, res) => {
           eq(schema.payrollLines.payrollId, req.params.id),
         ),
       );
-    await recalcPayroll(req.tenantClient, req.params.id);
+    await recalcPayroll(req.tenantClient, req.params.id, req.tenantId);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -370,8 +315,8 @@ router.delete('/:id/lines/:lineId', async (req: any, res) => {
 });
 
 /**
- * POST /:id/auto-deductions — añade automáticamente las líneas de IRPF y SS
- * Empleado a partir del catálogo (primer concepto activo de cada categoría con
+ * POST /:id/auto-deductions — añade automáticamente las líneas de retención y
+ * cotizaciones a partir del catálogo (primer concepto activo de cada categoría con
  * cálculo % de base). Útil para no obligar al usuario a meterlas a mano cada
  * vez que crea una nómina.
  */
@@ -381,14 +326,19 @@ router.post('/:id/auto-deductions', async (req: any, res) => {
       .select()
       .from(schema.payrollConcepts)
       .where(eq(schema.payrollConcepts.isActive, true));
-    const irpf = concepts.find(
-      (c) => c.kind === 'deduccion' && isIrpfConcept(c) && c.calculation === 'percent_of_base',
-    );
-    const ss = concepts.find(
+    const incomeTax = concepts.find(
       (c) =>
-        c.kind === 'deduccion' && isSsEmployeeConcept(c) && c.calculation === 'percent_of_base',
+        c.kind === 'deduccion' &&
+        c.category === 'income_tax' &&
+        c.calculation === 'percent_of_base',
     );
-    const ssEr = concepts.find(
+    const socialE = concepts.find(
+      (c) =>
+        c.kind === 'deduccion' &&
+        c.category === 'social_employee' &&
+        c.calculation === 'percent_of_base',
+    );
+    const socialEr = concepts.find(
       (c) => c.kind === 'aportacion_empresa' && c.calculation === 'percent_of_base',
     );
 
@@ -399,9 +349,9 @@ router.post('/:id/auto-deductions', async (req: any, res) => {
     const hasConcept = (id?: string | null) => !!id && existing.some((l) => l.conceptId === id);
 
     const toCreate: ConceptRow[] = [];
-    if (irpf && !hasConcept(irpf.id)) toCreate.push(irpf);
-    if (ss && !hasConcept(ss.id)) toCreate.push(ss);
-    if (ssEr && !hasConcept(ssEr.id)) toCreate.push(ssEr);
+    if (incomeTax && !hasConcept(incomeTax.id)) toCreate.push(incomeTax);
+    if (socialE && !hasConcept(socialE.id)) toCreate.push(socialE);
+    if (socialEr && !hasConcept(socialEr.id)) toCreate.push(socialEr);
 
     for (const c of toCreate) {
       await req.tenantClient.insert(schema.payrollLines).values({
@@ -414,7 +364,7 @@ router.post('/:id/auto-deductions', async (req: any, res) => {
         amount: '0',
       });
     }
-    await recalcPayroll(req.tenantClient, req.params.id);
+    await recalcPayroll(req.tenantClient, req.params.id, req.tenantId);
     res.json({ created: toCreate.length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -423,7 +373,7 @@ router.post('/:id/auto-deductions', async (req: any, res) => {
 
 router.post('/:id/recalc', async (req: any, res) => {
   try {
-    await recalcPayroll(req.tenantClient, req.params.id);
+    await recalcPayroll(req.tenantClient, req.params.id, req.tenantId);
     const [row] = await req.tenantClient
       .select()
       .from(schema.payrolls)
@@ -478,9 +428,9 @@ router.post('/:id/approve', async (req: any, res) => {
           periodYear: payroll.periodYear,
           periodMonth: payroll.periodMonth,
           gross: payroll.gross,
-          irpfAmount: payroll.irpfAmount,
-          ssEmployee: payroll.ssEmployee,
-          ssEmployer: payroll.ssEmployer,
+          incomeTaxTotal: payroll.incomeTaxTotal,
+          socialEmployeeTotal: payroll.socialEmployeeTotal,
+          socialEmployerTotal: payroll.socialEmployerTotal,
           netPay: payroll.netPay,
         },
         {

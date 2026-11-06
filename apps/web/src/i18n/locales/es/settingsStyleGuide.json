@@ -80,7 +80,7 @@
     "fields": {
       "companyName": "Razón social",
       "companyNamePlaceholder": "Empresa Ejemplo S.L.",
-      "taxId": "NIF / CIF",
+      "taxId": "Identificación fiscal",
       "amount": "Importe",
       "amountPlaceholder": "0,00 €"
     },

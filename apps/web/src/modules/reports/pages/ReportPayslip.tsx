@@ -1,8 +1,9 @@
+import { useGoBack } from '@/hooks/useGoBack';
+import { PageBack } from '@/components/common/PageBack';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Badge, PageHeader, Table, useToast } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, Banknote } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
@@ -15,7 +16,7 @@ export const ReportPayslip: React.FC = () => {
   const { user } = useAuth();
   const { t } = useI18n();
   const fmt = useFormat();
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const toast = useToast();
   const [payrolls, setPayrolls] = useState<any[]>([]);
   const [employees, setEmployees] = useState<Record<string, any>>({});
@@ -35,11 +36,10 @@ export const ReportPayslip: React.FC = () => {
 
   const downloadPdf = async (payrollId: string, empName: string, year: number, month: number) => {
     try {
-      await reportsApi.downloadPdf(
+      await reportsApi.openPdf(
         `/api/reports/payslip/${payrollId}/pdf`,
         `recibo-${empName.replace(/\s/g, '_')}-${year}-${String(month).padStart(2, '0')}.pdf`,
       );
-      toast.success(t('reports.payslip.downloaded'));
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('reports.common.error'));
     }
@@ -102,9 +102,11 @@ export const ReportPayslip: React.FC = () => {
         icon={<Banknote size={18} />}
         size="md"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
-          </Button>
+          <PageBack onBack={goBack}>
+            <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+              <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
+            </Button>
+          </PageBack>
         }
       />
 

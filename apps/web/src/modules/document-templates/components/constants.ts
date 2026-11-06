@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { DocType as PdfDocType } from '@/utils/visualTemplateBuilder';
 import { getCachedDocType, useDocTypes } from '@/modules/documents/domain/docTypeRegistry';
 import { t } from '@/i18n/i18n';
 import { useI18n } from '@/i18n/I18nContext';
+import { templatesApi, type UserDocType } from '../api';
 
 /**
  * `FREE` es un tipo extendido propio (no existe en el paquete @openfactu/pdf).
@@ -58,8 +60,37 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
     'bg-sky-50 dark:bg-sky-900 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-600',
 };
 
+/** Tipo de una tabla propia de la empresa: no está en el registro común de documentos. */
+export const isUserDocType = (dt: string): boolean => dt.startsWith('pt_');
+
+let cachedUserDocTypes: UserDocType[] = [];
+
+/** Se piden cada vez: se puede haber creado una tabla desde la última visita. */
+export function useUserDocTypes(): UserDocType[] {
+  const [types, setTypes] = useState(cachedUserDocTypes);
+  useEffect(() => {
+    let cancelled = false;
+    templatesApi
+      .userDocTypes()
+      .then((rows) => {
+        cachedUserDocTypes = rows;
+        if (!cancelled) setTypes(rows);
+      })
+      .catch(() => {
+        /* sin ellos, el selector sigue funcionando con los tipos comunes */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return types;
+}
+
 export function getDocTypeLabel(dt: DocType): string {
-  return DOC_TYPE_LABELS[dt] ? t(DOC_TYPE_LABELS[dt]) : (getCachedDocType(dt)?.label ?? dt);
+  if (DOC_TYPE_LABELS[dt]) return t(DOC_TYPE_LABELS[dt]);
+  return (
+    getCachedDocType(dt)?.label ?? cachedUserDocTypes.find((u) => u.docType === dt)?.label ?? dt
+  );
 }
 
 export function getDocTypeColor(dt: DocType): string {
@@ -71,13 +102,16 @@ export function getDocTypeColor(dt: DocType): string {
   );
 }
 
-/** Hook: opciones de tipo de documento (registry + FREE/LABEL). */
+/** Hook: opciones de tipo de documento (registry + tablas propias + FREE/LABEL). */
 export function useDocTypeOptions(): { label: string; value: DocType }[] {
   const { types } = useDocTypes();
+  const userTypes = useUserDocTypes();
   const { t: tr } = useI18n();
-  if (types.length === 0) return getDocTypeOptions();
+  const userOptions = userTypes.map((u) => ({ label: u.label, value: u.docType as DocType }));
+  if (types.length === 0) return [...getDocTypeOptions(), ...userOptions];
   return [
     ...types.map((t) => ({ label: t.label, value: t.docType as DocType })),
+    ...userOptions,
     { label: tr(DOC_TYPE_LABELS.FREE), value: 'FREE' as DocType },
     { label: tr(DOC_TYPE_LABELS.LABEL), value: 'LABEL' as DocType },
   ];
@@ -88,6 +122,9 @@ export interface TemplateRow {
   docType: DocType;
   name: string;
   isDefault: boolean;
+  isFactoryDefault?: boolean;
+  /** Con qué se editó: el lienzo, el formulario visual o el HTML a mano. */
+  editor?: 'designer' | 'visual' | 'html';
   updatedAt?: string;
   html?: string;
   canvasLayout?: unknown;

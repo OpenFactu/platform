@@ -31,13 +31,8 @@
       "switchSection": "{title}: cambiar de sección"
     },
     "bottomNav": {
-      "home": "Inicio",
-      "sales": "Ventas",
-      "purchases": "Compras",
       "scan": "Escanear código",
       "search": "Buscar",
-      "more": "Más",
-      "aria": "Navegación inferior",
       "actions": "Acciones",
       "quickActions": "Acciones rápidas"
     },
@@ -112,7 +107,7 @@
       "journalNumber": "Nº {number}",
       "search": "Buscar",
       "placeholder": "Buscar interlocutores, artículos o documentos…",
-      "empty": "Sin resultados. Prueba con un código, un NIF o parte del nombre.",
+      "empty": "Sin resultados. Prueba con un código, una identificación fiscal o parte del nombre.",
       "close": "Cerrar"
     },
     "attachments": {
@@ -166,10 +161,17 @@
       "option": "Opción",
       "attachmentPlaceholder": "URL o id del adjunto",
       "searchRef": "Buscar {table}...",
+      "searchLinked": "Buscar...",
+      "openLinked": "Abrir",
+      "linkedHidden": "Sin acceso",
+      "linkedMissing": "Ya no existe",
       "additional": "Campos Adicionales (Plugins)",
       "enable": "Activar"
     },
     "tenant": {
+      "changedElsewhereTitle": "Empresa cambiada en otra pestaña",
+      "changedElsewhereBody": "Esta pestaña sigue con la empresa anterior. Recárgala para seguir en la nueva.",
+      "reload": "Recargar",
       "loadError": "No se pudieron cargar las empresas",
       "switched": "Empresa cambiada",
       "switchError": "Error al cambiar de empresa",
@@ -271,6 +273,8 @@
       "thisDocument": "Este documento",
       "current": "(actual)",
       "paymentsAndAccounting": "Cobros y contabilidad",
+      "creditNote": "Abono",
+      "creditApplied": "Abono aplicado",
       "payment": "Cobro / pago",
       "journalEntryLabel": "Asiento contable",
       "emptyHintPopup": "Cuando este documento origine otro o se genere desde uno, aquí aparecerá la cadena completa."
@@ -343,7 +347,10 @@
     },
     "login": {
       "rememberedAccounts": "Cuentas recordadas en este navegador",
-      "forgetAccount": "Olvidar {name} en este navegador",
+      "forgetThisAccount": "Olvidar esta cuenta en este navegador",
+      "or": "o",
+      "backToAccounts": "Volver a mis cuentas",
+      "orWithoutAccount": "o, sin elegir cuenta",
       "useOtherAccount": "Usar otra cuenta",
       "pickCompanyError": "Elige la empresa a la que quieres entrar",
       "invalid2fa": "Código 2FA inválido",
@@ -367,6 +374,7 @@
       "forgot": "¿Has olvidado tu contraseña?",
       "verify": "Verificar",
       "enter": "Entrar",
+      "enteringCompany": "Entrarás en",
       "whatIs": "¿Qué es Keirost?",
       "docs": "Documentación"
     },
@@ -616,7 +624,7 @@
         "title": "3. Primera Empresa",
         "subtitle": "Datos fiscales de tu empresa principal.",
         "name": "Nombre de la Empresa",
-        "nif": "NIF / CIF"
+        "nif": "Identificación fiscal"
       },
       "details": {
         "title": "4. Configuración de Empresa",
@@ -648,8 +656,8 @@
     },
     "tracking": {
       "copy": {
-        "t0": "En preparación",
-        "t1": "Listo / Despachado",
+        "t0": "Preparando",
+        "t1": "Listo",
         "t2": "En camino",
         "t3": "En reparto",
         "t4": "Entregado",
@@ -739,6 +747,25 @@
       "unavailableHint": "El enlace no es correcto o el formulario ya no existe.",
       "hello": "Hola, {name}.",
       "editing": "Estás cambiando una respuesta que ya enviaste."
+    },
+    "localization": {
+      "title": "Normativa",
+      "activePacks": "Normativa activa",
+      "noPack": "Esta empresa no tiene un paquete de normativa activo. Sus facturas funcionan, pero sin reglas ni informes legales. Actívalo en Plugins.",
+      "connectors": "Conectores fiscales",
+      "noConnectors": "Ninguno",
+      "tax": "Impuesto",
+      "taxId": "Identificación fiscal",
+      "withholding": "Retención",
+      "incomeTax": "Retención sobre la renta",
+      "socialEmployee": "Cotización del trabajador",
+      "socialEmployer": "Cotización de la empresa",
+      "category": "Tipo de concepto",
+      "categoryOther": "Otro",
+      "categoryIncomeTax": "Retención sobre la renta",
+      "categorySocialEmployee": "Cotización del trabajador",
+      "categorySocialEmployer": "Cotización de la empresa",
+      "legalReports": "Informes legales"
     }
   }
 }

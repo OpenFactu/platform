@@ -58,7 +58,10 @@ describe('catálogo de permisos', () => {
   });
 
   test('getPermissionEntry devuelve la etiqueta que se enseña en el 403', () => {
-    assert.equal(getPermissionEntry('/reports/accounting/vat')?.label, 'Libro de IVA');
+    assert.equal(
+      getPermissionEntry('/reports/accounting/vat')?.label,
+      'Libros e informes fiscales',
+    );
     assert.equal(getPermissionEntry('/no-existe'), undefined);
   });
 

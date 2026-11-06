@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
+import { hasCosts } from '../domain/itemCosts';
 
 export const ReportProfitCostCenter: React.FC = () => {
   const { user } = useAuth();
@@ -29,9 +30,12 @@ export const ReportProfitCostCenter: React.FC = () => {
       { key: 'name', label: t('reports.profitCostCenter.center') },
       { key: 'income', label: t('reports.common.income'), format: (v: any) => fmt.money(v) },
       { key: 'expense', label: t('reports.common.expenses'), format: (v: any) => fmt.money(v) },
+      ...(hasCosts(rows)
+        ? [{ key: 'cost', label: t('reports.common.cost'), format: (v: any) => fmt.money(v) }]
+        : []),
       { key: 'margin', label: t('reports.common.margin'), format: (v: any) => fmt.money(v) },
     ],
-    [fmt, t],
+    [fmt, t, rows],
   );
 
   return (

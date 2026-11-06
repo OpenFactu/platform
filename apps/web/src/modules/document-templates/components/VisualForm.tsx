@@ -131,6 +131,7 @@ const Grid2: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
   const { t } = useI18n();
+  const isRecord = opts.layout === 'record';
   const updateColumn = <K extends keyof VisualOptions['columns']>(key: K, value: boolean) => {
     updateOpt('columns', { ...opts.columns, [key]: value });
   };
@@ -299,7 +300,11 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title={t('templates.visual.partnerData')} icon={<Users size={14} />}>
+      <Section
+        title={t('templates.visual.partnerData')}
+        icon={<Users size={14} />}
+        hidden={isRecord}
+      >
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.showPartnerTaxId}
@@ -347,7 +352,11 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title={t('templates.visual.linesTable')} icon={<Table size={14} />}>
+      <Section
+        title={t('templates.visual.linesTable')}
+        icon={<Table size={14} />}
+        hidden={isRecord}
+      >
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.columns.code}
@@ -387,7 +396,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title={t('templates.visual.totals')} icon={<Stamp size={14} />}>
+      <Section title={t('templates.visual.totals')} icon={<Stamp size={14} />} hidden={isRecord}>
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.showTaxBreakdown}
@@ -404,7 +413,11 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title={t('templates.visual.customFields')} icon={<Stamp size={14} />}>
+      <Section
+        title={t('templates.visual.customFields')}
+        icon={<Stamp size={14} />}
+        hidden={isRecord}
+      >
         <div className="space-y-2">
           <CheckboxRow
             checked={!!(opts as any).showCustomFields}

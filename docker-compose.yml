@@ -4,13 +4,14 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        VITE_API_URL: '${VITE_API_URL:-http://localhost:3000}'
+        # Vacío: la web llama al ERP por su mismo origen (nginx lo pasa a /api).
+        VITE_API_URL: '${VITE_API_URL:-}'
     ports:
-      - '${WEB_PORT:-8080}:80'
-    environment:
-      VITE_API_URL: 'http://localhost:${SERVER_PORT:-3000}'
+      # Con el profile `https`, WEB_BIND=127.0.0.1: solo se entra por Caddy.
+      - '${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80'
     depends_on:
       - server
+      - messaging
     networks:
       - openfactu_net
 
@@ -19,7 +20,8 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     ports:
-      - '${SERVER_PORT:-3000}:3000'
+      # Solo desde esta máquina: desde fuera se entra por nginx (/api).
+      - '${BIND_ADDR:-127.0.0.1}:${SERVER_PORT:-3000}:3000'
     env_file:
       - .env
     volumes:
@@ -31,7 +33,37 @@ services:
       - NODE_ENV=production
       - OPENFACTU_PG_CONTAINER=db
       - OPENFACTU_FORCE_DOCKER=1
+      # Los mensajes entran en las copias: los exporta el servicio de mensajería.
+      - MESSAGING_URL=http://messaging:3100
       - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
+      # Se llega por el nginx de `web`, que pasa la IP del cliente en X-Forwarded-For. Se confía
+      # solo en saltos de red privada (el nginx, y el proxy de delante si lo hay: Traefik de
+      # Dokploy, Caddy...): así el freno por IP y el historial ven la IP real. Es seguro mientras
+      # el puerto 3000 siga publicado solo en 127.0.0.1 (BIND_ADDR): si se abre hacia fuera,
+      # cualquiera podría falsear la cabecera. Se cambia con TRUST_PROXY en .env.
+      - 'TRUST_PROXY=${TRUST_PROXY:-loopback, linklocal, uniquelocal}'
+    networks:
+      - openfactu_net
+
+  # Mensajería (apps/messaging, Rust): chat del equipo y canales. La web le
+  # llega por /rt a través del nginx de `web`.
+  messaging:
+    build:
+      context: ./apps/messaging
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
+      # Ficheros de los canales (Telegram…) al almacenamiento de la empresa.
+      - MESSAGING_ERP_URL=http://server:3000
+    ports:
+      # Audio y vídeo de las llamadas. Hay que poner MESSAGING_RTC_PUBLIC_IP: dentro
+      # de Docker no se sabe qué IP ven los navegadores (docs/videollamadas.md).
+      - '${MESSAGING_RTC_PORT:-3478}:${MESSAGING_RTC_PORT:-3478}/udp'
     networks:
       - openfactu_net
 
@@ -42,9 +74,52 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openfactu_pass}
       POSTGRES_DB: ${POSTGRES_DB:-openfactudb}
     ports:
-      - '0.0.0.0:${DB_PORT:-5432}:5432'
+      # Solo desde esta máquina: Postgres nunca se publica hacia fuera.
+      - '${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432'
     volumes:
       - ./storage/db_data:/var/lib/postgresql/data
+    networks:
+      - openfactu_net
+
+  # HTTPS con certificado automático (ver Caddyfile). Solo con el profile `https`:
+  #   KEIROST_DOMAIN=erp.tuempresa.com WEB_BIND=127.0.0.1 docker compose --profile https up -d
+  caddy:
+    image: caddy:2-alpine
+    profiles: ['https']
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      KEIROST_DOMAIN: ${KEIROST_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./storage/caddy/data:/data
+      - ./storage/caddy/config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  # TURN opcional, para las redes que bloquean UDP. Solo con el profile `turn`
+  # y MESSAGING_TURN_URL / MESSAGING_TURN_SECRET en el .env.
+  coturn:
+    image: coturn/coturn:4
+    profiles: ['turn']
+    command:
+      - --use-auth-secret
+      - --static-auth-secret=${MESSAGING_TURN_SECRET:-}
+      - --realm=${KEIROST_DOMAIN:-keirost}
+      - --listening-port=3479
+      - --min-port=49160
+      - --max-port=49200
+      - --no-cli
+    ports:
+      - '3479:3479/udp'
+      - '3479:3479/tcp'
+      - '49160-49200:49160-49200/udp'
+    restart: unless-stopped
     networks:
       - openfactu_net
 
@@ -56,7 +131,7 @@ services:
     image: ollama/ollama:latest
     profiles: ['ai']
     ports:
-      - '${OLLAMA_PORT:-11434}:11434'
+      - '${BIND_ADDR:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434'
     volumes:
       - ./storage/ollama:/root/.ollama
     networks:
@@ -68,7 +143,7 @@ services:
     image: ollama/ollama:latest
     profiles: ['ai-gpu']
     ports:
-      - '${OLLAMA_PORT:-11434}:11434'
+      - '${BIND_ADDR:-127.0.0.1}:${OLLAMA_PORT:-11434}:11434'
     volumes:
       - ./storage/ollama:/root/.ollama
     networks:

@@ -6,7 +6,7 @@
  * servidor que no comprobaba nada. El resultado: 27 pantallas exigían un
  * permiso que el administrador no podía conceder, 6 permisos concedibles no
  * gobernaban ninguna pantalla, y los 24 informes no pedían permiso alguno, así
- * que cualquier usuario veía el libro de IVA y el coste laboral.
+ * que cualquier usuario veía los libros fiscales y el coste laboral.
  *
  * Ahora manda esta lista. La pantalla de Usuarios la pide por
  * `GET /api/permissions/catalog` en vez de llevarla escrita, y el gate de la
@@ -37,6 +37,12 @@ export interface PermissionEntry {
 export const PERMISSION_CATALOG: PermissionEntry[] = [
   // ── Catálogos ─────────────────────────────────────────────────────────────
   { path: '/items', label: 'Artículos', group: 'Catálogos' },
+  {
+    path: '/item-costs',
+    label: 'Costes de artículos',
+    group: 'Catálogos',
+    hint: 'Ver el coste medio y los márgenes; con escritura, poner coste en una entrada manual.',
+  },
   { path: '/categories', label: 'Categorías', group: 'Catálogos' },
   { path: '/uom', label: 'Unidades de medida', group: 'Catálogos' },
   { path: '/taxes', label: 'Impuestos', group: 'Catálogos' },
@@ -47,6 +53,24 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     label: 'Movimientos de inventario',
     group: 'Catálogos',
     hint: 'El histórico de entradas y salidas de cada artículo.',
+  },
+  {
+    path: '/inventory/counts',
+    label: 'Recuentos de inventario',
+    group: 'Catálogos',
+    hint: 'Abrir recuentos y apuntar lo contado.',
+  },
+  {
+    path: '/inventory/count-review',
+    label: 'Revisar y cerrar recuentos',
+    group: 'Catálogos',
+    hint: 'Ver las diferencias y ajustar el stock al cerrar. Va aparte para que quien cuenta a ciegas no vea lo esperado.',
+  },
+  {
+    path: '/inventory/replenishment',
+    label: 'Reposición',
+    group: 'Catálogos',
+    hint: 'Qué queda por debajo del mínimo. Crear los pedidos pide además el permiso de pedidos de compra.',
   },
 
   // ── Formularios ───────────────────────────────────────────────────────
@@ -60,6 +84,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   // ── Terceros ──────────────────────────────────────────────────────────────
   { path: '/partners', label: 'Interlocutores', group: 'Terceros' },
   { path: '/partner-groups', label: 'Grupos de interlocutores', group: 'Terceros' },
+  {
+    path: '/credit-override',
+    label: 'Superar el límite de crédito',
+    group: 'Terceros',
+    hint: 'Seguir adelante con un documento que el límite de crédito bloquea, y cambiar el límite de un interlocutor.',
+  },
 
   // ── CRM ───────────────────────────────────────────────────────────────────
   {
@@ -89,6 +119,24 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/sales-orders', label: 'Pedidos de venta', group: 'Ventas' },
   { path: '/sales/delivery-notes', label: 'Albaranes de venta', group: 'Ventas' },
   { path: '/sales/invoices', label: 'Facturas de venta', group: 'Ventas' },
+  {
+    path: '/sales/dunning',
+    label: 'Reclamación de impagos',
+    group: 'Ventas',
+    hint: 'Ver lo vencido por cliente y, con escritura, enviar reclamaciones.',
+  },
+  {
+    path: '/sales/recurring',
+    label: 'Facturas recurrentes',
+    group: 'Ventas',
+    hint: 'Las facturas que se repiten solas cada cierto tiempo.',
+  },
+  {
+    path: '/sales/settings',
+    label: 'Ajustes de ventas',
+    group: 'Ventas',
+    hint: 'Si el límite de crédito avisa o bloquea, y los niveles de reclamación de impagos.',
+  },
 
   // ── Compras ───────────────────────────────────────────────────────────────
   { path: '/purchase-orders', label: 'Pedidos de compra', group: 'Compras' },
@@ -104,6 +152,26 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   },
   { path: '/document-series', label: 'Series de numeración', group: 'Documentos' },
   { path: '/document-templates', label: 'Plantillas PDF', group: 'Documentos' },
+
+  // ── Bancos ─────────────────────────────────
+  {
+    path: '/banking/accounts',
+    label: 'Cuentas bancarias',
+    group: 'Bancos',
+    hint: 'Las cuentas de la empresa, con su IBAN y su cuenta contable.',
+  },
+  {
+    path: '/banking/reconciliation',
+    label: 'Conciliación bancaria',
+    group: 'Bancos',
+    hint: 'Importar extractos y enlazar sus movimientos con cobros y pagos. Con escritura, crea cobros y asientos.',
+  },
+  {
+    path: '/banking/batches',
+    label: 'Remesas',
+    group: 'Bancos',
+    hint: 'Preparar remesas de cobro y de pago, generar su fichero, cerrarlas y anotar devoluciones.',
+  },
 
   // ── Contabilidad ──────────────────────────────────────────────────────────
   { path: '/chart-of-accounts', label: 'Plan contable', group: 'Contabilidad' },
@@ -158,7 +226,7 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   },
   {
     path: '/reports/accounting/vat',
-    label: 'Libro de IVA',
+    label: 'Libros e informes fiscales',
     group: 'Informes',
     parent: '/reports/accounting',
   },
@@ -281,6 +349,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     group: 'Logística',
     hint: 'Envíos, rutas y seguimiento — es una sola pantalla con pestañas.',
   },
+  {
+    path: '/driver',
+    label: 'App del conductor',
+    group: 'Logística',
+    hint: 'Solo sus rutas: ver, salir, entregar y aplazar. Nada del centro logístico.',
+  },
   { path: '/settings/carriers', label: 'Transportistas', group: 'Logística' },
   { path: '/logistics/zones', label: 'Zonas de almacén', group: 'Logística' },
   {
@@ -302,12 +376,35 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/dashboard-widgets', label: 'Widgets del panel', group: 'Configuración' },
   { path: '/settings/webhooks', label: 'Webhooks', group: 'Configuración' },
   { path: '/settings/api-tokens', label: 'Tokens de API', group: 'Configuración' },
+  { path: '/settings/security', label: 'Seguridad del acceso', group: 'Configuración' },
   { path: '/automations', label: 'Automatizaciones', group: 'Configuración' },
   { path: '/data-import', label: 'Importación de datos', group: 'Configuración' },
   { path: '/apps', label: 'Aplicaciones y plugins', group: 'Configuración' },
   { path: '/audit-logs', label: 'Auditoría', group: 'Configuración' },
   { path: '/background-tasks', label: 'Tareas en segundo plano', group: 'Configuración' },
   { path: '/ai/chat', label: 'Asistente de IA', group: 'Configuración' },
+
+  // ── Mensajes ──────────────────────────────────────────────────────────────
+  {
+    path: '/messaging',
+    label: 'Mensajes',
+    group: 'Mensajes',
+    hint: 'Chat del equipo. Con solo lectura se ven las conversaciones pero no se escribe.',
+  },
+  {
+    path: '/messaging/customers',
+    label: 'Mensajes de clientes',
+    group: 'Mensajes',
+    parent: '/messaging',
+    hint: 'Ver y contestar lo que escriben los clientes por Telegram y otros canales.',
+  },
+  {
+    path: '/messaging/calls',
+    label: 'Videollamadas',
+    group: 'Mensajes',
+    parent: '/messaging',
+    hint: 'Hacer y recibir videollamadas, y entrar en reuniones de Keirost.',
+  },
 
   // ── Plataforma (no se ofrece: solo SUPERUSER) ─────────────────────────────
   {

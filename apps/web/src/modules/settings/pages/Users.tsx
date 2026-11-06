@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   PasswordInput,
+  Field,
   Select,
   SearchableSelect,
   Loader,
@@ -44,6 +45,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { UserAccessSection } from '../security/UserAccessSection';
+import { passwordErrorKey } from '../security/policyModel';
 import { UsersTable } from '../components/UsersTable';
 import { permissionsApi, type PermissionGroup } from '../api/permissionsApi';
 
@@ -467,7 +470,10 @@ export const Users: React.FC = () => {
       if (password) payload.password = password;
 
       const savedUser: any = await coreApi.raw(method, url, payload).then((r) => {
-        if (!r.ok) throw new Error(r.data?.error || t('settingsUsers.saveError'));
+        if (!r.ok) {
+          const pwKey = passwordErrorKey(r.data);
+          throw new Error(pwKey ? t(pwKey) : r.data?.error || t('settingsUsers.saveError'));
+        }
         return r.data;
       });
       const userId = savedUser.id || editingUser?.id;
@@ -621,15 +627,15 @@ export const Users: React.FC = () => {
                   <p className="text-[10px] text-fg-subtle">{t('settingsUsers.resetHelp')}</p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest flex items-center gap-1.5">
-                  <ShieldCheck
-                    size={11}
-                    className={isPrivileged ? 'text-accent' : 'text-fg-subtle'}
-                  />
-                  {t('settingsUsers.globalRole')}{' '}
-                  {!isPrivileged && <Lock size={9} className="text-fg-subtle" />}
-                </label>
+              {/* Misma etiqueta que el resto del formulario (Field = la de Input). */}
+              <Field
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck size={10} /> {t('settingsUsers.globalRole')}
+                    {!isPrivileged && <Lock size={10} className="text-fg-subtle" />}
+                  </span>
+                }
+              >
                 {isPrivileged ? (
                   // 2–3 opciones fijas → Select. La etiqueta con iconos se queda
                   // arriba (Select solo acepta `label` de texto), de ahí ariaLabel.
@@ -658,7 +664,7 @@ export const Users: React.FC = () => {
                             : globalRole}
                   </div>
                 )}
-              </div>
+              </Field>
             </div>
 
             {/* Memberships de empresa */}
@@ -844,6 +850,14 @@ export const Users: React.FC = () => {
                 })}
               </div>
             </div>
+
+            {editingUser && (
+              <UserAccessSection
+                key={editingUser.id}
+                userId={editingUser.id}
+                canWrite={!!canWrite}
+              />
+            )}
 
             {/* Acciones */}
             <div className="flex gap-3 justify-end pt-4 border-t border-border-subtle">

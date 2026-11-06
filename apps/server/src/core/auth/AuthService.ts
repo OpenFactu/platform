@@ -10,8 +10,9 @@ export class AuthService {
   /**
    * Genera un token JWT para un usuario.
    */
-  public static generateToken(payload: any): string {
-    return jwt.sign(payload, SECRET, { expiresIn: '24h' });
+  public static generateToken(payload: any, opts?: { expiresIn?: number }): string {
+    // `expiresIn` en segundos; sin él, 24 h como siempre.
+    return jwt.sign(payload, SECRET, { expiresIn: opts?.expiresIn ?? '24h' });
   }
 
   /**

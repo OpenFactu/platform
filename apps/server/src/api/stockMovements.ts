@@ -25,9 +25,75 @@ import {
   postReceipt,
   postIssue,
 } from '../core/stock/StockPoster';
+import { permissionsForRequest } from './middleware/requirePermission';
 
 function nowIso() {
   return new Date();
+}
+
+/**
+ * Aplica un movimiento una sola vez: bloquea su fila, mira el estado y mueve el stock
+ * dentro de la misma transacción. Dos clics a la vez no pasan los dos.
+ */
+async function postOnce(
+  req: any,
+  res: any,
+  table: any,
+  step: {
+    from: string;
+    wrongState: (status: string) => string;
+    apply: (tx: any, id: string) => Promise<void>;
+    changes: () => Record<string, unknown>;
+  },
+) {
+  const { id } = req.params;
+  try {
+    const refused = await req.tenantClient.transaction(async (tx: any) => {
+      const [doc] = await tx.select().from(table).where(eq(table.id, id)).for('update');
+      if (!doc) return { status: 404, error: 'No encontrado' };
+      if (doc.status !== step.from) return { status: 400, error: step.wrongState(doc.status) };
+      await step.apply(tx, id);
+      await tx
+        .update(table)
+        .set({ ...step.changes(), updatedAt: nowIso() })
+        .where(eq(table.id, id));
+      return null;
+    });
+    if (refused) return res.status(refused.status).json({ error: refused.error });
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+/**
+ * Solo se borra un borrador: uno confirmado ya movió stock, y borrarlo dejaría el stock
+ * movido sin documento que lo explique. El estado va en el propio DELETE, así que no se
+ * cuela si otro lo confirma justo a la vez.
+ */
+async function deleteDraft(req: any, res: any, table: any) {
+  const { id } = req.params;
+  try {
+    const deleted = await req.tenantClient
+      .delete(table)
+      .where(and(eq(table.id, id), eq(table.status, 'draft')))
+      .returning({ id: table.id });
+    if (deleted.length > 0) return res.json({ ok: true });
+    const [existing] = await req.tenantClient
+      .select({ id: table.id })
+      .from(table)
+      .where(eq(table.id, id));
+    if (!existing) return res.status(404).json({ error: 'No encontrado' });
+    res.status(409).json({ error: 'Ya está confirmado: no se puede borrar.' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+}
+
+/** El coste de una línea de entrada: vacío si no lo traen, y nunca negativo. */
+function parseUnitCost(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  return Number(value);
 }
 
 function genCode(prefix: string) {
@@ -99,15 +165,17 @@ async function validateBatchesForLines(
   // ── Validación de existencia/unicidad de series ───────────────────────
   const serialLines = lines.filter((l) => manageMap.get(l.itemId) === 'S' && l.batchNum);
   if (serialLines.length > 0) {
+    // Las series se guardan como lotes de cantidad 1: es lo que escriben entradas y documentos.
     const serialNums = [...new Set(serialLines.map((l) => l.batchNum!.trim()))];
-    const existing = await tenantClient
-      .select({
-        serialNum: schema.itemSerials.serialNum,
-        itemId: schema.itemSerials.itemId,
-      })
-      .from(schema.itemSerials)
-      .where(inArray(schema.itemSerials.serialNum, serialNums));
-    const existsMap = new Map<string, string>(existing.map((r: any) => [r.serialNum, r.itemId]));
+    const existing: Array<{ batchNum: string; itemId: string; quantity: number }> =
+      await tenantClient
+        .select({
+          batchNum: schema.itemBatches.batchNum,
+          itemId: schema.itemBatches.itemId,
+          quantity: schema.itemBatches.quantity,
+        })
+        .from(schema.itemBatches)
+        .where(inArray(schema.itemBatches.batchNum, serialNums));
 
     // Decide si el contexto ESPERA que exista o que NO exista.
     const isCreatingSerial =
@@ -116,23 +184,25 @@ async function validateBatchesForLines(
 
     for (const l of serialLines) {
       const serial = l.batchNum!.trim();
-      const owner = existsMap.get(serial);
+      const rows = existing.filter((row) => row.batchNum === serial);
+      const own = rows.find((row) => row.itemId === l.itemId);
       const label = itemLabel.get(l.itemId) || l.itemId;
 
       if (isCreatingSerial) {
-        if (owner) {
+        // Una que ya salió puede volver a entrar: solo estorba la que sigue en stock.
+        if (own && Number(own.quantity) > 0) {
           throw new Error(
             `La serie "${serial}" ya existe — no puedes darla de alta otra vez (${label}).`,
           );
         }
       } else {
         // transfer / issue / receipt return
-        if (!owner) {
+        if (rows.length === 0) {
           throw new Error(
             `La serie "${serial}" no existe en el sistema — sólo puedes mover/sacar series registradas (${label}).`,
           );
         }
-        if (owner !== l.itemId) {
+        if (!own) {
           throw new Error(`La serie "${serial}" pertenece a otro artículo, no a ${label}.`);
         }
       }
@@ -185,12 +255,12 @@ stockLookupRouter.get('/items/:id/serials', async (req: any, res) => {
   try {
     const rows = await req.tenantClient
       .select({
-        id: schema.itemSerials.id,
-        serialNum: schema.itemSerials.serialNum,
+        id: schema.itemBatches.id,
+        serialNum: schema.itemBatches.batchNum,
       })
-      .from(schema.itemSerials)
-      .where(eq(schema.itemSerials.itemId, req.params.id))
-      .orderBy(asc(schema.itemSerials.serialNum));
+      .from(schema.itemBatches)
+      .where(and(eq(schema.itemBatches.itemId, req.params.id), gt(schema.itemBatches.quantity, 0)))
+      .orderBy(asc(schema.itemBatches.batchNum));
     res.json(rows);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -338,58 +408,25 @@ transferNotesRouter.post('/', async (req: any, res) => {
   }
 });
 
-transferNotesRouter.post('/:id/send', async (req: any, res) => {
-  try {
-    const [doc] = await req.tenantClient
-      .select()
-      .from(schema.transferNotes)
-      .where(eq(schema.transferNotes.id, req.params.id));
-    if (!doc) return res.status(404).json({ error: 'No encontrado' });
-    if (doc.status !== 'draft') {
-      return res.status(400).json({ error: `No se puede enviar desde "${doc.status}"` });
-    }
-    await postTransferSent(req.tenantClient, req.params.id);
-    await req.tenantClient
-      .update(schema.transferNotes)
-      .set({ status: 'sent', sentAt: nowIso(), updatedAt: nowIso() })
-      .where(eq(schema.transferNotes.id, req.params.id));
-    res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+transferNotesRouter.post('/:id/send', (req: any, res) =>
+  postOnce(req, res, schema.transferNotes, {
+    from: 'draft',
+    wrongState: (status) => `No se puede enviar desde "${status}"`,
+    apply: postTransferSent,
+    changes: () => ({ status: 'sent', sentAt: nowIso() }),
+  }),
+);
 
-transferNotesRouter.post('/:id/receive', async (req: any, res) => {
-  try {
-    const [doc] = await req.tenantClient
-      .select()
-      .from(schema.transferNotes)
-      .where(eq(schema.transferNotes.id, req.params.id));
-    if (!doc) return res.status(404).json({ error: 'No encontrado' });
-    if (doc.status !== 'sent') {
-      return res.status(400).json({ error: `No se puede recibir desde "${doc.status}"` });
-    }
-    await postTransferReceived(req.tenantClient, req.params.id);
-    await req.tenantClient
-      .update(schema.transferNotes)
-      .set({ status: 'received', receivedAt: nowIso(), updatedAt: nowIso() })
-      .where(eq(schema.transferNotes.id, req.params.id));
-    res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+transferNotesRouter.post('/:id/receive', (req: any, res) =>
+  postOnce(req, res, schema.transferNotes, {
+    from: 'sent',
+    wrongState: (status) => `No se puede recibir desde "${status}"`,
+    apply: postTransferReceived,
+    changes: () => ({ status: 'received', receivedAt: nowIso() }),
+  }),
+);
 
-transferNotesRouter.delete('/:id', async (req: any, res) => {
-  try {
-    await req.tenantClient
-      .delete(schema.transferNotes)
-      .where(eq(schema.transferNotes.id, req.params.id));
-    res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+transferNotesRouter.delete('/:id', (req: any, res) => deleteDraft(req, res, schema.transferNotes));
 
 // ── ENTRADAS ─────────────────────────────────────────────────────────────
 export const goodsReceiptsRouter = Router();
@@ -442,6 +479,16 @@ goodsReceiptsRouter.post('/', async (req: any, res) => {
         })),
       { kind: 'receipt', type: body.type || 'internal' },
     );
+    const costs = incomingLines.map((l: any) => parseUnitCost(l.unitCost));
+    if (costs.some((cost: number | null) => cost !== null && !(cost >= 0))) {
+      return res.status(400).json({ error: 'El coste de una línea no puede ser negativo.' });
+    }
+    if (costs.some((cost: number | null) => cost !== null)) {
+      const permissions = await permissionsForRequest(req);
+      if (permissions !== null && !permissions['/item-costs']?.write) {
+        return res.status(403).json({ error: 'No tienes permiso para poner costes.' });
+      }
+    }
 
     const id = crypto.randomUUID();
     const code = body.code || genCode('ENT');
@@ -469,6 +516,7 @@ goodsReceiptsRouter.post('/', async (req: any, res) => {
         batchNum: l.batchNum || null,
         uomId: l.uomId || null,
         notes: l.notes || null,
+        unitCost: costs[i] === null ? null : String(costs[i]),
       });
     }
     res.json({ id, code });
@@ -477,32 +525,36 @@ goodsReceiptsRouter.post('/', async (req: any, res) => {
   }
 });
 
-goodsReceiptsRouter.post('/:id/post', async (req: any, res) => {
+goodsReceiptsRouter.post('/:id/post', (req: any, res) =>
+  postOnce(req, res, schema.goodsReceipts, {
+    from: 'draft',
+    wrongState: (status) => `Ya posteado (status: ${status})`,
+    apply: postReceipt,
+    changes: () => ({ status: 'posted', postedAt: nowIso() }),
+  }),
+);
+
+goodsReceiptsRouter.delete('/:id', async (req: any, res) => {
   try {
-    const [doc] = await req.tenantClient
-      .select()
+    const [receipt] = await req.tenantClient
+      .select({ sourceDocId: schema.goodsReceipts.sourceDocId })
       .from(schema.goodsReceipts)
       .where(eq(schema.goodsReceipts.id, req.params.id));
-    if (!doc) return res.status(404).json({ error: 'No encontrado' });
-    if (doc.status !== 'draft') {
-      return res.status(400).json({ error: `Ya posteado (status: ${doc.status})` });
+    if (receipt?.sourceDocId) {
+      const [note] = await req.tenantClient
+        .select({ status: schema.salesDeliveryNotes.status })
+        .from(schema.salesDeliveryNotes)
+        .where(eq(schema.salesDeliveryNotes.id, receipt.sourceDocId));
+      if (note?.status === 'X') {
+        return res.status(409).json({
+          error: 'Su albarán ya está anulado: esta entrada es la que devuelve la mercancía.',
+        });
+      }
     }
-    await postReceipt(req.tenantClient, req.params.id);
-    await req.tenantClient
-      .update(schema.goodsReceipts)
-      .set({ status: 'posted', postedAt: nowIso(), updatedAt: nowIso() })
-      .where(eq(schema.goodsReceipts.id, req.params.id));
-    res.json({ ok: true });
+    return deleteDraft(req, res, schema.goodsReceipts);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
-});
-
-goodsReceiptsRouter.delete('/:id', async (req: any, res) => {
-  await req.tenantClient
-    .delete(schema.goodsReceipts)
-    .where(eq(schema.goodsReceipts.id, req.params.id));
-  res.json({ ok: true });
 });
 
 // ── SALIDAS ──────────────────────────────────────────────────────────────
@@ -591,28 +643,13 @@ goodsIssuesRouter.post('/', async (req: any, res) => {
   }
 });
 
-goodsIssuesRouter.post('/:id/post', async (req: any, res) => {
-  try {
-    const [doc] = await req.tenantClient
-      .select()
-      .from(schema.goodsIssues)
-      .where(eq(schema.goodsIssues.id, req.params.id));
-    if (!doc) return res.status(404).json({ error: 'No encontrado' });
-    if (doc.status !== 'draft') {
-      return res.status(400).json({ error: `Ya posteado (status: ${doc.status})` });
-    }
-    await postIssue(req.tenantClient, req.params.id);
-    await req.tenantClient
-      .update(schema.goodsIssues)
-      .set({ status: 'posted', postedAt: nowIso(), updatedAt: nowIso() })
-      .where(eq(schema.goodsIssues.id, req.params.id));
-    res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+goodsIssuesRouter.post('/:id/post', (req: any, res) =>
+  postOnce(req, res, schema.goodsIssues, {
+    from: 'draft',
+    wrongState: (status) => `Ya posteado (status: ${status})`,
+    apply: postIssue,
+    changes: () => ({ status: 'posted', postedAt: nowIso() }),
+  }),
+);
 
-goodsIssuesRouter.delete('/:id', async (req: any, res) => {
-  await req.tenantClient.delete(schema.goodsIssues).where(eq(schema.goodsIssues.id, req.params.id));
-  res.json({ ok: true });
-});
+goodsIssuesRouter.delete('/:id', (req: any, res) => deleteDraft(req, res, schema.goodsIssues));

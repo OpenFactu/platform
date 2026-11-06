@@ -1,6 +1,7 @@
 import { apiClient } from '@/shared/http';
 import type { BatchOrSerial, Item } from '../domain/item';
 import type { ItemUomAlternative } from '../domain/uom';
+import type { ItemCostMovement } from '../domain/itemCost';
 
 /** El alta/edición admite además campos personalizados p_* (spread del formulario). */
 export type ItemInput = Record<string, unknown>;
@@ -11,6 +12,9 @@ export const itemsApi = {
   get: (id: string) => apiClient.get<Item>(`/api/items/${id}`),
   create: (data: ItemInput) => apiClient.post<Item>('/api/items', data),
   update: (id: string, data: ItemInput) => apiClient.patch<Item>(`/api/items/${id}`, data),
+  /** Por qué cambió su coste. Pide el permiso de costes. */
+  costMovements: (id: string) =>
+    apiClient.get<ItemCostMovement[]>(`/api/items/${id}/cost-movements`),
   /** Desglose de stock por almacén/zona/lote para el modal de detalle. */
   stockDetail: (id: string) => apiClient.get<unknown>(`/api/items/${id}/stock`),
   /** Lotes/series con stock real en un almacén (usado al elegir alternativa en picking). */

@@ -1,5 +1,4 @@
 /* MapLibre CSS — debe ir ANTES de cualquier otra regla (requisito de @import). */
-@import 'maplibre-gl/dist/maplibre-gl.css';
 /*
  * Design tokens del brand guide + keyframes que los componentes referencian
  * por nombre. Los publica @openfactu/ui, que es la fuente única de verdad:
@@ -76,6 +75,30 @@
   }
   .k-adaptive-content [role='option'][aria-selected='false']:active {
     background-color: var(--bg-hover);
+  }
+}
+
+/*
+ * Kit de chat en el teléfono: botones de 48px (mobile.css:71) y burbujas con
+ * mucho relleno; aquí se compacta. El `html` del selector es para ganar a
+ * mobile.css, que va antes con la misma especificidad.
+ */
+@media (max-width: 640px) {
+  html .k-chat-workspace {
+    --k-chat-message-gap: 10px;
+    font-size: 14px;
+  }
+  html .k-chat-workspace .k-chat-header {
+    min-height: 56px;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  html .k-chat-workspace .k-chat-icon-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  html .k-chat-workspace .k-chat-bubble {
+    padding: 8px 12px 6px;
   }
 }
 
@@ -162,7 +185,7 @@ html.dark {
   background: radial-gradient(circle, rgba(13, 148, 136, 0.9), transparent 60%);
   top: -80px;
   left: -80px;
-  animation: k-blob-1 18s ease-in-out infinite;
+  animation: k-blob-1 calc(18s * var(--k-motion, 1)) ease-in-out infinite;
 }
 .k-aurora::after {
   width: 360px;
@@ -170,7 +193,7 @@ html.dark {
   background: radial-gradient(circle, rgba(37, 99, 235, 0.8), transparent 60%);
   bottom: -60px;
   right: -60px;
-  animation: k-blob-2 22s ease-in-out infinite;
+  animation: k-blob-2 calc(22s * var(--k-motion, 1)) ease-in-out infinite;
 }
 .k-aurora > span {
   width: 300px;
@@ -178,7 +201,7 @@ html.dark {
   background: radial-gradient(circle, rgba(94, 234, 212, 0.6), transparent 60%);
   top: 40%;
   left: 30%;
-  animation: k-blob-3 26s ease-in-out infinite;
+  animation: k-blob-3 calc(26s * var(--k-motion, 1)) ease-in-out infinite;
 }
 
 /* Variante global: más tenue y desplazada, visible sobre el fondo claro/oscuro del form */
@@ -234,7 +257,7 @@ html.dark .k-aurora--global > span {
   }
 }
 .k-bell-shake {
-  animation: k-bell-shake 0.9s ease-in-out;
+  animation: k-bell-shake calc(0.9s * var(--k-motion, 1)) ease-in-out;
   transform-origin: top center;
 }
 
@@ -249,7 +272,7 @@ html.dark .k-aurora--global > span {
   }
 }
 .k-pulse-dot {
-  animation: k-pulse-dot 2s infinite;
+  animation: k-pulse-dot calc(2s * var(--k-motion, 1)) infinite;
 }
 
 /* Slide-in diagonal para items de lista (notifs, filas) */
@@ -264,7 +287,7 @@ html.dark .k-aurora--global > span {
   }
 }
 .k-slide-fade {
-  animation: k-slide-fade 0.3s ease-out both;
+  animation: k-slide-fade calc(0.3s * var(--k-motion, 1)) ease-out both;
 }
 
 .k-shimmer-text {
@@ -273,7 +296,7 @@ html.dark .k-aurora--global > span {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: k-shimmer 8s linear infinite;
+  animation: k-shimmer calc(8s * var(--k-motion, 1)) linear infinite;
 }
 
 /* Halo respirando alrededor del lanzador flotante de IA — "brilli brilli". */
@@ -291,7 +314,7 @@ html.dark .k-aurora--global > span {
   }
 }
 .k-ai-glow {
-  animation: k-ai-glow 2.6s ease-in-out infinite;
+  animation: k-ai-glow calc(2.6s * var(--k-motion, 1)) ease-in-out infinite;
 }
 
 @layer base {
@@ -338,7 +361,7 @@ html.dark {
   border-radius: 10px;
   border: 1px solid transparent;
   background-clip: padding-box;
-  transition: background-color 0.2s ease;
+  transition: background-color calc(0.2s * var(--k-motion, 1)) ease;
   min-height: 40px;
 }
 
@@ -438,13 +461,13 @@ html.dark *::-webkit-scrollbar-thumb:hover {
   will-change: transform;
 }
 .k-aurora-1 {
-  animation: k-aurora-a 22s ease-in-out infinite;
+  animation: k-aurora-a calc(22s * var(--k-motion, 1)) ease-in-out infinite;
 }
 .k-aurora-2 {
-  animation: k-aurora-b 28s ease-in-out infinite;
+  animation: k-aurora-b calc(28s * var(--k-motion, 1)) ease-in-out infinite;
 }
 .k-aurora-3 {
-  animation: k-aurora-c 34s ease-in-out infinite;
+  animation: k-aurora-c calc(34s * var(--k-motion, 1)) ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .k-aurora {

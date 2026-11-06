@@ -1,0 +1,46 @@
+[package]
+name = "keirost-messaging"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Keirost Messaging: chat del equipo y canales de mensajería en tiempo real"
+publish = false
+
+[dependencies]
+aes-gcm = "0.10"
+anyhow = "1"
+async-trait = "0.1"
+axum = { version = "0.8", features = ["ws"] }
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+dotenvy = "0.15"
+hmac = "0.12"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+jsonwebtoken = "9"
+ogg = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "multipart", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+str0m = { version = "0.24", default-features = false, features = ["rust-crypto"] }
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "uuid",
+    "chrono",
+    "json",
+    "macros",
+    "migrate",
+] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tower-http = { version = "0.6", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v7", "serde"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

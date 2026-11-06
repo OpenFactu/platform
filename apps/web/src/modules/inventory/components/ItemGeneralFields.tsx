@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, CurrencyInput, Input, SearchableSelect } from '@openfactu/ui';
 import { validateBarcode, generateEan13 } from '@/utils/barcodeValidation';
+import { useTaxGroupOptions } from '@/hooks/useTaxGroupOptions';
 import type { ItemFormValues } from '../hooks/useItemForm';
 import type { Category } from '../domain/category';
 import type { Uom } from '../domain/uom';
@@ -29,6 +30,7 @@ export const ItemGeneralFields: React.FC<Props> = ({
 }) => {
   const { t } = useI18n();
   const categoryPrefix = categories.find((c) => c.id === values.categoryId)?.codePrefix;
+  const taxGroupOptions = useTaxGroupOptions();
 
   return (
     <div className="space-y-4">
@@ -149,6 +151,20 @@ export const ItemGeneralFields: React.FC<Props> = ({
           value={values.uomId}
           onChange={(v) => set('uomId', v)}
           placeholder={t('inventory.itemFields.select')}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider ml-1">
+          {t('inventory.itemFields.taxGroup')}
+        </label>
+        <SearchableSelect
+          options={taxGroupOptions}
+          value={values.taxGroupId}
+          onChange={(v) => set('taxGroupId', v)}
+          clearable
+          placeholder={t('inventory.itemFields.noTaxGroup')}
+          helperText={t('inventory.itemFields.taxGroupHelp')}
         />
       </div>
 

@@ -113,6 +113,124 @@ ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "newValue" jsonb;
 
 ALTER TABLE "AuditLog" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 
+CREATE TABLE IF NOT EXISTS "AuthChallenge" (
+	"id" text PRIMARY KEY NOT NULL,
+	"kind" text NOT NULL,
+	"secretHash" text NOT NULL,
+	"userId" text,
+	"expiresAt" timestamp NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"status" text DEFAULT 'pending' NOT NULL,
+	"data" text,
+	CONSTRAINT "AuthChallenge_secretHash_unique" UNIQUE("secretHash")
+);
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "kind" text;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "secretHash" text;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "expiresAt" timestamp;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "attempts" integer DEFAULT 0 NOT NULL;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'pending' NOT NULL;
+
+ALTER TABLE "AuthChallenge" ADD COLUMN IF NOT EXISTS "data" text;
+
+DO $$ BEGIN
+  ALTER TABLE "AuthChallenge" ADD CONSTRAINT "AuthChallenge_secretHash_unique" UNIQUE("secretHash");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "AuthEvent" (
+	"id" text PRIMARY KEY NOT NULL,
+	"userId" text,
+	"at" timestamp DEFAULT now() NOT NULL,
+	"kind" text NOT NULL,
+	"ok" boolean DEFAULT true NOT NULL,
+	"method" text,
+	"ip" text,
+	"userAgent" text,
+	"clientKind" text,
+	"deviceId" text,
+	"detail" text
+);
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "at" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "kind" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "ok" boolean DEFAULT true NOT NULL;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "method" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "ip" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "userAgent" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "clientKind" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "deviceId" text;
+
+ALTER TABLE "AuthEvent" ADD COLUMN IF NOT EXISTS "detail" text;
+
+CREATE TABLE IF NOT EXISTS "AuthProvider" (
+	"id" text PRIMARY KEY NOT NULL,
+	"kind" text NOT NULL,
+	"name" text NOT NULL,
+	"issuer" text,
+	"clientId" text,
+	"clientSecretEnc" text,
+	"scopes" text,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"allowedDomains" text,
+	"trustProviderMfa" boolean DEFAULT false NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "kind" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "name" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "issuer" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "clientId" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "clientSecretEnc" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "scopes" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "enabled" boolean DEFAULT true NOT NULL;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "allowedDomains" text;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "trustProviderMfa" boolean DEFAULT false NOT NULL;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "AuthProvider" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
+
+CREATE TABLE IF NOT EXISTS "AuthThrottle" (
+	"key" text PRIMARY KEY NOT NULL,
+	"failures" integer DEFAULT 0 NOT NULL,
+	"windowStart" timestamp DEFAULT now() NOT NULL,
+	"lockedUntil" timestamp,
+	"lockCount" integer DEFAULT 0 NOT NULL
+);
+
+ALTER TABLE "AuthThrottle" ADD COLUMN IF NOT EXISTS "failures" integer DEFAULT 0 NOT NULL;
+
+ALTER TABLE "AuthThrottle" ADD COLUMN IF NOT EXISTS "windowStart" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "AuthThrottle" ADD COLUMN IF NOT EXISTS "lockedUntil" timestamp;
+
+ALTER TABLE "AuthThrottle" ADD COLUMN IF NOT EXISTS "lockCount" integer DEFAULT 0 NOT NULL;
+
 CREATE TABLE IF NOT EXISTS "AutomationRun" (
 	"id" text PRIMARY KEY NOT NULL,
 	"automationId" text NOT NULL,
@@ -235,7 +353,10 @@ CREATE TABLE IF NOT EXISTS "GlobalUser" (
 	"totpSecret" text,
 	"totpEnabled" boolean DEFAULT false NOT NULL,
 	"totpBackupCodes" text,
+	"totpLastStep" integer,
 	"locale" text,
+	"themePreset" text,
+	"themeMode" text,
 	"createdAt" timestamp DEFAULT now() NOT NULL,
 	"updatedAt" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "GlobalUser_email_unique" UNIQUE("email"),
@@ -272,7 +393,13 @@ ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpEnabled" boolean DEFAULT 
 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" text;
 
+ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpLastStep" integer;
+
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "locale" text;
+
+ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "themePreset" text;
+
+ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "themeMode" text;
 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 
@@ -310,6 +437,7 @@ CREATE TABLE IF NOT EXISTS "PluginField" (
 	"readRoles" jsonb,
 	"writeRoles" jsonb,
 	"validation" jsonb,
+	"refObject" text,
 	"refTable" text,
 	"refDisplayField" text,
 	"isManaged" boolean DEFAULT true NOT NULL,
@@ -355,6 +483,8 @@ ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "readRoles" jsonb;
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "writeRoles" jsonb;
 
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "validation" jsonb;
+
+ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refObject" text;
 
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refTable" text;
 
@@ -403,6 +533,19 @@ ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "displayField" text;
 ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "description" text;
 
 ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+CREATE TABLE IF NOT EXISTS "ShipmentToken" (
+	"token" text PRIMARY KEY NOT NULL,
+	"tenantId" text NOT NULL,
+	"shipmentId" text NOT NULL,
+	"kind" text NOT NULL
+);
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "tenantId" text;
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "shipmentId" text;
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "kind" text;
 
 CREATE TABLE IF NOT EXISTS "TenantPlugin" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -503,6 +646,31 @@ ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "createdAt" timestamp
 
 ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
 
+CREATE TABLE IF NOT EXISTS "UserIdentity" (
+	"id" text PRIMARY KEY NOT NULL,
+	"userId" text NOT NULL,
+	"providerId" text NOT NULL,
+	"subject" text NOT NULL,
+	"email" text,
+	"linkedAt" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "UserIdentity_providerId_subject_unique" UNIQUE("providerId","subject")
+);
+
+ALTER TABLE "UserIdentity" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "UserIdentity" ADD COLUMN IF NOT EXISTS "providerId" text;
+
+ALTER TABLE "UserIdentity" ADD COLUMN IF NOT EXISTS "subject" text;
+
+ALTER TABLE "UserIdentity" ADD COLUMN IF NOT EXISTS "email" text;
+
+ALTER TABLE "UserIdentity" ADD COLUMN IF NOT EXISTS "linkedAt" timestamp DEFAULT now() NOT NULL;
+
+DO $$ BEGIN
+  ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_providerId_subject_unique" UNIQUE("providerId","subject");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "UserModule" (
 	"id" text PRIMARY KEY NOT NULL,
 	"tenantId" text NOT NULL,
@@ -521,6 +689,95 @@ ALTER TABLE "UserModule" ADD COLUMN IF NOT EXISTS "iconName" text DEFAULT 'Folde
 ALTER TABLE "UserModule" ADD COLUMN IF NOT EXISTS "moduleOrder" integer DEFAULT 100 NOT NULL;
 
 ALTER TABLE "UserModule" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+CREATE TABLE IF NOT EXISTS "UserPasskey" (
+	"id" text PRIMARY KEY NOT NULL,
+	"userId" text NOT NULL,
+	"credentialId" text NOT NULL,
+	"publicKey" text NOT NULL,
+	"counter" integer DEFAULT 0 NOT NULL,
+	"transports" text,
+	"rpId" text NOT NULL,
+	"name" text,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"lastUsedAt" timestamp,
+	CONSTRAINT "UserPasskey_credentialId_unique" UNIQUE("credentialId")
+);
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "credentialId" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "publicKey" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "counter" integer DEFAULT 0 NOT NULL;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "transports" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "rpId" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "name" text;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "UserPasskey" ADD COLUMN IF NOT EXISTS "lastUsedAt" timestamp;
+
+DO $$ BEGIN
+  ALTER TABLE "UserPasskey" ADD CONSTRAINT "UserPasskey_credentialId_unique" UNIQUE("credentialId");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "UserSession" (
+	"id" text PRIMARY KEY NOT NULL,
+	"userId" text NOT NULL,
+	"tenantId" text,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"lastSeenAt" timestamp DEFAULT now() NOT NULL,
+	"expiresAt" timestamp NOT NULL,
+	"absoluteExpiresAt" timestamp NOT NULL,
+	"revokedAt" timestamp,
+	"revokedReason" text,
+	"method" text,
+	"mfa" text,
+	"idleHours" integer DEFAULT 12 NOT NULL,
+	"restricted" text,
+	"clientKind" text,
+	"deviceId" text,
+	"userAgent" text,
+	"ip" text
+);
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "tenantId" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "lastSeenAt" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "expiresAt" timestamp;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "absoluteExpiresAt" timestamp;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "revokedAt" timestamp;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "revokedReason" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "method" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "mfa" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "idleHours" integer DEFAULT 12 NOT NULL;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "restricted" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "clientKind" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "deviceId" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "userAgent" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "ip" text;
 
 CREATE TABLE IF NOT EXISTS "UserTenantMembership" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -612,6 +869,26 @@ EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_providerId_AuthProvider_id_fk" FOREIGN KEY ("providerId") REFERENCES "public"."AuthProvider"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "UserPasskey" ADD CONSTRAINT "UserPasskey_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
   ALTER TABLE "UserTenantMembership" ADD CONSTRAINT "UserTenantMembership_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
@@ -620,3 +897,9 @@ DO $$ BEGIN
   ALTER TABLE "UserTenantMembership" ADD CONSTRAINT "UserTenantMembership_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
+
+CREATE INDEX IF NOT EXISTS "AuthChallenge_kind_userId_idx" ON "AuthChallenge" USING btree ("kind","userId");
+
+CREATE INDEX IF NOT EXISTS "AuthEvent_userId_at_idx" ON "AuthEvent" USING btree ("userId","at");
+
+CREATE INDEX IF NOT EXISTS "UserSession_userId_idx" ON "UserSession" USING btree ("userId");

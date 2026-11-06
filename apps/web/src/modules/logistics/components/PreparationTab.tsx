@@ -19,6 +19,7 @@ import { PickingTasksPanel } from './PickingTasksPanel';
 import { RoutePicker } from './RoutePicker';
 import { ApiError } from '@/shared/http';
 import { useI18n } from '@/i18n/I18nContext';
+import { useRouteWarnings } from '../hooks/useRouteWarnings';
 import type { Route } from '../domain/route';
 import type { Shipment } from '../domain/shipment';
 import type { StagingArea } from '../domain/stagingArea';
@@ -64,6 +65,7 @@ export const PreparationTab: React.FC = () => {
   const [selected, setSelected] = useState<Shipment | null>(null);
   const [showDispatch, setShowDispatch] = useState<Shipment | null>(null);
   const [dispatchRouteId, setDispatchRouteId] = useState('');
+  const showWarnings = useRouteWarnings();
   const [showStaging, setShowStaging] = useState<Shipment | null>(null);
   const [stagingAreaId, setStagingAreaId] = useState('');
 
@@ -117,7 +119,10 @@ export const PreparationTab: React.FC = () => {
   const dispatch = async () => {
     if (!showDispatch) return;
     try {
-      await shipmentsApi.dispatch(showDispatch.id, { routeId: dispatchRouteId || null });
+      const { warnings } = await shipmentsApi.dispatch(showDispatch.id, {
+        routeId: dispatchRouteId || null,
+      });
+      showWarnings(warnings);
       toast.success(t('logistics.preparation.dispatched'));
       setShowDispatch(null);
       setDispatchRouteId('');
@@ -158,7 +163,7 @@ export const PreparationTab: React.FC = () => {
           <Loader />
         </div>
       ) : activeShipments.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+        <Card bodyClassName="py-10 text-center text-sm text-fg-muted">
           {t('logistics.preparation.emptyBefore')} <b>{t('logistics.preparation.emptyAction')}</b>{' '}
           {t('logistics.preparation.emptyAfter')}
         </Card>
@@ -189,7 +194,7 @@ export const PreparationTab: React.FC = () => {
                         {sh.id.slice(0, 8)}
                       </code>
                       {sh.destinationAddress && (
-                        <span className="text-[11px] text-slate-500 truncate max-w-[60vw] md:max-w-sm">
+                        <span className="text-[11px] text-fg-muted truncate max-w-[60vw] md:max-w-sm">
                           → {sh.destinationAddress}
                         </span>
                       )}
@@ -284,7 +289,7 @@ export const PreparationTab: React.FC = () => {
       >
         <div className="space-y-3 pt-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.preparation.targetArea')}
             </label>
             {/* Acopios vienen del servidor → SearchableSelect (no tiene prop
@@ -301,9 +306,7 @@ export const PreparationTab: React.FC = () => {
               clearable
             />
             {stagingAreas.length === 0 && (
-              <p className="text-[11px] text-amber-600 mt-1">
-                {t('logistics.preparation.noAreas')}
-              </p>
+              <p className="text-[11px] text-warning mt-1">{t('logistics.preparation.noAreas')}</p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
@@ -326,7 +329,7 @@ export const PreparationTab: React.FC = () => {
       >
         <div className="space-y-3 pt-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               {t('logistics.preparation.route')}
             </label>
             <RoutePicker

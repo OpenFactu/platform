@@ -131,7 +131,7 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Cargar también las tablas de usuario del tenant actual para inyectar en el menú.
   const fetchUserTables = useCallback(() => {
-    if (!authToken || !authUser?.tenantId) {
+    if (!authToken || !authUser?.tenantId || authUser.restricted) {
       setUserTables([]);
       return;
     }
@@ -139,7 +139,7 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .raw('GET', '/api/user-tables/menu')
       .then((r) => setUserTables(r.ok && Array.isArray(r.data) ? r.data : []))
       .catch(() => setUserTables([]));
-  }, [authToken, authUser?.tenantId]);
+  }, [authToken, authUser?.tenantId, authUser?.restricted]);
 
   useEffect(() => {
     fetchUserTables();

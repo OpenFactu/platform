@@ -4,11 +4,20 @@ import type { ModuleManifest } from '../types';
 const UserProfile = lazy(() =>
   import('./pages/UserProfile').then((m) => ({ default: m.UserProfile })),
 );
+const AccountSecurity = lazy(() =>
+  import('./pages/AccountSecurity').then((m) => ({ default: m.AccountSecurity })),
+);
 const PhysicalDevices = lazy(() =>
   import('./pages/PhysicalDevices').then((m) => ({ default: m.PhysicalDevices })),
 );
 const CompanySettings = lazy(() =>
   import('./pages/CompanySettings').then((m) => ({ default: m.CompanySettings })),
+);
+const SecurityPolicy = lazy(() =>
+  import('./pages/SecurityPolicy').then((m) => ({ default: m.SecurityPolicy })),
+);
+const LoginProviders = lazy(() =>
+  import('./pages/LoginProviders').then((m) => ({ default: m.LoginProviders })),
 );
 const Users = lazy(() => import('./pages/Users').then((m) => ({ default: m.Users })));
 const CustomFields = lazy(() =>
@@ -38,7 +47,20 @@ export const settingsModule: ModuleManifest = {
     icon: 'SlidersHorizontal',
     subTabs: [
       { id: 'profile', label: 'settings.nav.profile', path: '/profile' },
+      { id: 'security', label: 'settings.nav.security', path: '/profile/security' },
       { id: 'company', label: 'settings.nav.company', path: '/settings/company' },
+      {
+        id: 'security-policy',
+        label: 'settings.nav.securityPolicy',
+        path: '/settings/security',
+      },
+      // Solo un SUPERUSER: Google, Microsoft u OIDC para entrar (a nivel de instalación).
+      {
+        id: 'login-providers',
+        label: 'settings.nav.loginProviders',
+        path: '/settings/login-providers',
+        superuserOnly: true,
+      },
       { id: 'users', label: 'settings.nav.users', path: '/users' },
       // Cómo se ven y qué campos llevan los datos y documentos de la empresa.
       {
@@ -130,11 +152,31 @@ export const settingsModule: ModuleManifest = {
       iconName: 'UserCircle',
     },
     {
+      pattern: '/profile/security',
+      Component: AccountSecurity,
+      title: 'settings.nav.security',
+      iconName: 'Key',
+    },
+    {
       pattern: '/settings/company',
       Component: CompanySettings,
       title: 'settings.nav.company',
       iconName: 'Building',
       permissionPath: '/settings/company',
+    },
+    {
+      pattern: '/settings/security',
+      Component: SecurityPolicy,
+      title: 'settings.nav.securityPolicy',
+      iconName: 'Key',
+      permissionPath: '/settings/security',
+    },
+    {
+      pattern: '/settings/login-providers',
+      Component: LoginProviders,
+      title: 'settings.nav.loginProviders',
+      iconName: 'Key',
+      permissionPath: '/settings/login-providers',
     },
     {
       pattern: '/users',

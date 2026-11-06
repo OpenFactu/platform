@@ -21,6 +21,8 @@ export interface CarrierCredentialField {
 export interface CarrierAdapterInfo {
   id: string;
   name: string;
+  /** Sin API detrás: el número lo escribe quien despacha. */
+  manual: boolean;
   credentialFields: CarrierCredentialField[];
 }
 
@@ -35,7 +37,16 @@ export interface CarrierAccount {
 
 export interface CarrierTestResult {
   ok: boolean;
-  trackingNumber?: string | null;
   manual?: boolean;
+  message?: string;
   error?: string;
+}
+
+/** Una cuenta entre las que elegir al despachar, sin sus credenciales. */
+export interface CarrierAccountOption {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  carrierName: string;
+  manual: boolean;
 }

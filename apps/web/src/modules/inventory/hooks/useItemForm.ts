@@ -15,6 +15,7 @@ export interface ItemFormValues {
   name: string;
   uomId: string;
   categoryId: string;
+  taxGroupId: string;
   // Numéricos puros: antes eran string porque venían de `e.target.value` de un
   // <input type="number">; con CurrencyInput/NumberInput el valor ya llega
   // numérico y `null` representa el campo vacío.
@@ -28,6 +29,10 @@ export interface ItemFormValues {
   boxTareWeightKg: number | null;
   defaultWarehouseId: string;
   defaultZoneId: string;
+  minStock: number | null;
+  reorderQty: number | null;
+  preferredSupplierId: string;
+  leadTimeDays: number | null;
   webVisible: boolean;
   webDescription: string;
   webImages: string[];
@@ -42,6 +47,7 @@ export function emptyItemForm(): ItemFormValues {
     name: '',
     uomId: '',
     categoryId: '',
+    taxGroupId: '',
     basePrice: 0,
     manageBy: 'N',
     kind: 'product',
@@ -52,6 +58,10 @@ export function emptyItemForm(): ItemFormValues {
     boxTareWeightKg: null,
     defaultWarehouseId: '',
     defaultZoneId: '',
+    minStock: null,
+    reorderQty: null,
+    preferredSupplierId: '',
+    leadTimeDays: null,
     webVisible: false,
     webDescription: '',
     webImages: [],
@@ -67,7 +77,7 @@ const num = (v: unknown): number | null => {
 };
 
 /** Pre-rellena el formulario desde un item de la API (edición/duplicado). */
-export function itemToForm(item: any): ItemFormValues {
+export function itemToForm(item: Partial<Item>): ItemFormValues {
   const customValues: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(item ?? {})) {
     if (k.startsWith('p_')) customValues[k] = v;
@@ -78,6 +88,7 @@ export function itemToForm(item: any): ItemFormValues {
     name: item.name || '',
     uomId: item.uomId || '',
     categoryId: item.categoryId || '',
+    taxGroupId: item.taxGroupId || '',
     basePrice: Number(item.basePrice) || 0,
     manageBy: item.manageBy || 'N',
     kind: item.kind === 'box' ? 'box' : 'product',
@@ -88,6 +99,10 @@ export function itemToForm(item: any): ItemFormValues {
     boxTareWeightKg: num(item.boxTareWeightKg),
     defaultWarehouseId: item.defaultWarehouseId || '',
     defaultZoneId: item.defaultZoneId || '',
+    minStock: num(item.minStock) || null,
+    reorderQty: num(item.reorderQty) || null,
+    preferredSupplierId: item.preferredSupplierId || '',
+    leadTimeDays: num(item.leadTimeDays),
     webVisible: !!item.webVisible,
     webDescription: item.webDescription || '',
     webImages: Array.isArray(item.webImages) ? item.webImages : [],
@@ -103,6 +118,7 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
     name: v.name,
     uomId: v.uomId,
     categoryId: v.categoryId || null,
+    taxGroupId: v.taxGroupId || null,
     basePrice: v.basePrice || 0,
     manageBy: v.manageBy,
     kind: v.kind,
@@ -113,6 +129,10 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
     boxTareWeightKg: v.kind === 'box' && v.boxTareWeightKg ? v.boxTareWeightKg : null,
     defaultWarehouseId: v.defaultWarehouseId || null,
     defaultZoneId: v.defaultZoneId || null,
+    minStock: v.minStock || 0,
+    reorderQty: v.reorderQty || 0,
+    preferredSupplierId: v.preferredSupplierId || null,
+    leadTimeDays: v.leadTimeDays ?? null,
     webVisible: v.webVisible,
     webDescription: v.webDescription.trim() || null,
     webImages: v.webImages,
@@ -120,7 +140,7 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
   };
 }
 
-export function useItemForm(initialItem?: any | null) {
+export function useItemForm(initialItem?: Partial<Item> | null) {
   const [values, setValues] = useState<ItemFormValues>(() =>
     initialItem ? itemToForm(initialItem) : emptyItemForm(),
   );
@@ -132,7 +152,8 @@ export function useItemForm(initialItem?: any | null) {
   const setCustom = (key: string, value: unknown) =>
     setValues((v) => ({ ...v, customValues: { ...v.customValues, [key]: value } }));
 
-  const reset = (item?: any | null) => setValues(item ? itemToForm(item) : emptyItemForm());
+  const reset = (item?: Partial<Item> | null) =>
+    setValues(item ? itemToForm(item) : emptyItemForm());
 
   /** Crea (sin id) o actualiza (con id). Lanza ApiError si el backend falla. */
   const submit = async (existingId?: string): Promise<Item> => {

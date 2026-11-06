@@ -20,6 +20,7 @@ import {
   type EmailConfig,
 } from '../core/email/Mailer';
 import { enqueueMail, mailQueue } from '../core/email/MailQueue';
+import { buildDocumentPdf } from '../core/documents/documentAttachment';
 
 const router = Router();
 
@@ -178,36 +179,8 @@ async function buildPdfAttachment(
   tenantClient: any,
   locale: Locale = 'es',
 ): Promise<{ pdf: Buffer; payload: any; code: string; label: string } | null> {
-  const { PdfRenderer, extractMetaFromHtml, DEFAULT_VISUAL_OPTIONS } =
-    await import('@openfactu/pdf');
-  const { PdfPayloadBuilder } = await import('../core/documents/PdfPayloadBuilder');
-  const schemaMod = await import('../db/schema');
-  const { eq, and } = await import('drizzle-orm');
-
-  const [template] = await tenantClient
-    .select()
-    .from(schemaMod.documentTemplates)
-    .where(
-      and(
-        eq(schemaMod.documentTemplates.docType, docType),
-        eq(schemaMod.documentTemplates.isDefault, true),
-      ),
-    );
-  if (!template) return null;
-
-  const payload = await PdfPayloadBuilder.build(docType, docId, tenantClient, locale);
-  const meta = extractMetaFromHtml(template.html) || DEFAULT_VISUAL_OPTIONS;
-  const renderOpts = PdfRenderer.renderOptionsFromVisual(meta);
-  if ((meta as any).showDocQr || (meta as any).showDocBarcode) {
-    (renderOpts as any).pageFooter = PdfRenderer.pageFooterFromPayload(payload);
-  }
-  const pdf = await PdfRenderer.render(template.html, payload, renderOpts);
-  return {
-    pdf,
-    payload,
-    code: payload.doc.docCode || docId,
-    label: DOC_LABELS[docType],
-  };
+  const built = await buildDocumentPdf(docType, docId, tenantClient, locale);
+  return built ? { ...built, label: DOC_LABELS[docType] } : null;
 }
 
 /**

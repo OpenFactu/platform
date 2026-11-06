@@ -36,6 +36,8 @@ interface Props {
   title?: string;
   initialSql: string;
   queryName?: string;
+  /** De dónde salen los placeholders al probar: el último documento de ese tipo. */
+  docType?: string;
   onSave: (sql: string) => void;
   onClose: () => void;
 }
@@ -61,6 +63,7 @@ export const SqlEditorModal: React.FC<Props> = ({
   title,
   initialSql,
   queryName,
+  docType,
   onSave,
   onClose,
 }) => {
@@ -233,7 +236,11 @@ export const SqlEditorModal: React.FC<Props> = ({
     setTesting(true);
     setTestResult(null);
     try {
-      const body: any = await templatesApi.testQuery({ name: queryName || 'test', sql: value });
+      const body: any = await templatesApi.testQuery({
+        name: queryName || 'test',
+        sql: value,
+        sampleDocType: docType,
+      });
       if (body?.ok === false) {
         setTestResult({ ok: false, error: body.error || tr('templates.sql.queryError') });
       } else {

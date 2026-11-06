@@ -3,7 +3,9 @@ import { DocumentRegistry } from '../documents/DocumentRegistry';
 import { PluginFieldManager } from './PluginFieldManager';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { AuthService } from '../auth/AuthService';
+import { createSession, issueToken } from '../auth/sessions';
 import { eq, and, asc, gte, lte } from 'drizzle-orm';
+import { registerPayment } from '../payments/paymentService';
 import * as crypto from 'crypto';
 import * as schema from '../../db/schema';
 import {
@@ -402,61 +404,27 @@ export class FactuApiTransaction {
     }
     if (!opts.amount || opts.amount <= 0) throw new Error('amount debe ser > 0');
 
-    const invoiceTable =
-      opts.direction === 'sales' ? schema.salesInvoices : schema.purchaseInvoices;
-    const [invoice] = await this._db
-      .select()
-      .from(invoiceTable)
-      .where(eq(invoiceTable.id, opts.invoiceId));
-    if (!invoice) throw new Error('Factura no encontrada');
-
-    const id = crypto.randomUUID();
     const date = opts.date
       ? typeof opts.date === 'string'
         ? opts.date
         : opts.date.toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
-    await this._db.insert(schema.payments).values({
-      id,
-      salesInvoiceId: opts.direction === 'sales' ? opts.invoiceId : null,
-      purchaseInvoiceId: opts.direction === 'purchase' ? opts.invoiceId : null,
-      date,
-      amount: String(opts.amount),
-      currencyId: null,
-      exchangeRate: '1',
-      amountBase: String(opts.amount),
-      paymentMethodId: opts.paymentMethodId || null,
-      reference: opts.reference.trim(),
-      notes: opts.notes || null,
-      source: 'manual',
-      sourceRef: null,
-      createdBy: this._user?.id || null,
-    });
-
-    let journalEntryId: string | null = null;
-    try {
-      const je = await JournalEngine.createFromPayment(
-        this._db,
-        { id, amount: opts.amount, date, paymentMethodId: opts.paymentMethodId || null },
+    const { id, journalEntryId } = await this._db.transaction((tx: any) =>
+      registerPayment(
+        tx,
         {
-          id: invoice.id,
-          partnerId: invoice.partnerId,
-          periodId: invoice.periodId,
-          docNum: invoice.docNum,
+          kind: opts.direction,
+          invoiceId: opts.invoiceId,
+          date,
+          amount: opts.amount,
+          reference: opts.reference,
+          paymentMethodId: opts.paymentMethodId,
+          notes: opts.notes,
         },
-        opts.direction,
         this._user?.id,
-      );
-      if (je) {
-        await JournalEngine.post(this._db, je.id, this._user?.id);
-        journalEntryId = je.id;
-      }
-    } catch (err: any) {
-      // best-effort — no bloquea el registro del pago
-      console.warn('[FactuApi.registerPayment] No se pudo generar asiento:', err.message);
-    }
-
+      ),
+    );
     return { id, journalEntryId };
   }
 
@@ -1223,12 +1191,18 @@ export class FactuApi {
 
     // Generar token JWT (con el primer tenant por defecto)
     const defaultTenantId = accessibleTenants[0]?.tenantId || null;
-    const token = AuthService.generateToken({
+    const session = await createSession({
       userId: user.id,
+      tenantId: defaultTenantId,
+      method: 'factuapi',
+      mfa: null,
+      client: { ip: 'internal', userAgent: 'FactuApi', clientKind: 'web' },
+    });
+    const token = issueToken(session, {
+      id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
-      tenantId: defaultTenantId,
     });
 
     return {

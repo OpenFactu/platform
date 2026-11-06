@@ -34,6 +34,9 @@ export interface CreateShipmentInput {
   destinationZip?: string | null;
   destinationCity?: string | null;
   destinationCountryCode?: string | null;
+  recipientName?: string | null;
+  recipientPhone?: string | null;
+  recipientEmail?: string | null;
   /** Peso total en kg (opcional — algunos adapters lo necesitan). */
   weightKg?: number | null;
   /** Observaciones libres. */
@@ -61,6 +64,10 @@ export interface TrackingSnapshot {
 export interface ICarrierAdapter {
   /** Identificador único dentro de `CarrierRegistry`. */
   id: string;
+  /** Sin API detrás: el número y la etiqueta los pone el usuario. */
+  manual?: boolean;
+  /** Comprueba las credenciales sin crear nada en el transportista. */
+  testConnection?(account: CarrierAccountCredentials): Promise<void>;
   /** Nombre legible para el UI de selección. */
   name: string;
   /** Campos esperados en `CarrierAccount.credentials` — guía el formulario UI. */

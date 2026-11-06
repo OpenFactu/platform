@@ -23,14 +23,14 @@ export const partnerObject: ImportObjectConfig = {
   updatePath: (id) => `/${id}`,
   updateMethod: 'PATCH',
   deletePath: (id) => `/${id}`,
-  dependsOn: ['partnerGroup'],
+  dependsOn: ['partnerGroup', 'taxGroup'],
 
   naturalKeys: [
     // `code` es UNIQUE y `nif` tiene índice único parcial (mig 029). El
     // nombre no: dos empresas pueden llamarse igual, así que sirve para
     // buscar pero no para avisar de duplicados.
     { key: 'code', column: 'code', label: 'Código', unique: true },
-    { key: 'nif', column: 'nif', label: 'NIF/CIF', unique: true },
+    { key: 'nif', column: 'nif', label: 'Identificación fiscal', unique: true },
     { key: 'name', column: 'name', label: 'Nombre' },
   ],
 
@@ -51,7 +51,7 @@ export const partnerObject: ImportObjectConfig = {
     },
     {
       key: 'nif',
-      label: 'NIF/CIF',
+      label: 'Identificación fiscal',
       type: 'string',
       example: 'B12345678',
       help: 'Se valida contra el formato del país indicado en "País". Sin país no se valida.',
@@ -84,6 +84,14 @@ export const partnerObject: ImportObjectConfig = {
       label: 'Retención por defecto (%)',
       type: 'number',
       example: '15',
+    },
+    {
+      key: 'defaultTaxGroup',
+      label: 'Tipo de impuesto por defecto',
+      type: 'ref',
+      bodyKey: 'defaultTaxGroupId',
+      help: 'Manda sobre el del artículo al añadir líneas.',
+      ref: { table: 'TaxGroup', matchBy: ['code'], label: 'tipo de impuesto' },
     },
 
     // Dirección principal — columnas planas que el transform agrupa.
