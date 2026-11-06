@@ -3,6 +3,7 @@ import { DocumentRegistry } from '../documents/DocumentRegistry';
 import { PluginFieldManager } from './PluginFieldManager';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { AuthService } from '../auth/AuthService';
+import { createSession, issueToken } from '../auth/sessions';
 import { eq, and, asc, gte, lte } from 'drizzle-orm';
 import { registerPayment } from '../payments/paymentService';
 import * as crypto from 'crypto';
@@ -1190,12 +1191,18 @@ export class FactuApi {
 
     // Generar token JWT (con el primer tenant por defecto)
     const defaultTenantId = accessibleTenants[0]?.tenantId || null;
-    const token = AuthService.generateToken({
+    const session = await createSession({
       userId: user.id,
+      tenantId: defaultTenantId,
+      method: 'factuapi',
+      mfa: null,
+      client: { ip: 'internal', userAgent: 'FactuApi', clientKind: 'web' },
+    });
+    const token = issueToken(session, {
+      id: user.id,
       email: user.email,
       username: user.username,
       role: user.role,
-      tenantId: defaultTenantId,
     });
 
     return {

@@ -504,6 +504,11 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const hashed = await AuthService.hashPassword(newPassword);
+
+    // Primero las sesiones: si esto falla no se cambia la contraseña, y nunca queda la
+    // nueva con sesiones viejas vivas.
+    await revokeAllForUser(user.id, 'password_change');
+
     await db
       .update(schema.globalUsers)
       .set({
@@ -513,9 +518,6 @@ router.post('/reset-password', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(schema.globalUsers.id, user.id));
-
-    // Quien tuviera la contraseña vieja (o se la hubiera robado) pierde todas sus sesiones.
-    await revokeAllForUser(user.id, 'password_change');
 
     res.json({ ok: true });
   } catch (error: any) {

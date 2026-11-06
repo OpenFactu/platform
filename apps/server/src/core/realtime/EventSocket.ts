@@ -73,6 +73,9 @@ export function startEventSocket(server: Server) {
       ws.close(1008, 'missing tenant');
       return;
     }
+    // Un `error` temprano (conexión rota durante el await) no puede tumbar el proceso.
+    ws.on('error', () => removeClient(ws));
+    ws.on('close', () => removeClient(ws));
     // Sin sesión viva no hay canal: el tenant de la URL no se cree sin más.
     const resolved = token ? await resolveSession(token).catch(() => null) : null;
     if (!resolved || 'error' in resolved) {
@@ -90,10 +93,17 @@ export function startEventSocket(server: Server) {
     if (!bySid.has(sid)) bySid.set(sid, new Set());
     bySid.get(sid)!.add(ws);
     addClient(tenantId, ws);
+    // Si se revocó entre resolver y registrar, el aviso no nos encontró: se mira otra vez
+    // ya registrado (la revocación local vacía la caché, así que esto lee la base).
+    const again = await resolveSession(token!).catch(() => null);
+    if (!again || 'error' in again) {
+      removeClient(ws);
+      ws.close(4401, 'unauthorized');
+      return;
+    }
+    if (ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'hello', payload: { tenantId }, timestamp: Date.now() }));
 
-    ws.on('close', () => removeClient(ws));
-    ws.on('error', () => removeClient(ws));
     // Heartbeat desde el cliente (opcional): responder pong.
     ws.on('pong', () => {
       /* alive */
