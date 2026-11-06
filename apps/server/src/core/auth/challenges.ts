@@ -15,6 +15,7 @@ export type ChallengeKind =
   | 'email_code'
   | 'sso_ticket'
   | 'sso_state'
+  | 'sso_handoff_confirm'
   | 'webauthn';
 
 export type ChallengeRow = typeof authChallenges.$inferSelect;

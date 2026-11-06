@@ -14,7 +14,7 @@ import { recordAuthEvent } from '../../core/auth/authEvents';
 import { clientInfo } from '../../core/auth/clientInfo';
 import { loadProvider, ssoCookie, startSso, webOrigin } from '../../core/auth/sso';
 import { requireSession } from './sessionRoutes';
-import { notConfigured } from './ssoRoutes';
+import { internalError, notConfigured } from './ssoRoutes';
 
 const router = Router();
 const db = () => ClientFactory.getClient('public');
@@ -41,7 +41,7 @@ router.get('/identities', async (req: Request, res: Response) => {
       .orderBy(desc(schema.userIdentities.linkedAt));
     res.json({ identities: rows });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'identities', e);
   }
 });
 
@@ -58,7 +58,10 @@ router.post('/identities/link/:providerId', async (req: Request, res: Response) 
     }
     let started: Awaited<ReturnType<typeof startSso>>;
     try {
-      started = await startSso(provider, { linkUserId: session.userId });
+      started = await startSso(provider, {
+        linkUserId: session.userId,
+        linkSessionId: session.id,
+      });
     } catch (e: any) {
       console.error(
         `[auth] SSO ${provider.id}: no se pudo contactar con el proveedor:`,
@@ -72,7 +75,7 @@ router.post('/identities/link/:providerId', async (req: Request, res: Response) 
     res.setHeader('Set-Cookie', ssoCookie(started.binding));
     res.json({ url: started.url });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'identities link', e);
   }
 });
 
@@ -99,7 +102,7 @@ router.delete('/identities/:id', async (req: Request, res: Response) => {
     });
     res.status(204).end();
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'identities delete', e);
   }
 });
 

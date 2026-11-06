@@ -14,6 +14,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ClientFactory } from '../tenant/ClientFactory';
 import * as schema from '../../db/schema';
+import { webOrigin } from './sso';
 
 export type AuthMethod = 'password' | 'passkey' | 'email_code' | 'sso';
 
@@ -208,7 +209,7 @@ export const PASSWORD_MESSAGES: Record<'PASSWORD_TOO_SHORT' | 'PASSWORD_TOO_COMM
  * `WEB_ORIGIN` tampoco: no hay a dónde volver del proveedor y la web no lo ofrece.
  */
 export async function hasEnabledSsoProvider(): Promise<boolean> {
-  if (!(process.env.WEB_ORIGIN || '').trim()) return false;
+  if (!webOrigin()) return false;
   const db = ClientFactory.getClient('public');
   const [row] = await db
     .select({ id: schema.authProviders.id })

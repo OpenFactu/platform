@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { claimRules, safeReturnTo } from '../sso';
+import { claimRules, safeReturnTo, withOpenid } from '../sso';
 
 const TID = '72f988bf-86f1-41af-91ab-2d7cd011db47';
 
@@ -47,5 +47,15 @@ describe('reglas de las claims del SSO', () => {
     assert.equal(safeReturnTo('https://evil.test'), undefined);
     assert.equal(safeReturnTo('/\\evil.test'), undefined);
     assert.equal(safeReturnTo(undefined), undefined);
+    assert.equal(safeReturnTo('/x\r\nSet-Cookie: a=b'), undefined);
+    assert.equal(safeReturnTo('/x\u0000'), undefined);
+    assert.equal(safeReturnTo('/x\u007f'), undefined);
+    assert.equal(safeReturnTo('/a\\b'), undefined);
+  });
+
+  it('los scopes siempre llevan openid', () => {
+    assert.equal(withOpenid(null), 'openid email profile');
+    assert.equal(withOpenid('email profile'), 'openid email profile');
+    assert.equal(withOpenid('openid  email'), 'openid email');
   });
 });

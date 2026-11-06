@@ -35,4 +35,20 @@ export default {
   'Ya puedes volver a Keirost': 'You can go back to Keirost',
   'Has entrado correctamente. Cierra esta pestaña y vuelve a la aplicación.':
     'You have signed in. Close this tab and go back to the app.',
+  'Confirma que eres tú': 'Confirm it is you',
+  'Vas a dejar entrar en tu cuenta a este dispositivo:':
+    'You are about to let this device into your account:',
+  Cuenta: 'Account',
+  Red: 'Network',
+  'Código de confirmación': 'Confirmation code',
+  'Comprueba que el código coincide con el que ves en ese dispositivo.':
+    'Check that the code matches the one shown on that device.',
+  'Sí, soy yo, dejarle entrar': 'Yes, it is me, let it in',
+  'No he sido yo': 'It was not me',
+  'No se ha dado acceso': 'Access was not granted',
+  'Nadie ha entrado en tu cuenta. Puedes cerrar esta pestaña.':
+    'Nobody has signed in to your account. You can close this tab.',
+  'La solicitud ya no es válida': 'The request is no longer valid',
+  'Ha caducado o ya se ha usado. Vuelve a empezar desde el dispositivo que quiere entrar.':
+    'It has expired or was already used. Start again from the device that wants to sign in.',
 };

@@ -352,6 +352,35 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
     assert.ok(!r.body.token);
   });
 
+  /** Lo que el navegador envía desde la página de confirmación. */
+  const confirmOf = async (cb: Response) => {
+    assert.equal(cb.status, 200);
+    assert.match(cb.headers.get('content-type') || '', /text\/html/);
+    assert.match(cb.headers.get('content-security-policy') || '', /form-action 'self'/);
+    const html = await cb.text();
+    const secret = /name="confirm" value="([^"]+)"/.exec(html)?.[1];
+    assert.ok(secret, 'la página lleva el formulario');
+    return { html, secret: secret!, cookie: cookieOf(cb) };
+  };
+  const postConfirm = async (
+    secret: string,
+    cookie: string,
+    decision = 'approve',
+    extra: Record<string, string> = {},
+  ) => {
+    const res = await fetch(`${base}/api/auth/sso/handoff/confirm`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: headers({
+        'content-type': 'application/x-www-form-urlencoded',
+        ...(cookie ? { cookie } : {}),
+        ...extra,
+      }),
+      body: new URLSearchParams({ confirm: secret, decision }).toString(),
+    });
+    return { status: res.status, html: await res.text() };
+  };
+
   it('con handoff aprueba el handoff', async () => {
     const u = await member();
     const h = await createHandoff({ ip: testIp, userAgent: 'test', clientKind: 'desktop' });
@@ -361,9 +390,24 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
       email_verified: true,
       amr: ['mfa'],
     });
-    assert.equal(cb.status, 200);
-    assert.match(cb.headers.get('content-type') || '', /text\/html/);
-    assert.match(await cb.text(), /Ya puedes volver a Keirost/);
+    const c = await confirmOf(cb);
+    // Abrir el enlace no aprueba nada: se enseña el dispositivo y el código.
+    assert.ok(c.html.includes(h.confirmCode), 'enseña el código del dispositivo');
+    assert.match(c.html, /Aplicación de escritorio/);
+    assert.match(c.html, /Sí, soy yo, dejarle entrar/);
+    assert.equal((await pollHandoff(h.handoffId, h.pollSecret)).status, 'pending');
+
+    // Sin la cookie o con otra, no vale (y no gasta la confirmación).
+    assert.equal((await postConfirm(c.secret, '')).status, 400);
+    assert.equal((await postConfirm(c.secret, 'keirost_sso_confirm=otra')).status, 400);
+    assert.equal((await pollHandoff(h.handoffId, h.pollSecret)).status, 'pending');
+
+    const ok = await postConfirm(c.secret, c.cookie);
+    assert.equal(ok.status, 200);
+    assert.match(ok.html, /Ya puedes volver a Keirost/);
+    // Una sola vez.
+    assert.equal((await postConfirm(c.secret, c.cookie)).status, 400);
+
     const poll = await pollHandoff(h.handoffId, h.pollSecret);
     assert.equal(poll.status, 'approved');
     if (poll.status !== 'approved') return;
@@ -371,6 +415,22 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
     assert.equal(poll.method, 'sso:oidc');
     // Sin `trustProviderMfa`, el `amr` del proveedor no vale como segundo factor.
     assert.equal(poll.mfaDone, null);
+  });
+
+  it('con handoff, «No he sido yo» no aprueba', async () => {
+    const u = await member();
+    const h = await createHandoff({ ip: testIp, userAgent: 'test', clientKind: 'desktop' });
+    const { cb } = await runFlow(startUrl(providerId, `?handoff=${h.handoffId}`), {
+      sub: sub(),
+      email: u.email,
+      email_verified: true,
+    });
+    const c = await confirmOf(cb);
+    const no = await postConfirm(c.secret, c.cookie, 'deny');
+    assert.equal(no.status, 200);
+    assert.match(no.html, /No se ha dado acceso/);
+    assert.equal((await postConfirm(c.secret, c.cookie)).status, 400);
+    assert.equal((await pollHandoff(h.handoffId, h.pollSecret)).status, 'pending');
   });
 
   it('la página del handoff sale en inglés con Accept-Language en', async () => {
@@ -382,24 +442,29 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
       headers: headers(),
     });
     const auth = await fetch(start.headers.get('location')!, { redirect: 'manual' });
+    const en = { 'accept-language': 'en-US,en;q=0.9' };
     const cb = await fetch(auth.headers.get('location')!, {
       redirect: 'manual',
-      headers: headers({ cookie: cookieOf(start), 'accept-language': 'en-US,en;q=0.9' }),
+      headers: headers({ cookie: cookieOf(start), ...en }),
     });
-    assert.equal(cb.status, 200);
-    assert.match(await cb.text(), /You can go back to Keirost/);
+    const c = await confirmOf(cb);
+    assert.match(c.html, /Yes, it is me, let it in/);
+    const ok = await postConfirm(c.secret, c.cookie, 'approve', en);
+    assert.match(ok.html, /You can go back to Keirost/);
   });
 
   it('con trustProviderMfa y amr mfa, el proveedor cuenta como segundo factor', async () => {
     const trusted = await addProvider({ trustProviderMfa: true });
     const u = await member({ totp: true });
     const h = await createHandoff({ ip: testIp, userAgent: 'test', clientKind: 'desktop' });
-    await runFlow(startUrl(trusted, `?handoff=${h.handoffId}`), {
+    const flow = await runFlow(startUrl(trusted, `?handoff=${h.handoffId}`), {
       sub: sub(),
       email: u.email,
       email_verified: true,
       amr: ['pwd', 'mfa'],
     });
+    const c = await confirmOf(flow.cb);
+    assert.equal((await postConfirm(c.secret, c.cookie)).status, 200);
     const poll = await pollHandoff(h.handoffId, h.pollSecret);
     assert.equal(poll.status, 'approved');
     if (poll.status === 'approved') assert.equal(poll.mfaDone, 'provider');
@@ -413,6 +478,50 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
     });
     const r = await call('POST', '/api/auth/sso/ticket', { ticket: ticketOf(cb) });
     assert.equal(r.body.mfaRequired, true);
+  });
+
+  it('un SUPERUSER no se enlaza solo por el email, pero sí a mano', async () => {
+    const su = await t.createUser({ role: 'SUPERUSER' });
+    const { cb } = await runFlow(startUrl(), { sub: sub(), email: su.email, email_verified: true });
+    assert.equal(errorOf(cb), 'NO_ACCOUNT');
+    const ids: any = await t.publicDb.execute(
+      sql`SELECT id FROM public."UserIdentity" WHERE "userId" = ${su.id}`,
+    );
+    assert.equal((ids.rows ?? ids).length, 0);
+
+    const login = await call('POST', '/api/auth/login', { email: su.email, password: su.password });
+    assert.equal(login.status, 200, JSON.stringify(login.body));
+    const linked = await runFlow(
+      `${base}/api/auth/identities/link/${providerId}`,
+      { sub: sub(), email: su.email, email_verified: true },
+      { method: 'POST', headers: { authorization: `Bearer ${login.body.token}` } },
+    );
+    assert.equal(new URL(linked.cb.headers.get('location')!).searchParams.get('linked'), '1');
+  });
+
+  it('enlazar con una sesión que se cierra a medias no enlaza', async () => {
+    const u = await member();
+    const login = await call('POST', '/api/auth/login', { email: u.email, password: u.password });
+    const auth = { authorization: `Bearer ${login.body.token}` };
+    idp.state.claims = { sub: sub(), email: u.email, email_verified: true };
+    const start = await fetch(`${base}/api/auth/identities/link/${providerId}`, {
+      method: 'POST',
+      headers: headers(auth),
+    });
+    const { url } = await start.json();
+    const cookie = cookieOf(start);
+    assert.equal((await call('POST', '/api/auth/logout', undefined, auth)).status, 204);
+    const back = await fetch(url, { redirect: 'manual' });
+    const cb = await fetch(back.headers.get('location')!, {
+      redirect: 'manual',
+      headers: headers({ cookie }),
+    });
+    assert.equal(errorOf(cb), 'SESSION_INVALID');
+    assert.equal(new URL(cb.headers.get('location')!).pathname, '/profile/security');
+    const ids: any = await t.publicDb.execute(
+      sql`SELECT id FROM public."UserIdentity" WHERE "userId" = ${u.id}`,
+    );
+    assert.equal((ids.rows ?? ids).length, 0);
   });
 
   it('enlazar a mano con la sesión, listar y desenlazar', async () => {
@@ -522,6 +631,43 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
 
     const bad = await call('POST', '/api/auth-providers', { kind: 'saml', name: 'x' });
     assert.equal(bad.status, 400);
+
+    // OIDC genérico: https, salvo esta misma máquina (o NODE_ENV=development).
+    const prevEnv = process.env.NODE_ENV;
+    delete process.env.NODE_ENV;
+    try {
+      const oidc = { kind: 'oidc', name: 'Otro', clientId: 'c' };
+      const http = await call('POST', '/api/auth-providers', {
+        ...oidc,
+        issuer: 'http://idp.example.test',
+      });
+      assert.equal(http.status, 400);
+      assert.equal(http.body.code, 'INVALID_INPUT');
+      const local = await call('POST', '/api/auth-providers', {
+        ...oidc,
+        issuer: 'http://127.0.0.1:9/',
+      });
+      assert.equal(local.status, 201);
+      providers.push(local.body.id);
+      const toHttp = await call('PATCH', `/api/auth-providers/${local.body.id}`, {
+        issuer: 'http://idp.example.test',
+      });
+      assert.equal(toHttp.status, 400);
+      const noOpenid = await call('PATCH', `/api/auth-providers/${local.body.id}`, {
+        scopes: 'email profile',
+      });
+      assert.equal(noOpenid.status, 400);
+      const https = await call('POST', '/api/auth-providers', {
+        ...oidc,
+        issuer: 'https://idp.example.test',
+        scopes: 'openid email',
+      });
+      assert.equal(https.status, 201);
+      providers.push(https.body.id);
+    } finally {
+      if (prevEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prevEnv;
+    }
 
     const del = await call('DELETE', `/api/auth-providers/${created.body.id}`);
     assert.equal(del.status, 204);

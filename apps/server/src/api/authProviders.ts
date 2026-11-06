@@ -13,6 +13,7 @@ import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import { encryptSecret } from '../core/auth/totpCrypto';
 import { ISSUERS, SSO_KINDS, redirectUriFor, webOrigin } from '../core/auth/sso';
+import { internalError } from './auth/ssoRoutes';
 
 const router = Router();
 const db = () => ClientFactory.getClient('public');
@@ -31,7 +32,7 @@ router.use(async (req: any, res, next) => {
     }
     next();
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'auth-providers gate', e);
   }
 });
 
@@ -68,6 +69,23 @@ class InvalidInput extends Error {
   code = 'INVALID_INPUT';
 }
 
+/**
+ * El issuer de un OIDC genérico va por https. Por http solo en desarrollo o en esta misma
+ * máquina (un proveedor de pruebas): el secreto del cliente viaja al endpoint de tokens.
+ */
+export function issuerAllowed(issuer: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(issuer);
+  } catch {
+    return false;
+  }
+  if (u.protocol === 'https:') return true;
+  if (u.protocol !== 'http:') return false;
+  if (process.env.NODE_ENV === 'development') return true;
+  return ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+}
+
 const str = (v: unknown, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 /** Lo que se puede escribir, validado. En el alta (sin `current`) exige los obligatorios. */
@@ -95,20 +113,22 @@ function parseBody(body: any, current: Row | null): Partial<Row> {
     out.issuer = ISSUERS[kind];
   } else if (!current || body.issuer !== undefined || body.kind !== undefined) {
     const issuer = str(body.issuer ?? current?.issuer);
-    let ok = false;
-    try {
-      const u = new URL(issuer);
-      ok = u.protocol === 'https:' || u.protocol === 'http:';
-    } catch {
-      ok = false;
+    if (!issuerAllowed(issuer)) {
+      throw new InvalidInput('El issuer tiene que ser una URL https');
     }
-    if (!ok) throw new InvalidInput('El issuer tiene que ser una URL http(s)');
     out.issuer = issuer.replace(/\/$/, '');
   }
   if (typeof body.clientSecret === 'string' && body.clientSecret.trim()) {
     out.clientSecretEnc = encryptSecret(body.clientSecret.trim());
   }
-  if (body.scopes !== undefined) out.scopes = str(body.scopes) || null;
+  if (body.scopes !== undefined) {
+    const scopes = str(body.scopes).split(/\s+/).filter(Boolean);
+    // Sin `openid` el proveedor no devuelve `id_token` y el SSO no puede funcionar.
+    if (scopes.length && !scopes.includes('openid')) {
+      throw new InvalidInput('Los scopes tienen que incluir openid');
+    }
+    out.scopes = scopes.length ? scopes.join(' ') : null;
+  }
   if (body.enabled !== undefined) out.enabled = !!body.enabled;
   if (body.trustProviderMfa !== undefined) out.trustProviderMfa = !!body.trustProviderMfa;
   if (body.allowedDomains !== undefined) {
@@ -136,7 +156,7 @@ router.get('/', async (_req, res) => {
       .orderBy(asc(schema.authProviders.name));
     res.json({ providers: rows.map(serialize) });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'auth-providers list', e);
   }
 });
 
@@ -151,7 +171,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(serialize(row));
   } catch (e: any) {
     if (e instanceof InvalidInput) return invalid(res, e);
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'auth-providers create', e);
   }
 });
 
@@ -172,7 +192,7 @@ router.patch('/:id', async (req, res) => {
     res.json(serialize(row));
   } catch (e: any) {
     if (e instanceof InvalidInput) return invalid(res, e);
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'auth-providers update', e);
   }
 });
 
@@ -185,7 +205,7 @@ router.delete('/:id', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'No encontrado', code: 'NOT_FOUND' });
     res.status(204).end();
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'auth-providers delete', e);
   }
 });
 
