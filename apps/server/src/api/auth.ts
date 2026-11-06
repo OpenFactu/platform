@@ -219,7 +219,7 @@ router.post('/login', async (req, res) => {
  * Cambia el tenant activo del usuario autenticado y devuelve un JWT nuevo.
  */
 router.post('/switch-tenant', async (req, res) => {
-  const session = requireSession(req, res);
+  const session = await requireSession(req, res);
   if (!session) return;
 
   try {
@@ -305,7 +305,7 @@ router.post('/switch-tenant', async (req, res) => {
  * GET /api/auth/me
  */
 router.get('/me', async (req, res) => {
-  const session = requireSession(req, res);
+  const session = await requireSession(req, res);
   if (!session) return;
 
   try {

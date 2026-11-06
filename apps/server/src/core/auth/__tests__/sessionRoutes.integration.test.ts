@@ -26,8 +26,9 @@ describe('rutas de sesión', { skip: !authTestDatabaseUrl }, () => {
     await startSessionListener();
     const app = express();
     app.use(express.json());
-    app.use('/api', tenantContextMiddleware);
+    // Mismo orden que server.ts: /api/auth va ANTES del contexto de empresa.
     app.use('/api/auth', authRouter);
+    app.use('/api', tenantContextMiddleware);
     app.use('/api/messaging', messagingRouter);
     server = http.createServer(app);
     startEventSocket(server);
