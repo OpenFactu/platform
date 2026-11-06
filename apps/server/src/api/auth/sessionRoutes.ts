@@ -8,11 +8,14 @@ import {
   revokeAllForUser,
   resolveSession,
   revokeSession,
+  setSessionTenant,
   touchSession,
   type SessionRow,
 } from '../../core/auth/sessions';
 import { recordAuthEvent } from '../../core/auth/authEvents';
 import { clientInfo } from '../../core/auth/clientInfo';
+import { DEFAULT_POLICY, policyGate, readPolicy, userHasMfa } from '../../core/auth/policy';
+import { resolveLoginTarget } from './completeLogin';
 
 /**
  * Devuelve la sesión del llamante, o responde 401 (500 si la base falla) y devuelve `null`.
@@ -101,13 +104,40 @@ router.post('/refresh', async (req: any, res: Response) => {
     if (!fresh || fresh.revokedAt) {
       return res.status(401).json({ error: 'La sesión se ha cerrado', code: 'SESSION_REVOKED' });
     }
-    // El rol del token es el de la empresa activa, no el global: se conserva el del actual.
-    const role = req.user?.role ?? user.role;
+    // El rol sale de la base, no del token viejo: un ADMIN degradado deja de serlo en la
+    // siguiente renovación, y quien ya no está en la empresa pierde la sesión.
+    const target = await resolveLoginTarget(user, fresh.tenantId);
+    if (!target) {
+      await revokeSession(fresh.id, 'access_removed');
+      return res.status(401).json({ error: 'La sesión se ha cerrado', code: 'SESSION_REVOKED' });
+    }
+    // La política de la empresa también puede haber cambiado: si ya no admite esta forma de
+    // entrar, la sesión se cierra; si ahora exige 2FA, queda restringida (o se levanta).
+    const policy = fresh.tenantId ? await readPolicy(fresh.tenantId) : DEFAULT_POLICY;
+    const gate = policyGate(
+      policy,
+      { role: target.role, hasMfa: await userHasMfa(user) },
+      fresh.method,
+    );
+    if (!gate.allowed) {
+      await revokeSession(fresh.id, 'policy');
+      return res.status(401).json({ error: 'La sesión se ha cerrado', code: 'SESSION_REVOKED' });
+    }
+    let current = fresh;
+    if ((fresh.restricted ?? null) !== (gate.restricted ?? null)) {
+      current = await setSessionTenant(fresh.id, fresh.tenantId, gate.restricted);
+    }
     res.json({
-      token: issueToken(fresh, { id: user.id, email: user.email, username: user.username, role }),
+      token: issueToken(current, {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: target.role,
+      }),
     });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    console.error('[auth] No se pudo renovar la sesión:', e?.message);
+    res.status(500).json({ error: 'Error interno' });
   }
 });
 

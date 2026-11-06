@@ -18,6 +18,7 @@ const client = { ip: '127.0.0.1', userAgent: 'test', clientKind: 'web' as const 
 
 describe('rutas de sesión', { skip: !authTestDatabaseUrl }, () => {
   let t: Awaited<ReturnType<typeof useAuthTestDb>>;
+  const refreshTenant = `sr-${Math.random().toString(16).slice(2, 12)}`;
   let server: http.Server;
   let base: string;
 
@@ -38,7 +39,10 @@ describe('rutas de sesión', { skip: !authTestDatabaseUrl }, () => {
   after(async () => {
     stopEventSocket();
     await new Promise((r) => (server ? server.close(r) : r(null)));
-    if (t) await t.drop();
+    if (t) {
+      await t.publicDb.execute(sql`DELETE FROM public."Tenant" WHERE id = ${refreshTenant}`);
+      await t.drop();
+    }
   });
 
   const call = async (method: string, path: string, token?: string, body?: any) => {
@@ -125,6 +129,55 @@ describe('rutas de sesión', { skip: !authTestDatabaseUrl }, () => {
     const b: any = AuthService.verifyToken(r.body.token);
     assert.equal(a.sid, b.sid);
     assert.equal((await call('GET', '/api/auth/me', r.body.token)).status, 200);
+  });
+
+  // El rol del token nuevo sale de la base, no del token viejo: un ADMIN degradado no sigue
+  // siéndolo hasta 30 días a base de renovar.
+  describe('refresh vuelve a mirar el rol', () => {
+    const adminIn = async () => {
+      await t.publicDb.execute(
+        sql`INSERT INTO public."Tenant" (id, name, "schemaName")
+            VALUES (${refreshTenant}, ${refreshTenant}, ${'tenant_' + refreshTenant})
+            ON CONFLICT (id) DO NOTHING`,
+      );
+      const u = await t.createUser();
+      await t.publicDb.execute(
+        sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role)
+            VALUES (${'m-' + u.id}, ${u.id}, ${refreshTenant}, 'ADMIN')`,
+      );
+      const s = await createSession({
+        userId: u.id,
+        tenantId: refreshTenant,
+        method: 'password',
+        mfa: null,
+        client,
+      });
+      const token = issueToken(s, { id: u.id, email: u.email, username: 'x', role: 'ADMIN' });
+      return { u, token };
+    };
+
+    it('ADMIN degradado a USER recibe un token con rol USER', async () => {
+      const { u, token } = await adminIn();
+      await t.publicDb.execute(
+        sql`UPDATE public."UserTenantMembership" SET role = 'USER' WHERE "userId" = ${u.id}`,
+      );
+      const r = await call('POST', '/api/auth/refresh', token);
+      assert.equal(r.status, 200);
+      const p: any = AuthService.verifyToken(r.body.token);
+      assert.equal(p.role, 'USER');
+      assert.equal(p.tenantId, refreshTenant);
+    });
+
+    it('sin la pertenencia, 401 y la sesión queda revocada', async () => {
+      const { u, token } = await adminIn();
+      await t.publicDb.execute(
+        sql`DELETE FROM public."UserTenantMembership" WHERE "userId" = ${u.id}`,
+      );
+      const r = await call('POST', '/api/auth/refresh', token);
+      assert.equal(r.status, 401);
+      assert.equal(r.body.code, 'SESSION_REVOKED');
+      assert.equal((await call('GET', '/api/auth/me', token)).status, 401);
+    });
   });
 
   it('revocar cierra el websocket del sid', async () => {
