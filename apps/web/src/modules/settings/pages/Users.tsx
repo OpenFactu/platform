@@ -45,6 +45,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { UserAccessSection } from '../security/UserAccessSection';
 import { UsersTable } from '../components/UsersTable';
 import { permissionsApi, type PermissionGroup } from '../api/permissionsApi';
 
@@ -845,6 +846,14 @@ export const Users: React.FC = () => {
                 })}
               </div>
             </div>
+
+            {editingUser && (
+              <UserAccessSection
+                key={editingUser.id}
+                userId={editingUser.id}
+                canWrite={!!canWrite}
+              />
+            )}
 
             {/* Acciones */}
             <div className="flex gap-3 justify-end pt-4 border-t border-border-subtle">
