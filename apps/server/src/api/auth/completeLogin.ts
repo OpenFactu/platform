@@ -24,6 +24,64 @@ export interface CompleteLoginOpts {
   tenantId?: string | null;
 }
 
+/** Responde 403 por la política y lo apunta (sin esperar: no debe notarse en el tiempo). */
+export function rejectByPolicy(
+  req: any,
+  res: any,
+  user: any,
+  method: string,
+  code: 'METHOD_NOT_ALLOWED' | 'SSO_REQUIRED',
+): void {
+  void recordAuthEvent({
+    userId: user.id,
+    kind: 'policy_block',
+    ok: false,
+    method,
+    client: clientInfo(req),
+    detail: { code },
+  });
+  const error =
+    code === 'SSO_REQUIRED'
+      ? 'Tu empresa exige entrar con el acceso único (SSO) o con una passkey'
+      : 'Tu empresa no permite entrar de esta forma';
+  res.status(403).json({ error, code });
+}
+
+/**
+ * La política de la empresa a la que va a entrar, antes de pedirle el segundo factor.
+ * `null` si puede seguir (o si no se puede resolver la empresa: `completeLogin` lo dirá).
+ */
+export async function loginPolicyBlock(
+  user: any,
+  tenantId: string | null | undefined,
+  method: string,
+): Promise<'METHOD_NOT_ALLOWED' | 'SSO_REQUIRED' | null> {
+  let role = user.role;
+  let target: string | null = null;
+  if (user.role !== 'SUPERUSER') {
+    const db = ClientFactory.getClient('public');
+    if (tenantId) {
+      const [m] = await db
+        .select()
+        .from(schema.userTenantMemberships)
+        .where(
+          and(
+            eq(schema.userTenantMemberships.userId, user.id),
+            eq(schema.userTenantMemberships.tenantId, tenantId),
+          ),
+        );
+      if (m) {
+        role = m.role;
+        target = tenantId;
+      } else if (user.tenantId === tenantId) target = tenantId;
+      else return null;
+    } else target = user.tenantId ?? null;
+  } else target = tenantId ?? null;
+  if (!target) return null;
+  const gate = policyGate(await readPolicy(target), { role, hasMfa: true }, method);
+  return gate.allowed ? null : gate.code!;
+}
+
 export async function completeLogin(
   req: any,
   res: any,
@@ -98,11 +156,7 @@ export async function completeLogin(
   const policy = finalTenantId ? await readPolicy(finalTenantId) : DEFAULT_POLICY;
   const gate = policyGate(policy, { role: finalRole, hasMfa: await userHasMfa(user) }, opts.method);
   if (!gate.allowed) {
-    const error =
-      gate.code === 'SSO_REQUIRED'
-        ? 'Tu empresa exige entrar con el acceso único (SSO)'
-        : 'Tu empresa no permite entrar de esta forma';
-    res.status(403).json({ error, code: gate.code });
+    rejectByPolicy(req, res, user, opts.method, gate.code!);
     return;
   }
   const limits = sessionLimits(policy);

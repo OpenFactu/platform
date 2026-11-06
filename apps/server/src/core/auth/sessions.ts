@@ -205,7 +205,8 @@ export async function setSessionTenant(
 ): Promise<SessionRow> {
   const patch: Record<string, unknown> = { tenantId, restricted };
   if (limits) {
-    // Otra empresa, otra política: la ventana se renueva, y el máximo absoluto solo se acorta.
+    // Otra empresa, otra política: la ventana deslizante pasa a la nueva cifra y el máximo
+    // absoluto solo se acorta; `expiresAt` nunca se alarga aquí (lo hace `touchSession`).
     const [cur] = await db().select().from(userSessions).where(eq(userSessions.id, sid));
     if (cur) {
       const absolute = Math.min(

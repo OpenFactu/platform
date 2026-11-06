@@ -16,6 +16,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { revokeAllForUser, setSessionTenant } from '../core/auth/sessions';
+import { mfaRequiredSomewhere } from '../core/auth/policy';
 import { recordAuthEvent } from '../core/auth/authEvents';
 import { clientInfo } from '../core/auth/clientInfo';
 import {
@@ -215,6 +216,19 @@ router.post('/disable', async (req: any, res) => {
       .where(eq(schema.globalUsers.id, userId));
     if (!user?.totpEnabled) {
       return res.status(400).json({ error: 'El 2FA no está activo' });
+    }
+
+    // Si una empresa suya exige 2FA y no le queda otro factor, no puede quitarlo.
+    const [passkey] = await publicDb
+      .select({ id: schema.userPasskeys.id })
+      .from(schema.userPasskeys)
+      .where(eq(schema.userPasskeys.userId, userId))
+      .limit(1);
+    if (!passkey && (await mfaRequiredSomewhere(userId))) {
+      return res.status(409).json({
+        error: 'Una de tus empresas exige la verificación en dos pasos: no se puede desactivar',
+        code: 'MFA_REQUIRED_BY_POLICY',
+      });
     }
 
     const check = verifyTwoFactor(

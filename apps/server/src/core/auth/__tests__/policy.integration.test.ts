@@ -13,6 +13,11 @@ import { hashCode } from '../totpCrypto';
 import { listSessions, touchSession } from '../sessions';
 import authRouter from '../../../api/auth';
 import twoFactorRouter from '../../../api/twofa';
+import settingsSecurityRouter from '../../../api/settingsSecurity';
+import { startEventSocket, stopEventSocket } from '../../realtime/EventSocket';
+import { mfaRequiredSomewhere } from '../policy';
+import { encryptSecret } from '../totpCrypto';
+import WebSocket from 'ws';
 import { tenantContextMiddleware } from '../../../api/middleware/tenantContext';
 import { restrictedSession } from '../../../api/middleware/restrictedSession';
 
@@ -49,12 +54,15 @@ describe('política de acceso por empresa', { skip: !authTestDatabaseUrl }, () =
     app.use('/api', restrictedSession);
     app.get('/api/items', (_req, res) => res.json({ ok: true }));
     app.use('/api/2fa', twoFactorRouter);
+    app.use('/api/settings/security', settingsSecurityRouter);
     server = http.createServer(app);
+    startEventSocket(server);
     await new Promise<void>((r) => server.listen(0, r));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   });
 
   after(async () => {
+    stopEventSocket();
     await new Promise((r) => (server ? server.close(r) : r(null)));
     if (t) {
       await t.publicDb.execute(
@@ -248,5 +256,131 @@ describe('política de acceso por empresa', { skip: !authTestDatabaseUrl }, () =
       await setPolicy(tenantA, {});
       await setPolicy(tenantB, { mfa: 'all' });
     }
+  });
+
+  const wsClose = (token: string, tenantId: string) =>
+    new Promise<{ code: number; opened: boolean }>((resolve) => {
+      const ws = new WebSocket(
+        `${base.replace('http', 'ws')}/ws/events?tenant=${tenantId}&token=${token}`,
+      );
+      let opened = false;
+      ws.on('message', () => {
+        opened = true;
+        ws.close();
+      });
+      ws.on('close', (code) => resolve({ code, opened }));
+      setTimeout(() => ws.close(), 3000);
+    });
+
+  it('una sesión restringida no abre /ws/events; una normal sí', async () => {
+    const u = await member([tenantA, tenantB]);
+    const restricted = await login(u, tenantB.tenantId);
+    const r1 = await wsClose(restricted.body.token, tenantB.tenantId);
+    assert.equal(r1.code, 4403);
+    assert.equal(r1.opened, false);
+    const free = await login(u, tenantA.tenantId);
+    const r2 = await wsClose(free.body.token, tenantA.tenantId);
+    assert.equal(r2.opened, true);
+  });
+
+  it('switch-tenant respeta SSO_REQUIRED y METHOD_NOT_ALLOWED', async () => {
+    const u = await member([tenantA, tenantB]);
+    const r = await login(u, tenantA.tenantId);
+    try {
+      await setPolicy(tenantB, { ssoRequired: true });
+      const sso = await call(
+        'POST',
+        '/api/auth/switch-tenant',
+        { tenantId: tenantB.tenantId },
+        r.body.token,
+      );
+      assert.equal(sso.status, 403);
+      assert.equal(sso.body.code, 'SSO_REQUIRED');
+      await setPolicy(tenantB, { allowedMethods: ['sso', 'passkey'] });
+      const m = await call(
+        'POST',
+        '/api/auth/switch-tenant',
+        { tenantId: tenantB.tenantId },
+        r.body.token,
+      );
+      assert.equal(m.status, 403);
+      assert.equal(m.body.code, 'METHOD_NOT_ALLOWED');
+      // La sesión sigue en la empresa de antes.
+      const me = await call('GET', '/api/auth/me', undefined, r.body.token);
+      assert.equal(me.body.tenantId, tenantA.tenantId);
+    } finally {
+      await setPolicy(tenantB, { mfa: 'all' });
+    }
+  });
+
+  it('la política no deja a un administrador fuera ni exige SSO sin proveedor', async () => {
+    const admin = await member([tenantA], 'ADMIN');
+    const r = await login(admin, tenantA.tenantId);
+    const put = (body: any, token = r.body.token) =>
+      call('PUT', '/api/settings/security', body, token);
+    const noPassword = await put({ allowedMethods: ['passkey', 'email_code', 'sso'] });
+    assert.equal(noPassword.status, 409);
+    assert.equal(noPassword.body.code, 'POLICY_LOCKOUT');
+    const sso = await put({ ssoRequired: true });
+    assert.equal(sso.status, 409);
+    const onlySso = await put({ allowedMethods: ['sso'] });
+    assert.equal(onlySso.status, 409);
+    const ok = await put({ idleHours: 8 });
+    assert.equal(ok.status, 200);
+    assert.equal(
+      (await call('GET', '/api/settings/security', undefined, r.body.token)).body.idleHours,
+      8,
+    );
+    // Un SUPERUSER está exento del bloqueo propio, no del check de SSO.
+    const sup = await t.createUser({ role: 'SUPERUSER' });
+    const sr = await login(sup, tenantA.tenantId);
+    const supOk = await put({ allowedMethods: ['passkey', 'email_code'] }, sr.body.token);
+    assert.equal(supOk.status, 200);
+    const supSso = await put({ ssoRequired: true }, sr.body.token);
+    assert.equal(supSso.status, 409);
+    await setPolicy(tenantA, {});
+  });
+
+  it('no se puede desactivar el 2FA si una empresa lo exige', async () => {
+    const u = await t.createUser({ totp: true });
+    await t.publicDb.execute(
+      sql`UPDATE public."GlobalUser" SET "totpSecret" = ${encryptSecret(authenticator.generateSecret())} WHERE id = ${u.id}`,
+    );
+    await t.publicDb.execute(
+      sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role, "updatedAt")
+          VALUES (${crypto.randomUUID()}, ${u.id}, ${tenantB.tenantId}, 'USER', now())`,
+    );
+    await t.publicDb.execute(
+      sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role, "updatedAt")
+          VALUES (${crypto.randomUUID()}, ${u.id}, ${tenantA.tenantId}, 'USER', now())`,
+    );
+    assert.equal(await mfaRequiredSomewhere(u.id), true);
+    const only = await t.createUser({});
+    await t.publicDb.execute(
+      sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role, "updatedAt")
+          VALUES (${crypto.randomUUID()}, ${only.id}, ${tenantA.tenantId}, 'USER', now())`,
+    );
+    assert.equal(await mfaRequiredSomewhere(only.id), false);
+    const sup = await t.createUser({ role: 'SUPERUSER' });
+    await t.publicDb.execute(
+      sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role, "updatedAt")
+          VALUES (${crypto.randomUUID()}, ${sup.id}, ${tenantB.tenantId}, 'SUPERUSER', now())`,
+    );
+    assert.equal(await mfaRequiredSomewhere(sup.id), false);
+    // Por HTTP: entra con un código y, tras activar la sesión, el disable da 409.
+    const sec = authenticator.generateSecret();
+    await t.publicDb.execute(
+      sql`UPDATE public."GlobalUser" SET "totpSecret" = ${encryptSecret(sec)} WHERE id = ${u.id}`,
+    );
+    const r = await call('POST', '/api/auth/login', {
+      email: u.email,
+      password: u.password,
+      selectedTenantId: tenantA.tenantId,
+      totpCode: authenticator.generate(sec),
+    });
+    assert.equal(r.status, 200);
+    const dis = await call('POST', '/api/2fa/disable', { code: '000000' }, r.body.token);
+    assert.equal(dis.status, 409);
+    assert.equal(dis.body.code, 'MFA_REQUIRED_BY_POLICY');
   });
 });

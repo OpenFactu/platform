@@ -27,7 +27,7 @@ import sessionRoutes, { requireSession } from './auth/sessionRoutes';
 import eventRoutes from './auth/eventRoutes';
 import { recordAuthEvent } from '../core/auth/authEvents';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
-import { completeLogin } from './auth/completeLogin';
+import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
   checkThrottle,
   normalizeAccount,
@@ -223,6 +223,9 @@ router.post('/switch-tenant', async (req, res) => {
       { role: finalRole, hasMfa: await userHasMfa(user) },
       session.method,
     );
+    if (!gate.allowed) {
+      return rejectByPolicy(req, res, user, session.method, gate.code!);
+    }
     const limits = sessionLimits(policy);
     const updated = await setSessionTenant(session.id, tenantId, gate.restricted, {
       idleHours: limits.slidingHours,

@@ -87,6 +87,11 @@ export function startEventSocket(server: Server) {
       ws.close(4401, 'unauthorized');
       return;
     }
+    // Una sesión que aún debe configurar su 2FA no recibe eventos de la empresa.
+    if (resolved.session.restricted) {
+      ws.close(4403, 'session restricted');
+      return;
+    }
     // Pudo revocarse mientras se resolvía, o el socket cerrarse ya.
     if (ws.readyState !== WebSocket.OPEN) return;
     const sid = resolved.session.id;

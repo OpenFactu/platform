@@ -67,6 +67,23 @@ describe('política de acceso', () => {
     );
   });
 
+  it('el método de la sesión se traduce al de la política', () => {
+    const sso = { ...DEFAULT_POLICY, ssoRequired: true };
+    const u = { role: 'USER', hasMfa: false };
+    // sso:google es SSO y passkey también vale con SSO obligatorio.
+    assert.equal(policyGate(sso, u, 'sso:google').allowed, true);
+    assert.equal(policyGate(sso, u, 'passkey').allowed, true);
+    // handoff:<m> vale lo que <m>.
+    assert.equal(policyGate(sso, u, 'handoff:email_code').code, 'SSO_REQUIRED');
+    assert.equal(policyGate(sso, u, 'handoff:sso:google').allowed, true);
+    // Lo desconocido cuenta como contraseña.
+    assert.equal(policyGate(sso, u, 'factuapi').code, 'SSO_REQUIRED');
+    const noPwd = { ...DEFAULT_POLICY, allowedMethods: ['sso' as const] };
+    assert.equal(policyGate(noPwd, u, 'factuapi').code, 'METHOD_NOT_ALLOWED');
+    assert.equal(policyGate(noPwd, u, 'handoff:email_code').code, 'METHOD_NOT_ALLOWED');
+    assert.equal(policyGate(noPwd, u, 'sso:okta').allowed, true);
+  });
+
   it('un método fuera de allowedMethods da METHOD_NOT_ALLOWED', () => {
     const g = policyGate(
       { ...DEFAULT_POLICY, allowedMethods: ['sso'] },

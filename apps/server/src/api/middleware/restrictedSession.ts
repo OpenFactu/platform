@@ -1,5 +1,7 @@
 import type { NextFunction, Response } from 'express';
 
+// Los patrones de /api/auth no se alcanzan hoy: `/api/auth` se monta antes que este middleware.
+// Se dejan por si algún día se monta después, para que sigan siendo lo permitido.
 // Lo único que puede hacer una sesión a la que se le exige configurar el segundo factor.
 const ALLOWED = [
   /^\/api\/2fa(\/|$)/,

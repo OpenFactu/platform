@@ -17,7 +17,7 @@ import {
 } from '../../core/auth/challenges';
 import { checkThrottle, recordAttempt, sendThrottled } from '../../core/auth/throttle';
 import { clientInfo } from '../../core/auth/clientInfo';
-import { completeLogin } from './completeLogin';
+import { completeLogin, loginPolicyBlock, rejectByPolicy } from './completeLogin';
 import { recordAuthEvent } from '../../core/auth/authEvents';
 
 const router = Router();
@@ -46,6 +46,9 @@ export async function startMfaOrComplete(
       tenantId: opts.tenantId,
     });
   }
+  // Una forma de entrar que la empresa no admite falla antes de pedir ningún código.
+  const blocked = await loginPolicyBlock(user, opts.tenantId, opts.method);
+  if (blocked) return rejectByPolicy(req, res, user, opts.method, blocked);
   const db = ClientFactory.getClient('public');
   const [passkey] = await db
     .select({ id: schema.userPasskeys.id })

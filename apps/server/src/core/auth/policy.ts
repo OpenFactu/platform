@@ -66,6 +66,9 @@ export function normalizePolicy(raw: unknown): AuthPolicy {
   try {
     return parsePolicy(raw);
   } catch {
+    if (raw !== undefined && raw !== null && Object.keys(raw as object).length > 0) {
+      console.warn('[auth] La política de acceso guardada no es válida: se usa la de fábrica.');
+    }
     return structuredClone(DEFAULT_POLICY);
   }
 }
@@ -113,6 +116,19 @@ export interface PolicyGate {
   restricted: 'mfa_setup' | null;
 }
 
+/**
+ * El método con el que se abrió la sesión (`sso:google`, `handoff:email_code`, `factuapi`...)
+ * como uno de los cuatro de la política. Lo desconocido cuenta como contraseña.
+ */
+export function toPolicyMethod(method: string): AuthMethod {
+  const m = String(method ?? '');
+  if (m.startsWith('handoff:')) return toPolicyMethod(m.slice('handoff:'.length));
+  if (m === 'sso' || m.startsWith('sso:')) return 'sso';
+  if (m === 'passkey') return 'passkey';
+  if (m === 'email_code') return 'email_code';
+  return 'password';
+}
+
 /** ¿Puede entrar así, y con qué restricción? Un SUPERUSER nunca se bloquea ni se restringe. */
 export function policyGate(
   policy: AuthPolicy,
@@ -120,10 +136,12 @@ export function policyGate(
   method: string,
 ): PolicyGate {
   if (user.role === 'SUPERUSER') return { allowed: true, restricted: null };
-  if (!policy.allowedMethods.includes(method as AuthMethod)) {
+  const m = toPolicyMethod(method);
+  if (!policy.allowedMethods.includes(m)) {
     return { allowed: false, code: 'METHOD_NOT_ALLOWED', restricted: null };
   }
-  if (policy.ssoRequired && method !== 'sso') {
+  // Con SSO obligatorio solo se entra por SSO o por passkey.
+  if (policy.ssoRequired && m !== 'sso' && m !== 'passkey') {
     return { allowed: false, code: 'SSO_REQUIRED', restricted: null };
   }
   const needsMfa = policy.mfa === 'all' || (policy.mfa === 'admins' && user.role === 'ADMIN');
@@ -184,6 +202,45 @@ export const PASSWORD_MESSAGES: Record<'PASSWORD_TOO_SHORT' | 'PASSWORD_TOO_COMM
   PASSWORD_TOO_SHORT: 'La contraseña es demasiado corta para la política de la empresa',
   PASSWORD_TOO_COMMON: 'Esa contraseña es demasiado común: elige otra',
 };
+
+/** ¿Hay algún proveedor SSO activo? Sin ninguno, exigir SSO dejaría a todos fuera. */
+export async function hasEnabledSsoProvider(): Promise<boolean> {
+  const db = ClientFactory.getClient('public');
+  const [row] = await db
+    .select({ id: schema.authProviders.id })
+    .from(schema.authProviders)
+    .where(eq(schema.authProviders.enabled, true))
+    .limit(1);
+  return !!row;
+}
+
+/**
+ * ¿Exige la política de alguna empresa del usuario que tenga segundo factor? Un SUPERUSER no.
+ * Quien llama decide qué factores le quedan (passkeys, TOTP) antes de dejarle quitar uno.
+ */
+export async function mfaRequiredSomewhere(userId: string): Promise<boolean> {
+  const db = ClientFactory.getClient('public');
+  const [u] = await db
+    .select({ role: schema.globalUsers.role, tenantId: schema.globalUsers.tenantId })
+    .from(schema.globalUsers)
+    .where(eq(schema.globalUsers.id, userId));
+  if (!u || u.role === 'SUPERUSER') return false;
+  const roles = new Map<string, string>();
+  if (u.tenantId) roles.set(u.tenantId, u.role);
+  const memberships = await db
+    .select({
+      tenantId: schema.userTenantMemberships.tenantId,
+      role: schema.userTenantMemberships.role,
+    })
+    .from(schema.userTenantMemberships)
+    .where(eq(schema.userTenantMemberships.userId, userId));
+  for (const m of memberships) roles.set(m.tenantId, m.role);
+  for (const [tenantId, role] of roles) {
+    const { mfa } = await readPolicy(tenantId);
+    if (mfa === 'all' || (mfa === 'admins' && role === 'ADMIN')) return true;
+  }
+  return false;
+}
 
 /** Las reglas más estrictas entre las empresas del usuario que las tienen activas. */
 export async function strictestPasswordRules(userId: string): Promise<AuthPolicy['passwordRules']> {
