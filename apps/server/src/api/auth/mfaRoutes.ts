@@ -19,6 +19,7 @@ import { checkThrottle, recordAttempt, sendThrottled } from '../../core/auth/thr
 import { clientInfo } from '../../core/auth/clientInfo';
 import { completeLogin, loginPolicyBlock, rejectByPolicy } from './completeLogin';
 import { recordAuthEvent } from '../../core/auth/authEvents';
+import { PasskeyError, passkeysFor, rpFor, verifyAuthentication } from '../../core/auth/passkeys';
 
 const router = Router();
 
@@ -64,6 +65,7 @@ export async function startMfaOrComplete(
     });
   }
 
+  const hereRp = rpFor(req.headers?.origin);
   const { secret } = await createChallenge('mfa', {
     userId: user.id,
     ttlMs: MFA_TTL_MS,
@@ -75,7 +77,11 @@ export async function startMfaOrComplete(
     // Compatibilidad con la web que aún pregunta por esta clave.
     twoFactorRequired: true,
     challenge: secret,
-    methods: user.totpEnabled ? ['totp', 'backup'] : [],
+    methods: [
+      ...(user.totpEnabled ? ['totp', 'backup'] : []),
+      // Solo si tiene alguna passkey de este cliente (la de la web no sirve en el escritorio).
+      ...(hereRp && (await passkeysFor(user.id, hereRp.rpId)).length ? ['passkey'] : []),
+    ],
     user: { name: user.username, email: user.email, avatarImageUrl: user.avatarImageUrl ?? null },
   });
 }
@@ -137,8 +143,58 @@ const expired = (res: any) =>
     code: 'MFA_CHALLENGE_EXPIRED',
   });
 
+/** Cierra el reto con una passkey del usuario: `passkey = { challenge, response }`. */
+async function mfaWithPasskey(req: any, res: any, row: any, passkey: any) {
+  const rp = rpFor(req.headers?.origin);
+  if (!rp) {
+    return res
+      .status(400)
+      .json({ error: 'Este origen no admite passkeys', code: 'ORIGIN_NOT_ALLOWED' });
+  }
+  // El intento se reserva antes de mirar la passkey, como con un código.
+  if (!(await reserveAttempt(row.id))) return expired(res);
+  const keys = { account: row.userId, ip: clientInfo(req).ip };
+  const gate = await checkThrottle('mfa', keys);
+  if (gate.blocked) return sendThrottled(res, gate.retryAfter);
+
+  const db = ClientFactory.getClient('public');
+  const [user] = await db
+    .select()
+    .from(schema.globalUsers)
+    .where(eq(schema.globalUsers.id, row.userId));
+  if (!user) return expired(res);
+
+  let ok = false;
+  try {
+    const found = await verifyAuthentication(rp, passkey?.challenge, passkey?.response);
+    ok = found.userId === row.userId;
+  } catch (e) {
+    if (!(e instanceof PasskeyError)) throw e;
+  }
+  if (!ok) {
+    await recordAttempt('mfa', keys, false);
+    void recordAuthEvent({
+      userId: user.id,
+      kind: 'mfa',
+      ok: false,
+      method: 'passkey',
+      client: clientInfo(req),
+    });
+    await failChallenge(row.id);
+    return res.status(401).json({ error: 'Passkey no válida', code: 'MFA_INVALID' });
+  }
+  if (!(await consumeChallenge(row.id))) return expired(res);
+  await recordAttempt('mfa', keys, true);
+  const data = parseData(row);
+  await completeLogin(req, res, user, {
+    method: data.method || 'password',
+    mfa: 'passkey',
+    tenantId: data.tenantId ?? null,
+  });
+}
+
 /**
- * POST /api/auth/mfa { challenge, code?, passkey? }
+ * POST /api/auth/mfa { challenge, code?, passkey?: { challenge, response } }
  */
 router.post('/mfa', async (req, res) => {
   const { challenge, code, passkey } = req.body || {};
@@ -146,9 +202,7 @@ router.post('/mfa', async (req, res) => {
     const row = typeof challenge === 'string' ? await findChallenge('mfa', challenge) : null;
     if (!row || !row.userId) return expired(res);
 
-    if (passkey !== undefined) {
-      return res.status(400).json({ error: 'Passkey no disponible todavía' });
-    }
+    if (passkey !== undefined) return await mfaWithPasskey(req, res, row, passkey);
     if (!code || typeof code !== 'string') {
       return res.status(400).json({ error: 'Falta el código' });
     }

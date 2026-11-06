@@ -26,6 +26,7 @@ import {
 import sessionRoutes, { requireSession } from './auth/sessionRoutes';
 import eventRoutes from './auth/eventRoutes';
 import { recordAuthEvent } from '../core/auth/authEvents';
+import passkeyRoutes from './auth/passkeyRoutes';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
@@ -42,6 +43,8 @@ router.use(sessionRoutes);
 router.use(eventRoutes);
 // Segundo factor con reto.
 router.use(mfaRoutes);
+// Passkeys (WebAuthn).
+router.use(passkeyRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
