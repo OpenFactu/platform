@@ -12,10 +12,12 @@
  */
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { apiClient, ApiError } from '@/shared/http';
-import React, { useState } from 'react';
+import { login as loginRequest, type LoginResult } from './login/loginApi';
+import { MfaStepContainer } from './login/LoginMfaStep';
+import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Avatar, Badge, Button, Input, PasswordInput, Select } from '@openfactu/ui';
-import { ArrowLeft, ArrowRight, Building, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Building, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
@@ -29,6 +31,11 @@ import {
 } from '../components/login/rememberedAccounts';
 import { useI18n } from '@/i18n/I18nContext';
 
+const loginErrorMessage = (body: unknown): string | undefined =>
+  typeof (body as { error?: unknown } | null)?.error === 'string'
+    ? (body as { error: string }).error
+    : undefined;
+
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +44,13 @@ export const Login: React.FC = () => {
   const [selectedTenant, setSelectedTenant] = useState('');
   const [loginAvatarUrl, setLoginAvatarUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
-  const [totpCode, setTotpCode] = useState('');
+  // Reto del segundo paso: cuando existe, se pinta el formulario del código.
+  const [mfa, setMfa] = useState<{
+    challenge: string;
+    methods: string[];
+    user: { name?: string; email?: string; avatarImageUrl?: string | null };
+  } | null>(null);
+  const twoFactorRequired = !!mfa;
 
   // Acceso rápido: cuentas que ya entraron en este navegador. Elegir una
   // rellena usuario y empresa; la contraseña (y el 2FA) se siguen pidiendo.
@@ -103,6 +115,29 @@ export const Login: React.FC = () => {
     }
   };
 
+  // Sesión conseguida (con o sin segundo paso): recordar la cuenta y entrar.
+  const finishLogin = (data: LoginResult) => {
+    // Recordar la cuenta para el acceso rápido (sin contraseña ni token).
+    const tenantId = selectedTenant || data.user?.tenantId;
+    if (tenantId) {
+      rememberAccount({
+        login: email.trim(),
+        name: data.user?.username || email.trim(),
+        avatarUrl: data.user?.avatarImageUrl ?? loginAvatarUrl,
+        tenantId,
+        tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
+      });
+    }
+    login(data.token!, data.user as unknown as Parameters<typeof login>[1]);
+    navigate('/');
+  };
+
+  const handleMfaExpired = useCallback(() => {
+    setMfa(null);
+    setPassword('');
+    setError(t('auth.mfa.expired'));
+  }, [t]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (tenants.length > 1 && !selectedTenant) {
@@ -113,43 +148,23 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      const data = await apiClient.post<any>(
-        '/api/auth/login',
-        {
-          email,
-          password,
-          selectedTenantId: selectedTenant,
-          ...(twoFactorRequired ? { totpCode: totpCode.trim() } : {}),
-        },
-        { auth: false },
-      );
+      const data = await loginRequest({ email, password, selectedTenantId: selectedTenant });
 
       // La contraseña es correcta pero el usuario tiene 2FA: pedimos el código.
-      if (data.twoFactorRequired) {
-        setTwoFactorRequired(true);
+      if (data.challenge) {
+        setMfa({
+          challenge: data.challenge,
+          methods: data.methods ?? ['totp'],
+          user: data.user ?? { email },
+        });
         setIsSubmitting(false);
         return;
       }
 
-      // Recordar la cuenta para el acceso rápido (sin contraseña ni token).
-      const tenantId = selectedTenant || data.user?.tenantId;
-      if (tenantId) {
-        rememberAccount({
-          login: email.trim(),
-          name: data.user?.username || email.trim(),
-          avatarUrl: data.user?.avatarImageUrl ?? loginAvatarUrl,
-          tenantId,
-          tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
-        });
-      }
-      login(data.token, data.user);
-      navigate('/');
+      finishLogin(data);
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        setError(
-          ((err.body as any)?.error as string) ||
-            (twoFactorRequired ? t('app.login.invalid2fa') : t('app.login.invalidCredentials')),
-        );
+        setError(loginErrorMessage(err.body) || t('app.login.invalidCredentials'));
       } else {
         setError(t('app.login.connectionError'));
       }
@@ -180,22 +195,22 @@ export const Login: React.FC = () => {
             <div className="space-y-1.5">
               <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-fg-default">
                 {twoFactorRequired
-                  ? t('app.login.twoFactorTitle')
+                  ? t('auth.mfa.title')
                   : showPicker
                     ? t('app.login.pickAccountTitle')
                     : picked
                       ? t('app.login.hello', { name: picked.name })
                       : t('app.login.title')}
               </h1>
-              <p className="text-sm text-fg-muted">
-                {twoFactorRequired
-                  ? t('app.login.twoFactorHint')
-                  : showPicker
+              {!twoFactorRequired && (
+                <p className="text-sm text-fg-muted">
+                  {showPicker
                     ? t('app.login.pickAccountHint')
                     : picked
                       ? t('app.login.passwordHint')
                       : t('app.login.subtitle')}
-              </p>
+                </p>
+              )}
             </div>
 
             {error && (
@@ -204,33 +219,19 @@ export const Login: React.FC = () => {
               </Alert>
             )}
 
-            {twoFactorRequired ? (
-              <div className="space-y-4">
-                <Input
-                  label={t('app.login.verificationCode')}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value)}
-                  placeholder="123456"
-                  prefix={<ShieldCheck size={16} />}
-                  className="tracking-widest"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 -ml-2"
-                  onClick={() => {
-                    setTwoFactorRequired(false);
-                    setTotpCode('');
-                    setError(null);
-                  }}
-                >
-                  <ArrowLeft size={14} /> {t('app.common.back')}
-                </Button>
-              </div>
+            {mfa ? (
+              <MfaStepContainer
+                challenge={mfa.challenge}
+                methods={mfa.methods}
+                user={mfa.user}
+                onDone={finishLogin}
+                onExpired={handleMfaExpired}
+                onNotYou={() => {
+                  setMfa(null);
+                  setPassword('');
+                  setError(null);
+                }}
+              />
             ) : showPicker ? (
               <RememberedAccountPicker
                 accounts={remembered}
@@ -321,7 +322,7 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {!showPicker && (
+            {!showPicker && !mfa && (
               <Button
                 type="submit"
                 size="lg"
@@ -329,7 +330,7 @@ export const Login: React.FC = () => {
                 isLoading={isSubmitting}
                 disabled={isSubmitting}
               >
-                {twoFactorRequired ? t('app.login.verify') : t('app.login.enter')}
+                {t('app.login.enter')}
                 {!isSubmitting && <ArrowRight size={16} />}
               </Button>
             )}
