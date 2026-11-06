@@ -3,7 +3,7 @@
  * responde `{ token, user }`. Lo usan el login con contraseña, el segundo factor y
  * el resto de formas de entrar.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull } from 'drizzle-orm';
 import { ClientFactory } from '../../core/tenant/ClientFactory';
 import * as schema from '../../db/schema';
 import { createSession, issueToken } from '../../core/auth/sessions';
@@ -54,27 +54,71 @@ export interface LoginTarget {
   permissions: string | null;
 }
 
-/** Resolución en 3 niveles: membership exacta, empresa heredada del usuario, o ninguna (`null`: sin acceso). */
+/**
+ * Empresa, rol y permisos con los que entra. Con empresa elegida, esa (o `null`: sin acceso).
+ *
+ * Sin elegirla (Google, passkey o código desde la lista de cuentas no preguntan), la de la
+ * última sesión, luego la heredada, luego la primera membresía; un SUPERUSER, además, la
+ * primera empresa que exista. Antes un SUPERUSER entraba en «ninguna» y la app se quedaba sin
+ * empresa. Cada candidata se comprueba igual que una elegida: una empresa de la que le quitaron
+ * el acceso no vale aunque fuera la última.
+ */
 export async function resolveLoginTarget(
   user: any,
   selectedTenantId: string | null | undefined,
 ): Promise<LoginTarget | null> {
-  const db = ClientFactory.getClient('public');
-  // SUPERUSER bypassa memberships: accede a cualquier tenant
-  if (user.role === 'SUPERUSER') {
-    return {
-      role: user.role,
-      tenantId: selectedTenantId || null,
-      permissions: null,
-    };
+  if (selectedTenantId) return resolveForTenant(user, selectedTenantId);
+  for (const candidate of await defaultTenantCandidates(user)) {
+    const target = await resolveForTenant(user, candidate);
+    if (target) return target;
   }
-  if (!selectedTenantId) {
-    // Sin empresa elegida: la heredada (legacy)
-    return {
-      role: user.role,
-      tenantId: user.tenantId ?? null,
-      permissions: user.permissions ?? null,
-    };
+  // Sin ninguna: como antes, la heredada (que puede ser nula).
+  return user.role === 'SUPERUSER'
+    ? { role: user.role, tenantId: null, permissions: null }
+    : { role: user.role, tenantId: user.tenantId ?? null, permissions: user.permissions ?? null };
+}
+
+/** Empresas en las que probar a entrar cuando no se eligió ninguna, de más a menos probable. */
+async function defaultTenantCandidates(user: any): Promise<string[]> {
+  const db = ClientFactory.getClient('public');
+  const recent = await db
+    .select({ tenantId: schema.userSessions.tenantId })
+    .from(schema.userSessions)
+    .where(and(eq(schema.userSessions.userId, user.id), isNotNull(schema.userSessions.tenantId)))
+    .orderBy(desc(schema.userSessions.createdAt))
+    .limit(10);
+  const memberships = await db
+    .select({ tenantId: schema.userTenantMemberships.tenantId })
+    .from(schema.userTenantMemberships)
+    .where(eq(schema.userTenantMemberships.userId, user.id))
+    .orderBy(asc(schema.userTenantMemberships.createdAt));
+  const firstTenant =
+    user.role === 'SUPERUSER'
+      ? await db
+          .select({ tenantId: schema.tenants.id })
+          .from(schema.tenants)
+          .orderBy(asc(schema.tenants.createdAt))
+          .limit(1)
+      : [];
+  const ids = [
+    ...recent.map((r: any) => r.tenantId),
+    user.tenantId,
+    ...memberships.map((m: any) => m.tenantId),
+    ...firstTenant.map((t: any) => t.tenantId),
+  ].filter((id): id is string => typeof id === 'string' && id.length > 0);
+  return [...new Set(ids)];
+}
+
+/** La resolución para una empresa concreta: membresía, empresa heredada, o `null` (sin acceso). */
+async function resolveForTenant(user: any, selectedTenantId: string): Promise<LoginTarget | null> {
+  const db = ClientFactory.getClient('public');
+  // SUPERUSER bypassa memberships: accede a cualquier tenant, si existe.
+  if (user.role === 'SUPERUSER') {
+    const [tenant] = await db
+      .select({ id: schema.tenants.id })
+      .from(schema.tenants)
+      .where(eq(schema.tenants.id, selectedTenantId));
+    return tenant ? { role: user.role, tenantId: tenant.id, permissions: null } : null;
   }
   // Nivel 1: membership exacta para la empresa seleccionada
   const [membership] = await db

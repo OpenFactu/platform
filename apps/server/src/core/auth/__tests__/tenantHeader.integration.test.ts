@@ -109,6 +109,8 @@ describe('cabecera x-tenant-id con sesión', { skip: !authTestDatabaseUrl }, () 
 
   it('login con contraseña sin empresa + cabecera de una empresa con SSO obligatorio → 403', async () => {
     const u = await t.createUser();
+    // Sin elegir empresa entra en la primera membresía (A); B exige SSO.
+    await join(u.id, tenantA);
     await join(u.id, b.tenantId);
     const login = await call('POST', '/api/auth/login', undefined, undefined, {
       email: u.email,
@@ -118,6 +120,17 @@ describe('cabecera x-tenant-id con sesión', { skip: !authTestDatabaseUrl }, () 
     const r = await call('GET', '/api/probe', login.body.token, b.tenantId);
     assert.equal(r.status, 403);
     assert.equal(r.body.code, 'SWITCH_TENANT_REQUIRED');
+  });
+
+  it('login con contraseña sin empresa, con solo una que exige SSO → rechazado al entrar', async () => {
+    const u = await t.createUser();
+    await join(u.id, b.tenantId);
+    const login = await call('POST', '/api/auth/login', undefined, undefined, {
+      email: u.email,
+      password: u.password,
+    });
+    assert.equal(login.status, 403);
+    assert.equal(login.body.code, 'SSO_REQUIRED');
   });
 
   it('sesión en A + cabecera B → 403', async () => {
