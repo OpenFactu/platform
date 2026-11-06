@@ -25,6 +25,11 @@ export class ClientFactory {
     await this.disconnectAll();
   }
 
+  /** URL base de la base de datos, para quien necesita una conexión propia (LISTEN). */
+  public static getConnectionUrl(): string {
+    return this.getBaseUrl();
+  }
+
   private static getBaseUrl(): string {
     if (!this.baseUrl) {
       this.baseUrl = process.env.DATABASE_URL || '';
