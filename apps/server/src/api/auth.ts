@@ -27,6 +27,7 @@ import sessionRoutes, { requireSession } from './auth/sessionRoutes';
 import eventRoutes from './auth/eventRoutes';
 import { recordAuthEvent } from '../core/auth/authEvents';
 import passkeyRoutes from './auth/passkeyRoutes';
+import handoffRoutes from './auth/handoffRoutes';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
@@ -45,6 +46,8 @@ router.use(eventRoutes);
 router.use(mfaRoutes);
 // Passkeys (WebAuthn).
 router.use(passkeyRoutes);
+// Entrega de login entre dispositivos.
+router.use(handoffRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
