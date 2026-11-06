@@ -14,6 +14,8 @@ import type { ClientInfo } from './clientInfo';
 export type SessionRow = typeof userSessions.$inferSelect;
 
 const CHANNEL = 'keirost_sessions';
+// Identifica a esta instancia en los avisos, para no reaccionar a su propio eco.
+const INSTANCE_ID = crypto.randomUUID();
 const CACHE_MS = 15_000;
 const cache = new Map<string, { session: SessionRow; at: number }>();
 const revokeListeners: Array<(sid: string, userId: string) => void> = [];
@@ -49,8 +51,8 @@ export async function createSession(input: {
       expiresAt,
       absoluteExpiresAt,
       method: input.method,
-      // La columna es booleana: guarda si hubo segundo factor, no cuál.
-      mfa: !!input.mfa,
+      mfa: input.mfa,
+      idleHours: slidingHours,
       restricted: input.restricted ?? null,
       clientKind: input.client.clientKind,
       deviceId: input.client.deviceId ?? null,
@@ -105,12 +107,11 @@ export async function resolveSession(
 
 /** Desliza la caducidad desde ahora, sin pasar nunca del máximo absoluto. */
 export async function touchSession(sid: string): Promise<void> {
-  const hours = envNumber('AUTH_SESSION_HOURS', 12);
   const [row] = await db()
     .update(userSessions)
     .set({
       lastSeenAt: sql`now()`,
-      expiresAt: sql`LEAST(now() + ${`${hours} hours`}::interval, "absoluteExpiresAt")`,
+      expiresAt: sql`LEAST(now() + "idleHours" * interval '1 hour', "absoluteExpiresAt")`,
     })
     .where(and(eq(userSessions.id, sid), isNull(userSessions.revokedAt)))
     .returning();
@@ -133,7 +134,7 @@ export async function revokeSession(sid: string, reason: string): Promise<void> 
     .returning();
   cache.delete(sid);
   if (!row) return;
-  await notify({ sid, userId: row.userId });
+  await notify({ origin: INSTANCE_ID, userId: row.userId, sids: [sid] });
   for (const cb of revokeListeners) cb(sid, row.userId);
 }
 
@@ -150,7 +151,9 @@ export async function revokeAllForUser(
     .where(and(...conds))
     .returning();
   cache.clear();
-  if (rows.length) await notify({ userId, all: true });
+  if (rows.length) {
+    await notify({ origin: INSTANCE_ID, userId, sids: rows.map((r: SessionRow) => r.id) });
+  }
   for (const r of rows) for (const cb of revokeListeners) cb(r.id, userId);
   return rows.length;
 }
@@ -201,10 +204,12 @@ function handleNotification(payload?: string) {
   } catch {
     return;
   }
-  cache.clear();
-  if (msg.sid && msg.userId) for (const cb of revokeListeners) cb(msg.sid, msg.userId);
-  // Revocar «todas»: la caché ya está vacía; quien tenga sockets los comprueba al volver
-  // a resolver su sesión, porque aquí no se sabe cuáles eran.
+  // Lo revocado aquí ya avisó y vació su caché al hacerlo: el eco propio no cuenta.
+  if (msg.origin === INSTANCE_ID || !Array.isArray(msg.sids)) return;
+  for (const sid of msg.sids) {
+    cache.delete(sid);
+    for (const cb of revokeListeners) cb(sid, msg.userId);
+  }
 }
 
 function scheduleRetry() {

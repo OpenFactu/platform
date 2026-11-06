@@ -108,7 +108,8 @@ export const userSessions = pgTable(
     revokedAt: timestamp('revokedAt'),
     revokedReason: text('revokedReason'),
     method: text('method'), // password | passkey | email_code | sso ...
-    mfa: boolean('mfa').default(false).notNull(),
+    mfa: text('mfa'), // totp | backup | passkey | provider; nulo = sin segundo factor
+    idleHours: integer('idleHours').default(12).notNull(), // ventana deslizante propia
     restricted: text('restricted'), // nulo = sesión normal
     clientKind: text('clientKind'),
     deviceId: text('deviceId'),

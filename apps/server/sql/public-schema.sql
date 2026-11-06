@@ -738,7 +738,8 @@ CREATE TABLE IF NOT EXISTS "UserSession" (
 	"revokedAt" timestamp,
 	"revokedReason" text,
 	"method" text,
-	"mfa" boolean DEFAULT false NOT NULL,
+	"mfa" text,
+	"idleHours" integer DEFAULT 12 NOT NULL,
 	"restricted" text,
 	"clientKind" text,
 	"deviceId" text,
@@ -764,7 +765,9 @@ ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "revokedReason" text;
 
 ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "method" text;
 
-ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "mfa" boolean DEFAULT false NOT NULL;
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "mfa" text;
+
+ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "idleHours" integer DEFAULT 12 NOT NULL;
 
 ALTER TABLE "UserSession" ADD COLUMN IF NOT EXISTS "restricted" text;
 

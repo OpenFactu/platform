@@ -8,9 +8,11 @@ import {
   createSession,
   issueToken,
   listSessions,
+  onSessionRevoked,
   resolveSession,
   revokeAllForUser,
   revokeSession,
+  startSessionListener,
   touchSession,
 } from '../sessions';
 
@@ -20,6 +22,7 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
   let t: Awaited<ReturnType<typeof useAuthTestDb>>;
   before(async () => {
     t = await useAuthTestDb();
+    await startSessionListener();
   });
   after(async () => {
     if (t) await t.drop();
@@ -88,5 +91,52 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
     await touchSession(s.id);
     const [row] = await t.publicDb.select().from(userSessions).where(eq(userSessions.id, s.id));
     assert.ok(row.expiresAt.getTime() <= row.absoluteExpiresAt.getTime());
+  });
+
+  it('guarda mfa como texto', async () => {
+    const u = await t.createUser();
+    const s = await createSession({
+      userId: u.id,
+      tenantId: null,
+      method: 'password',
+      mfa: 'totp',
+      client,
+    });
+    assert.equal(s.mfa, 'totp');
+    const [row] = await t.publicDb.select().from(userSessions).where(eq(userSessions.id, s.id));
+    assert.equal(row.mfa, 'totp');
+  });
+
+  it('touch desliza por el idleHours de la sesión', async () => {
+    const u = await t.createUser();
+    const s = await createSession({
+      userId: u.id,
+      tenantId: null,
+      method: 'password',
+      mfa: null,
+      client,
+      slidingHours: 1,
+    });
+    assert.equal(s.idleHours, 1);
+    await t.publicDb
+      .update(userSessions)
+      .set({ expiresAt: new Date(Date.now() + 60_000) })
+      .where(eq(userSessions.id, s.id));
+    await touchSession(s.id);
+    const [row] = await t.publicDb.select().from(userSessions).where(eq(userSessions.id, s.id));
+    const diff = row.expiresAt.getTime() - Date.now();
+    assert.ok(diff > 55 * 60_000 && diff <= 61 * 60_000, `diff=${diff}`);
+  });
+
+  it('los avisos de revocación se disparan una vez por sid', async () => {
+    const { u, s } = await mk();
+    const s2 = await open(u.id);
+    const s3 = await open(u.id);
+    const calls: string[] = [];
+    onSessionRevoked((sid) => calls.push(sid));
+    await revokeSession(s.id, 'test');
+    await revokeAllForUser(u.id, 'test');
+    await new Promise((r) => setTimeout(r, 400)); // espera al eco del NOTIFY
+    assert.deepEqual([...calls].sort(), [s.id, s2.id, s3.id].sort());
   });
 });
