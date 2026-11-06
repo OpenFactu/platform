@@ -180,23 +180,4 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
     assert.equal(await approveChallenge(b.id, u.id), false);
     assert.equal(await findChallenge('handoff', b.secret), null);
   });
-
-  it('el atajo totpCode de /login rechaza un código repetido', async () => {
-    const u = await totpUser();
-    const code = authenticator.generate(u.secret);
-    const first = await post('/api/auth/login', {
-      email: u.email,
-      password: u.password,
-      totpCode: code,
-    });
-    assert.equal(first.status, 200);
-    assert.ok(first.body.token);
-    const again = await post('/api/auth/login', {
-      email: u.email,
-      password: u.password,
-      totpCode: code,
-    });
-    assert.equal(again.status, 401);
-    assert.equal(again.body.token, undefined);
-  });
 });

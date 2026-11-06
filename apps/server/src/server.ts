@@ -186,6 +186,16 @@ dotenv.config({ path: require('path').join(__dirname, '../../../.env') });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Detrás de un proxy inverso, `req.ip` es el del proxy salvo que se confíe en él. De ello dependen
+// el freno por IP y el historial de accesos. `true`/`false`, un número de saltos o una lista de IPs
+// separadas por comas. Sin definir se mantiene el comportamiento de Express (no confiar).
+if (process.env.TRUST_PROXY !== undefined && process.env.TRUST_PROXY.trim() !== '') {
+  const raw = process.env.TRUST_PROXY.trim();
+  const trust: boolean | number | string =
+    raw === 'true' ? true : raw === 'false' ? false : /^\d+$/.test(raw) ? Number(raw) : raw;
+  app.set('trust proxy', trust);
+}
+
 app.use(cors());
 // Límite amplio: las pruebas de entrega (PoD) suben firma + foto en base64
 // (puede rondar 200–500 KB cada foto tras redimensionar). También cualquier

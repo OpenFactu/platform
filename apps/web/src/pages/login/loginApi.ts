@@ -28,7 +28,6 @@ export interface LoginResult {
     [key: string]: unknown;
   } & LoginUserInfo;
   mfaRequired?: boolean;
-  twoFactorRequired?: boolean;
   challenge?: string;
   methods?: string[];
   /** Su passkey es de otro origen y no hay otro método: no hay nada que escribir aquí. */

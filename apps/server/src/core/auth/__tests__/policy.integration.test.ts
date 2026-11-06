@@ -376,10 +376,15 @@ describe('política de acceso por empresa', { skip: !authTestDatabaseUrl }, () =
       email: u.email,
       password: u.password,
       selectedTenantId: tenantA.tenantId,
-      totpCode: authenticator.generate(sec),
     });
     assert.equal(r.status, 200);
-    const dis = await call('POST', '/api/2fa/disable', { code: '000000' }, r.body.token);
+    assert.ok(r.body.challenge);
+    const r2 = await call('POST', '/api/auth/mfa', {
+      challenge: r.body.challenge,
+      code: authenticator.generate(sec),
+    });
+    assert.equal(r2.status, 200);
+    const dis = await call('POST', '/api/2fa/disable', { code: '000000' }, r2.body.token);
     assert.equal(dis.status, 409);
     assert.equal(dis.body.code, 'MFA_REQUIRED_BY_POLICY');
   });

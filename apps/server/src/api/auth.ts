@@ -32,7 +32,7 @@ import emailCodeRoutes from './auth/emailCodeRoutes';
 import methodsRoutes from './auth/methodsRoutes';
 import ssoRoutes from './auth/ssoRoutes';
 import identityRoutes from './auth/identityRoutes';
-import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
+import mfaRoutes, { startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
   checkThrottle,
@@ -113,7 +113,7 @@ const BAD_CREDENTIALS = { error: 'Credenciales inválidas' };
  * POST /api/auth/login
  */
 router.post('/login', async (req, res) => {
-  const { email, password, selectedTenantId, totpCode } = req.body || {};
+  const { email, password, selectedTenantId } = req.body || {};
 
   try {
     const account = normalizeAccount(String(email ?? ''));
@@ -150,31 +150,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json(BAD_CREDENTIALS);
     }
     await recordAttempt('login', keys, true);
-
-    // Atajo compatible: el código del segundo factor en el mismo cuerpo. Pasa por la misma
-    // comprobación de un solo uso que `/mfa`.
-    if (user.totpEnabled && totpCode) {
-      const mfaKeys = { account: user.id, ip: keys.ip };
-      const mfaGate = await checkThrottle('mfa', mfaKeys);
-      if (mfaGate.blocked) return sendThrottled(res, mfaGate.retryAfter);
-      const used = await consumeUserCode(user, String(totpCode));
-      await recordAttempt('mfa', mfaKeys, used.ok);
-      if (!used.ok) {
-        void recordAuthEvent({
-          userId: user.id,
-          kind: 'mfa',
-          ok: false,
-          method: 'totp',
-          client: clientInfo(req),
-        });
-        return res.status(401).json({ error: 'Código 2FA inválido' });
-      }
-      return completeLogin(req, res, user, {
-        method: 'password',
-        mfa: used.mfa,
-        tenantId: selectedTenantId,
-      });
-    }
 
     await startMfaOrComplete(req, res, user, { method: 'password', tenantId: selectedTenantId });
   } catch (error: any) {

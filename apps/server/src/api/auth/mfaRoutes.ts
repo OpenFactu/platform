@@ -81,8 +81,6 @@ export async function startMfaOrComplete(
   const elsewhere = methods.length === 0;
   res.json({
     mfaRequired: true,
-    // Compatibilidad con la web que aún pregunta por esta clave.
-    twoFactorRequired: true,
     challenge: secret,
     methods,
     ...(elsewhere
