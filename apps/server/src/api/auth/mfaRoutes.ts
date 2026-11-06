@@ -20,6 +20,7 @@ import { clientInfo } from '../../core/auth/clientInfo';
 import { completeLogin, loginPolicyBlock, rejectByPolicy } from './completeLogin';
 import { recordAuthEvent } from '../../core/auth/authEvents';
 import { PasskeyError, passkeysFor, rpFor, verifyAuthentication } from '../../core/auth/passkeys';
+import { internalError } from './internalError';
 
 const router = Router();
 
@@ -255,7 +256,7 @@ router.post('/mfa', async (req, res) => {
       tenantId: data.tenantId ?? null,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /mfa', error);
   }
 });
 

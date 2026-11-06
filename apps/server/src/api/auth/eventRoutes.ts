@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { listAuthEvents } from '../../core/auth/authEvents';
 import { requireSession } from './sessionRoutes';
+import { internalError } from './internalError';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/events', async (req: Request, res: Response) => {
     const rows = await listAuthEvents(session.userId, Number(req.query.limit) || 50);
     res.json({ events: rows });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'GET /events', e);
   }
 });
 

@@ -40,6 +40,7 @@ import {
   recordAttempt,
   sendThrottled,
 } from '../core/auth/throttle';
+import { internalError } from './auth/internalError';
 
 const router = Router();
 
@@ -153,7 +154,7 @@ router.post('/login', async (req, res) => {
 
     await startMfaOrComplete(req, res, user, { method: 'password', tenantId: selectedTenantId });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /login', error);
   }
 });
 
@@ -256,7 +257,7 @@ router.post('/switch-tenant', async (req, res) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /switch-tenant', error);
   }
 });
 
@@ -389,11 +390,18 @@ router.post('/forgot-password', async (req, res) => {
       .set({ resetTokenHash: tokenHash, resetTokenExpiresAt: expiresAt, updatedAt: new Date() })
       .where(eq(schema.globalUsers.id, user.id));
 
-    // Construye el enlace hacia el frontend.
+    // El enlace sale SOLO de WEB_ORIGIN, nunca de la petición: con la cabecera `Origin` un
+    // atacante haría llegar a la víctima un enlace a su dominio con el token dentro. En
+    // desarrollo, sin WEB_ORIGIN, la web local.
     const origin =
       process.env.WEB_ORIGIN ||
-      (req.headers.origin as string) ||
-      `http://localhost:${process.env.WEB_PORT || 8080}`;
+      (process.env.NODE_ENV === 'development'
+        ? `http://localhost:${process.env.WEB_PORT || 8080}`
+        : '');
+    if (!origin) {
+      console.warn('[auth] Sin WEB_ORIGIN: no se envía el enlace de recuperación.');
+      return ok();
+    }
     const link = `${origin.replace(/\/$/, '')}/reset-password?token=${token}`;
 
     // Intenta enviar el correo con el SMTP de la empresa del usuario. Si no hay
@@ -509,7 +517,7 @@ router.post('/reset-password', async (req, res) => {
 
     res.json({ ok: true });
   } catch (error: any) {
-    res.status(500).json({ error: error?.message || 'Error' });
+    internalError(res, 'POST /reset-password', error);
   }
 });
 

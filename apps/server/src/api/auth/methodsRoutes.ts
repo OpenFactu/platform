@@ -8,6 +8,7 @@ import { anyTenantHasSmtp } from '../../core/auth/emailCode';
 import { rpFor } from '../../core/auth/passkeys';
 import { readPolicy } from '../../core/auth/policy';
 import { listEnabledProviders, webOrigin } from '../../core/auth/sso';
+import { internalError } from './internalError';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/methods', async (req, res) => {
       sso,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'GET /methods', error);
   }
 });
 

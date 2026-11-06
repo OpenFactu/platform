@@ -16,6 +16,7 @@ import {
   verifyEmailCode,
 } from '../../core/auth/emailCode';
 import { startMfaOrComplete } from './mfaRoutes';
+import { internalError } from './internalError';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.post('/email-code/verify', async (req, res) => {
       tenantId: typeof tenantId === 'string' ? tenantId : null,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /email-code/verify', error);
   }
 });
 
@@ -97,7 +98,7 @@ router.post('/email-link', async (req, res) => {
     if (!user) return linkInvalid(res);
     return await startMfaOrComplete(req, res, user, { method: 'email_code', mfa: null });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /email-link', error);
   }
 });
 
@@ -115,7 +116,7 @@ router.post('/email-link/approve', async (req, res) => {
     res.json({ approved: true });
   } catch (error: any) {
     if (error instanceof HandoffError) return linkInvalid(res);
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /email-link/approve', error);
   }
 });
 

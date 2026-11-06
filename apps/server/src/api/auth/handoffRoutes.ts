@@ -10,6 +10,7 @@ import { createHandoff, handoffInfo, pollHandoff } from '../../core/auth/handoff
 import { clientInfo } from '../../core/auth/clientInfo';
 import { checkThrottle, recordAttempt, sendThrottled } from '../../core/auth/throttle';
 import { startMfaOrComplete } from './mfaRoutes';
+import { internalError } from './internalError';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post('/handoff', async (req, res) => {
     await recordAttempt('handoff', { ip: client.ip }, false);
     res.json(await createHandoff(client));
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /handoff', error);
   }
 });
 
@@ -34,7 +35,7 @@ router.get('/handoff/:id', async (req, res) => {
     if (!info) return res.status(404).json({ error: 'No encontrado', code: 'HANDOFF_INVALID' });
     res.json(info);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'GET /handoff/:id', error);
   }
 });
 
@@ -65,7 +66,7 @@ router.post('/handoff/poll', async (req, res) => {
       mfa: r.mfaDone,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    internalError(res, 'POST /handoff/poll', error);
   }
 });
 

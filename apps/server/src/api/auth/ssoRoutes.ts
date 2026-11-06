@@ -40,11 +40,10 @@ export const notConfigured = (res: any) =>
     code: 'SSO_NOT_CONFIGURED',
   });
 
-/** Un 500 sin el detalle: el mensaje de un error puede llevar SQL o rutas del servidor. */
-export function internalError(res: any, where: string, e: any) {
-  console.error(`[auth] ${where}:`, e?.message);
-  res.status(500).json({ error: 'Error interno', code: 'INTERNAL_ERROR' });
-}
+import { internalError } from './internalError';
+
+// identityRoutes y authProviders lo importan de aquí.
+export { internalError };
 
 /** Los errores del flujo vuelven a la web: es una navegación del navegador, no una llamada. */
 function redirectError(res: any, origin: string, code: string, path = '/login') {

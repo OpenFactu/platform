@@ -16,6 +16,7 @@ import { recordAuthEvent } from '../../core/auth/authEvents';
 import { clientInfo } from '../../core/auth/clientInfo';
 import { DEFAULT_POLICY, policyGate, readPolicy, userHasMfa } from '../../core/auth/policy';
 import { resolveLoginTarget } from './completeLogin';
+import { internalError } from './internalError';
 
 /**
  * Devuelve la sesión del llamante, o responde 401 (500 si la base falla) y devuelve `null`.
@@ -34,8 +35,7 @@ export async function requireSession(req: any, res: Response): Promise<SessionRo
   try {
     resolved = await resolveSession(token);
   } catch (e: any) {
-    console.error('[auth] No se pudo resolver la sesión:', e?.message);
-    res.status(500).json({ error: 'Error interno' });
+    internalError(res, 'No se pudo resolver la sesión', e);
     return null;
   }
   if ('error' in resolved) {
@@ -78,7 +78,7 @@ router.post('/logout', async (req: Request, res: Response) => {
     });
     res.status(204).end();
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'POST /logout', e);
   }
 });
 
@@ -136,8 +136,7 @@ router.post('/refresh', async (req: any, res: Response) => {
       }),
     });
   } catch (e: any) {
-    console.error('[auth] No se pudo renovar la sesión:', e?.message);
-    res.status(500).json({ error: 'Error interno' });
+    internalError(res, 'POST /refresh', e);
   }
 });
 
@@ -160,7 +159,7 @@ router.get('/sessions', async (req: Request, res: Response) => {
       })),
     });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'GET /sessions', e);
   }
 });
 
@@ -182,7 +181,7 @@ router.delete('/sessions', async (req: Request, res: Response) => {
     });
     res.json({ revoked });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'DELETE /sessions', e);
   }
 });
 
@@ -203,7 +202,7 @@ router.delete('/sessions/:id', async (req: Request, res: Response) => {
     });
     res.status(204).end();
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Error' });
+    internalError(res, 'DELETE /sessions/:id', e);
   }
 });
 
