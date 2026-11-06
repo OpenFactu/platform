@@ -13,6 +13,9 @@ const PhysicalDevices = lazy(() =>
 const CompanySettings = lazy(() =>
   import('./pages/CompanySettings').then((m) => ({ default: m.CompanySettings })),
 );
+const SecurityPolicy = lazy(() =>
+  import('./pages/SecurityPolicy').then((m) => ({ default: m.SecurityPolicy })),
+);
 const Users = lazy(() => import('./pages/Users').then((m) => ({ default: m.Users })));
 const CustomFields = lazy(() =>
   import('./pages/CustomFields').then((m) => ({ default: m.CustomFields })),
@@ -43,6 +46,11 @@ export const settingsModule: ModuleManifest = {
       { id: 'profile', label: 'settings.nav.profile', path: '/profile' },
       { id: 'security', label: 'settings.nav.security', path: '/profile/security' },
       { id: 'company', label: 'settings.nav.company', path: '/settings/company' },
+      {
+        id: 'security-policy',
+        label: 'settings.nav.securityPolicy',
+        path: '/settings/security',
+      },
       { id: 'users', label: 'settings.nav.users', path: '/users' },
       // Cómo se ven y qué campos llevan los datos y documentos de la empresa.
       {
@@ -145,6 +153,13 @@ export const settingsModule: ModuleManifest = {
       title: 'settings.nav.company',
       iconName: 'Building',
       permissionPath: '/settings/company',
+    },
+    {
+      pattern: '/settings/security',
+      Component: SecurityPolicy,
+      title: 'settings.nav.securityPolicy',
+      iconName: 'Key',
+      permissionPath: '/settings/security',
     },
     {
       pattern: '/users',

@@ -22,7 +22,8 @@
         "customization": "Customization",
         "integrations": "Integrations",
         "devicesSystem": "Devices and system"
-      }
+      },
+      "securityPolicy": "Access security"
     },
     "devices": {
       "loadError": "Could not load this company's kiosks.",
@@ -98,7 +99,8 @@
       "disableSubtitle": "Enter a code to confirm",
       "disableHelp": "Enter a code from your app (or a backup code) to disable two-factor authentication.",
       "code": "Code",
-      "codePlaceholder": "123456 or backup code"
+      "codePlaceholder": "123456 or backup code",
+      "requiredByPolicy": "One of your companies requires two-step verification: it cannot be turned off."
     },
     "webhooks": {
       "events": {
@@ -380,6 +382,53 @@
       "historyTitle": "History · {name}",
       "noRuns": "No runs yet",
       "noRunsHint": "Use “Run now” to test it without waiting for the trigger."
+    },
+    "securityPolicy": {
+      "title": "Access security",
+      "subtitle": "How people sign in to this company: second factor, session length and passwords.",
+      "readOnly": "You can only view this policy.",
+      "loadError": "Could not load the access policy.",
+      "saved": "Policy saved",
+      "save": "Save changes",
+      "discard": "Discard",
+      "ssoRequired": "SSO only",
+      "ssoRequiredHint": "Nobody will be able to sign in any other way. An active single sign-on provider is required.",
+      "mfa": {
+        "title": "Two-step verification",
+        "description": "Who must use a second factor. Anyone without one must set it up when signing in.",
+        "off": "No",
+        "admins": "Administrators",
+        "all": "Everyone"
+      },
+      "session": {
+        "title": "Session",
+        "description": "How long an open session lasts and when it closes from inactivity.",
+        "maxDays": "Maximum length (days)",
+        "maxDaysHint": "From {min} to {max}.",
+        "idleHours": "Inactivity (hours)",
+        "idleHoursHint": "From {min} to {max}."
+      },
+      "methods": {
+        "title": "Ways to sign in",
+        "description": "Which methods people may use to sign in. At least one must remain.",
+        "password": "Password",
+        "passkey": "Passkey",
+        "emailCode": "Email code",
+        "sso": "Single sign-on (SSO)"
+      },
+      "passwords": {
+        "title": "Password rules",
+        "description": "Applied when a password is created or changed. Existing passwords are untouched.",
+        "enable": "Require password rules",
+        "minLength": "Minimum length",
+        "minLengthHint": "From {min} to {max} characters.",
+        "blockCommon": "Reject common passwords"
+      },
+      "errors": {
+        "invalid": "The policy is not valid. Check the values.",
+        "lockoutTitle": "This policy cannot be saved",
+        "saveFailed": "Could not save the policy"
+      }
     }
   }
 }

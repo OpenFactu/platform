@@ -34,7 +34,8 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const { locale } = useI18n();
   const [info, setInfo] = useState<LocalizationInfo | null>(null);
-  const tenantId = user?.tenantId;
+  // Con el segundo factor pendiente, lo de la empresa responde 403: no se pide.
+  const tenantId = user?.restricted ? undefined : user?.tenantId;
 
   const refresh = useCallback(async () => {
     if (!tenantId) {

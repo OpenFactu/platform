@@ -14,6 +14,8 @@ export interface AuthUser {
   /** Tema personal; null = el de la empresa. */
   themePreset?: string | null;
   themeMode?: 'light' | 'dark' | null;
+  /** `mfa_setup`: la empresa exige el 2FA y esta sesión aún no lo tiene. */
+  restricted?: 'mfa_setup' | null;
 }
 
 export const authApi = {

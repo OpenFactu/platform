@@ -10,7 +10,10 @@ import { useI18n } from '@/i18n/I18nContext';
  * Flujo de alta: setup (QR) → enable (código) → muestra códigos de respaldo.
  * Flujo de baja: disable (código).
  */
-export const TwoFactorSettings: React.FC = () => {
+export const TwoFactorSettings: React.FC<{
+  /** Se llama al cerrar el alta ya completada (con los códigos de respaldo vistos). */
+  onEnabled?: () => void;
+}> = ({ onEnabled }) => {
   const { token } = useAuth();
   const toast = useToast();
   const { t } = useI18n();
@@ -88,7 +91,12 @@ export const TwoFactorSettings: React.FC = () => {
     try {
       const res = await coreApi.raw('POST', '/api/2fa/disable', { code: disableCode.trim() });
       const data = res.data;
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (data?.code === 'MFA_REQUIRED_BY_POLICY') {
+          throw new Error(t('settings.twoFactor.requiredByPolicy'));
+        }
+        throw new Error(data.error);
+      }
       setEnabled(false);
       setDisableOpen(false);
       setDisableCode('');
@@ -103,6 +111,7 @@ export const TwoFactorSettings: React.FC = () => {
   };
 
   const closeSetup = () => {
+    if (backupCodes) onEnabled?.();
     setSetupOpen(false);
     setQr(null);
     setSecret('');

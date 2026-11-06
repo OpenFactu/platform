@@ -41,6 +41,9 @@ const PdfViewerPage = lazy(() =>
 const KioskMode = lazy(() =>
   import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
 );
+const MfaSetupRequired = lazy(() =>
+  import('./pages/MfaSetupRequired').then((m) => ({ default: m.MfaSetupRequired })),
+);
 const MainLayout = lazy(() =>
   import('./components/MainLayout').then((m) => ({ default: m.MainLayout })),
 );
@@ -48,7 +51,7 @@ const MainLayout = lazy(() =>
 function App() {
   const [setupChecked, setSetupChecked] = useState(false);
   const [setupNeeded, setSetupNeeded] = useState(false);
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   useEffect(() => {
     const checkSetup = async () => {
@@ -144,6 +147,17 @@ function App() {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
+        <DebugPanel />
+      </>
+    );
+  }
+
+  // La empresa exige el segundo factor y esta sesión aún no lo tiene: solo puede darlo de alta.
+  // Sin MainLayout ni providers del ERP, porque todo lo demás respondería 403.
+  if (user?.restricted === 'mfa_setup') {
+    return (
+      <>
+        <MfaSetupRequired />
         <DebugPanel />
       </>
     );

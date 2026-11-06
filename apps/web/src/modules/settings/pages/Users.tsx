@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { UserAccessSection } from '../security/UserAccessSection';
+import { passwordErrorKey } from '../security/policyModel';
 import { UsersTable } from '../components/UsersTable';
 import { permissionsApi, type PermissionGroup } from '../api/permissionsApi';
 
@@ -469,7 +470,10 @@ export const Users: React.FC = () => {
       if (password) payload.password = password;
 
       const savedUser: any = await coreApi.raw(method, url, payload).then((r) => {
-        if (!r.ok) throw new Error(r.data?.error || t('settingsUsers.saveError'));
+        if (!r.ok) {
+          const pwKey = passwordErrorKey(r.data);
+          throw new Error(pwKey ? t(pwKey) : r.data?.error || t('settingsUsers.saveError'));
+        }
         return r.data;
       });
       const userId = savedUser.id || editingUser?.id;

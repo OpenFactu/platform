@@ -21,6 +21,8 @@ interface User {
   locale?: string | null;
   themePreset?: string | null;
   themeMode?: 'light' | 'dark' | null;
+  /** `mfa_setup`: la empresa exige el 2FA y esta sesión aún no lo tiene; solo puede darlo de alta. */
+  restricted?: 'mfa_setup' | null;
 }
 
 interface AuthContextType {

@@ -327,6 +327,8 @@ function buildThemeLayer(input: ThemeInput) {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, user, patchUser } = useAuth();
+  // Con el segundo factor pendiente, la configuración de la empresa responde 403: no se pide.
+  const configTenantId = user?.restricted ? undefined : user?.tenantId;
   const [branding, setBranding] = useState<BrandingConfig>(readCachedBranding);
   // Mientras /me responde solo está el token: lo elegido se saca de la caché, o
   // la app pasaría un instante por el tema de la empresa al recargar.
@@ -339,7 +341,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchSection = useCallback(
     async <T,>(section: string): Promise<T | null> => {
-      if (!token || !user?.tenantId) return null;
+      if (!token || !configTenantId) return null;
       try {
         const res = await coreApi.raw('GET', `/api/config/${section}`);
         if (!res.ok) return null;
@@ -348,14 +350,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return null;
       }
     },
-    [token, user?.tenantId],
+    [token, configTenantId],
   );
 
   const reload = useCallback(async () => {
     // Sin tenant: NO resetear estado — mantenemos lo que haya en el cache
     // (ya sea por el init o por un tenant previo). Esto evita un flash a light
     // mientras AuthContext carga /me al inicio.
-    if (!user?.tenantId) return;
+    if (!configTenantId) return;
 
     setLoading(true);
     try {
@@ -370,7 +372,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } finally {
       setLoading(false);
     }
-  }, [fetchSection, user?.tenantId]);
+  }, [fetchSection, configTenantId]);
 
   const update = useCallback(
     async (section: 'branding' | 'format' | 'flags', patch: any) => {

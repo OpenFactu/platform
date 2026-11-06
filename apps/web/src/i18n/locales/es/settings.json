@@ -22,7 +22,8 @@
         "customization": "Personalización",
         "integrations": "Integraciones",
         "devicesSystem": "Dispositivos y sistema"
-      }
+      },
+      "securityPolicy": "Seguridad del acceso"
     },
     "devices": {
       "loadError": "No se pudieron cargar los kioscos de esta empresa.",
@@ -98,7 +99,8 @@
       "disableSubtitle": "Introduce un código para confirmar",
       "disableHelp": "Introduce un código de tu app (o un código de respaldo) para desactivar la autenticación en dos pasos.",
       "code": "Código",
-      "codePlaceholder": "123456 o código de respaldo"
+      "codePlaceholder": "123456 o código de respaldo",
+      "requiredByPolicy": "Una de tus empresas exige la verificación en dos pasos: no se puede desactivar."
     },
     "webhooks": {
       "events": {
@@ -380,6 +382,53 @@
       "historyTitle": "Historial · {name}",
       "noRuns": "Sin ejecuciones aún",
       "noRunsHint": "Usa «Ejecutar ahora» para probarla sin esperar al trigger."
+    },
+    "securityPolicy": {
+      "title": "Seguridad del acceso",
+      "subtitle": "Cómo entra la gente en esta empresa: segundo factor, duración de la sesión y contraseñas.",
+      "readOnly": "Solo puedes consultar esta política.",
+      "loadError": "No se pudo cargar la política de acceso.",
+      "saved": "Política guardada",
+      "save": "Guardar cambios",
+      "discard": "Descartar",
+      "ssoRequired": "Solo con SSO",
+      "ssoRequiredHint": "Nadie podrá entrar con otro método. Hace falta un proveedor de acceso único activo.",
+      "mfa": {
+        "title": "Verificación en dos pasos",
+        "description": "A quién se le exige un segundo factor. Quien aún no lo tenga deberá activarlo al entrar.",
+        "off": "No",
+        "admins": "Administradores",
+        "all": "Todos"
+      },
+      "session": {
+        "title": "Sesión",
+        "description": "Cuánto dura una sesión abierta y cuándo se cierra por falta de uso.",
+        "maxDays": "Duración máxima (días)",
+        "maxDaysHint": "De {min} a {max}.",
+        "idleHours": "Inactividad (horas)",
+        "idleHoursHint": "De {min} a {max}."
+      },
+      "methods": {
+        "title": "Formas de entrar",
+        "description": "Qué métodos puede usar la gente para iniciar sesión. Tiene que quedar al menos uno.",
+        "password": "Contraseña",
+        "passkey": "Passkey",
+        "emailCode": "Código por correo",
+        "sso": "Acceso único (SSO)"
+      },
+      "passwords": {
+        "title": "Reglas de contraseña",
+        "description": "Se aplican al crear o cambiar una contraseña. Las actuales no se tocan.",
+        "enable": "Exigir reglas de contraseña",
+        "minLength": "Longitud mínima",
+        "minLengthHint": "De {min} a {max} caracteres.",
+        "blockCommon": "Rechazar contraseñas comunes"
+      },
+      "errors": {
+        "invalid": "La política no es válida. Revisa los valores.",
+        "lockoutTitle": "No se puede guardar esta política",
+        "saveFailed": "No se pudo guardar la política"
+      }
     }
   }
 }
