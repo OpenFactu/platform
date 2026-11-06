@@ -12,4 +12,11 @@ export default {
   'Si no has sido tú, cierra esa sesión y cambia la contraseña:':
     'If it was not you, sign that session out and change your password:',
   'Revisar mi seguridad': 'Review my security',
+  'Keirost — Tu código de acceso': 'Keirost — Your sign-in code',
+  'Tu código de acceso': 'Your sign-in code',
+  'Usa este código para entrar. Caduca en 10 minutos:':
+    'Use this code to sign in. It expires in 10 minutes:',
+  'O entra directamente con este enlace:': 'Or sign in directly with this link:',
+  'Si no lo has pedido tú, ignora este correo.': 'If you did not request this, ignore this email.',
+  Entrar: 'Sign in',
 };

@@ -28,6 +28,8 @@ import eventRoutes from './auth/eventRoutes';
 import { recordAuthEvent } from '../core/auth/authEvents';
 import passkeyRoutes from './auth/passkeyRoutes';
 import handoffRoutes from './auth/handoffRoutes';
+import emailCodeRoutes from './auth/emailCodeRoutes';
+import methodsRoutes from './auth/methodsRoutes';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
@@ -48,6 +50,9 @@ router.use(mfaRoutes);
 router.use(passkeyRoutes);
 // Entrega de login entre dispositivos.
 router.use(handoffRoutes);
+// Código y enlace por correo, y las formas de entrar disponibles.
+router.use(emailCodeRoutes);
+router.use(methodsRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
