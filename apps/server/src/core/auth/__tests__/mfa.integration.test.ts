@@ -17,6 +17,8 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
 
   before(async () => {
     t = await useAuthTestDb();
+    // Los fallos por IP (127.0.0.1) de ejecuciones anteriores bloquearían a todas las pruebas.
+    await t.publicDb.execute(sql`DELETE FROM public."AuthThrottle"`);
     const app = express();
     app.use(express.json());
     // Mismo orden que server.ts: /api/auth no pasa por el contexto de empresa.
@@ -27,7 +29,10 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
   });
   after(async () => {
     await new Promise((r) => (server ? server.close(r) : r(null)));
-    if (t) await t.drop();
+    if (t) {
+      await t.publicDb.execute(sql`DELETE FROM public."AuthThrottle"`);
+      await t.drop();
+    }
   });
 
   const post = async (path: string, body: any) => {
