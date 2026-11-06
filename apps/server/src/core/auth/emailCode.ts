@@ -74,7 +74,7 @@ export async function soleMailTenantId(user: {
     .select({ tenantId: userTenantMemberships.tenantId })
     .from(userTenantMemberships)
     .where(eq(userTenantMemberships.userId, user.id));
-  const ids = new Set(rows.map((r: { tenantId: string }) => r.tenantId));
+  const ids = new Set<string>(rows.map((r: { tenantId: string }) => r.tenantId));
   if (user.tenantId) ids.add(user.tenantId);
   return ids.size === 1 ? [...ids][0] : null;
 }
