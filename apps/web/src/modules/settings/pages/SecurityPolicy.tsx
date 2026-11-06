@@ -15,7 +15,7 @@ import {
   useToast,
 } from '@openfactu/ui';
 import { ShieldCheck } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { useI18n } from '@/i18n/I18nContext';
 import { usePolicy } from '../security/usePolicy';
 import {
@@ -37,14 +37,9 @@ const METHOD_KEYS: Record<AuthMethod, string> = {
 export const SecurityPolicy: React.FC = () => {
   const { t } = useI18n();
   const toast = useToast();
-  const { user } = useAuth();
+  const { canWrite } = usePagePermissions();
   const { draft, loading, loadError, saving, saveError, dirty, patch, patchRules, save, reset } =
     usePolicy();
-
-  const canWrite =
-    user?.role === 'SUPERUSER' ||
-    user?.role === 'ADMIN' ||
-    !!user?.permissions?.['/settings/security']?.write;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +117,8 @@ export const SecurityPolicy: React.FC = () => {
               })}
             >
               <NumberInput
+                precision={0}
+                allowNegative={false}
                 value={draft.sessionMaxDays}
                 onChange={(v) => v !== null && patch({ sessionMaxDays: v })}
                 commitOn="blur"
@@ -138,6 +135,8 @@ export const SecurityPolicy: React.FC = () => {
               })}
             >
               <NumberInput
+                precision={0}
+                allowNegative={false}
                 value={draft.idleHours}
                 onChange={(v) => v !== null && patch({ idleHours: v })}
                 commitOn="blur"
@@ -200,6 +199,8 @@ export const SecurityPolicy: React.FC = () => {
                   })}
                 >
                   <NumberInput
+                    precision={0}
+                    allowNegative={false}
                     value={rules.minLength}
                     onChange={(v) => v !== null && patchRules({ minLength: v })}
                     commitOn="blur"
