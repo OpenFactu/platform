@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   PasswordInput,
+  Field,
   Select,
   SearchableSelect,
   Loader,
@@ -621,15 +622,15 @@ export const Users: React.FC = () => {
                   <p className="text-[10px] text-fg-subtle">{t('settingsUsers.resetHelp')}</p>
                 )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest flex items-center gap-1.5">
-                  <ShieldCheck
-                    size={11}
-                    className={isPrivileged ? 'text-accent' : 'text-fg-subtle'}
-                  />
-                  {t('settingsUsers.globalRole')}{' '}
-                  {!isPrivileged && <Lock size={9} className="text-fg-subtle" />}
-                </label>
+              {/* Misma etiqueta que el resto del formulario (Field = la de Input). */}
+              <Field
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck size={10} /> {t('settingsUsers.globalRole')}
+                    {!isPrivileged && <Lock size={10} className="text-fg-subtle" />}
+                  </span>
+                }
+              >
                 {isPrivileged ? (
                   // 2–3 opciones fijas → Select. La etiqueta con iconos se queda
                   // arriba (Select solo acepta `label` de texto), de ahí ariaLabel.
@@ -658,7 +659,7 @@ export const Users: React.FC = () => {
                             : globalRole}
                   </div>
                 )}
-              </div>
+              </Field>
             </div>
 
             {/* Memberships de empresa */}
