@@ -38,7 +38,25 @@ export async function useAuthTestDb(): Promise<{
   await ClientFactory.setBaseUrl(authTestDatabaseUrl);
   const publicDb = ClientFactory.getClient('public');
   const file = path.join(__dirname, '../../../../sql/public-schema.sql');
-  await publicDb.execute(sql.raw(fs.readFileSync(file, 'utf8')));
+  const ddl = fs.readFileSync(file, 'utf8');
+  const ddlHash = crypto.createHash('sha256').update(ddl).digest('hex');
+  // Cada fichero de prueba corre en su propio proceso contra la misma base. Los ALTER TABLE del
+  // esquema piden bloqueos de tabla y, lanzados a la vez desde varios procesos (o mientras otro
+  // ya inserta), acaban en `deadlock detected`. Un candado de aviso los pone en fila y, si el
+  // esquema ya está aplicado (misma huella), nadie lo vuelve a tocar.
+  await publicDb.transaction(async (tx: any) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('keirost_auth_test_schema'))`);
+    await tx.execute(
+      sql`CREATE TABLE IF NOT EXISTS public."_AuthTestSchema" (id int PRIMARY KEY, hash text NOT NULL)`,
+    );
+    const rows: any = await tx.execute(sql`SELECT hash FROM public."_AuthTestSchema" WHERE id = 1`);
+    if ((rows.rows ?? rows)[0]?.hash === ddlHash) return;
+    await tx.execute(sql.raw(ddl));
+    await tx.execute(
+      sql`INSERT INTO public."_AuthTestSchema" (id, hash) VALUES (1, ${ddlHash})
+          ON CONFLICT (id) DO UPDATE SET hash = EXCLUDED.hash`,
+    );
+  });
 
   const created: string[] = [];
 
