@@ -33,6 +33,12 @@ async function inCallerCompany(req: any, userId: string): Promise<boolean> {
   if (req.user?.role === 'SUPERUSER') return true;
   if (!req.tenantId) return false;
   const db = ClientFactory.getClient('public');
+  // Un administrador de empresa no ve ni toca a un SUPERUSER: para él, no existe.
+  const [target] = await db
+    .select({ role: schema.globalUsers.role })
+    .from(schema.globalUsers)
+    .where(eq(schema.globalUsers.id, userId));
+  if (!target || target.role === 'SUPERUSER') return false;
   const [m] = await db
     .select({ id: schema.userTenantMemberships.id })
     .from(schema.userTenantMemberships)

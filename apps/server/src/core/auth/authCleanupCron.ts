@@ -15,7 +15,15 @@ export async function runAuthCleanup(now: Date = new Date()): Promise<void> {
   const ago = (ms: number) => new Date(now.getTime() - ms);
   await db.delete(authEvents).where(lt(authEvents.at, ago(365 * DAY_MS)));
   await db.delete(authChallenges).where(lt(authChallenges.expiresAt, ago(7 * DAY_MS)));
-  await db.delete(userSessions).where(lt(userSessions.absoluteExpiresAt, ago(7 * DAY_MS)));
+  await db
+    .delete(userSessions)
+    .where(
+      or(
+        lt(userSessions.absoluteExpiresAt, ago(7 * DAY_MS)),
+        lt(userSessions.expiresAt, ago(7 * DAY_MS)),
+        lt(userSessions.revokedAt, ago(7 * DAY_MS)),
+      ),
+    );
   // Sin bloqueo vigente y con la ventana de 15 min ya pasada.
   await db
     .delete(authThrottles)

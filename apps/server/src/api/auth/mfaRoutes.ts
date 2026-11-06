@@ -167,7 +167,7 @@ router.post('/mfa', async (req, res) => {
     const used = await consumeUserCode(user, code);
     if (!used.ok) {
       await recordAttempt('mfa', keys, false);
-      await recordAuthEvent({
+      void recordAuthEvent({
         userId: user.id,
         kind: 'mfa',
         ok: false,

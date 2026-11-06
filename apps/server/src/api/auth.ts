@@ -113,7 +113,8 @@ router.post('/login', async (req, res) => {
     if (!user || !isMatch) {
       await recordAttempt('login', keys, false);
       if (user) {
-        await recordAuthEvent({
+        // Sin esperar: con cuenta o sin ella la respuesta tarda lo mismo.
+        void recordAuthEvent({
           userId: user.id,
           kind: 'login',
           ok: false,
@@ -134,7 +135,7 @@ router.post('/login', async (req, res) => {
       const used = await consumeUserCode(user, String(totpCode));
       await recordAttempt('mfa', mfaKeys, used.ok);
       if (!used.ok) {
-        await recordAuthEvent({
+        void recordAuthEvent({
           userId: user.id,
           kind: 'mfa',
           ok: false,

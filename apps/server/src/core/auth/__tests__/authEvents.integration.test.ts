@@ -11,6 +11,7 @@ import { runAuthCleanup } from '../authCleanupCron';
 import { mailQueue } from '../../email/MailQueue';
 import authRouter from '../../../api/auth';
 import usersRouter from '../../../api/users';
+import { mountApi } from '../apiMounts';
 
 // IP propia de esta ejecución: los contadores de otras pruebas no se tocan ni nos afectan.
 const testIp = `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 254) + 1}`;
@@ -36,16 +37,16 @@ describe(
       app.set('trust proxy', true);
       app.use(express.json());
       app.use('/api/auth', authRouter);
-      // Como tras el contexto de empresa: un administrador de la empresa de prueba.
-      app.use(
-        '/api/users',
-        (req: any, _res, next) => {
-          req.user = { id: 'admin-x', role: 'ADMIN' };
-          req.tenantId = tenantId;
-          next();
-        },
-        usersRouter,
-      );
+      // Como tras el contexto de empresa, y con el mismo gate de permisos que server.ts.
+      app.use('/api/users', (req: any, _res, next) => {
+        const actor = String(req.headers['x-test-actor'] || 'ADMIN');
+        req.user = actor.startsWith('user:')
+          ? { id: actor.slice(5), role: 'USER' }
+          : { id: 'admin-x', role: actor };
+        req.tenantId = tenantId;
+        next();
+      });
+      mountApi(app, '/api/users', '/users', usersRouter);
       server = http.createServer(app);
       await new Promise<void>((r) => server.listen(0, r));
       base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -66,6 +67,16 @@ describe(
       mock.restoreAll();
       enqueue = mock.method(mailQueue, 'enqueue', () => 'mail-id');
     });
+
+    // Los fallos se apuntan sin esperar: se da un momento a que lleguen.
+    const eventsOf = async (userId: string, n: number) => {
+      for (let i = 0; i < 40; i++) {
+        const e = await listAuthEvents(userId, 20);
+        if (e.length >= n) return e;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      return listAuthEvents(userId, 20);
+    };
 
     const member = async () => {
       const u = await t.createUser();
@@ -117,7 +128,7 @@ describe(
       const u = await member();
       const r = await login({ email: u.email, password: 'mala' });
       assert.equal(r.status, 401);
-      const events = await listAuthEvents(u.id, 10);
+      const events = await eventsOf(u.id, 1);
       assert.equal(events.length, 1);
       assert.equal(events[0].kind, 'login');
       assert.equal(events[0].ok, false);
@@ -168,6 +179,7 @@ describe(
     it('el bloqueo de la cuenta deja un evento lockout con el userId', async () => {
       const u = await member();
       for (let i = 0; i < 5; i++) await login({ email: u.email, password: 'mala' });
+      await eventsOf(u.id, 6);
       const events = await listAuthEvents(u.id, 20);
       assert.ok(events.some((e) => e.kind === 'lockout' && !e.ok));
       await t.publicDb.execute(
@@ -207,6 +219,79 @@ describe(
       assert.equal(d.body.revoked, 1);
       assert.equal((await call('GET', '/api/auth/events', { token })).status, 401);
       assert.ok((await listAuthEvents(u.id, 10)).some((e) => e.kind === 'revoke'));
+    });
+
+    it('un administrador no ve ni toca a un SUPERUSER; un SUPERUSER sí', async () => {
+      const su = await t.createUser({ role: 'SUPERUSER' });
+      await t.publicDb.execute(
+        sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role)
+            VALUES (${crypto.randomUUID()}, ${su.id}, ${tenantId}, 'ADMIN')`,
+      );
+      await login(su);
+      for (const [m, p] of [
+        ['GET', 'auth-events'],
+        ['GET', 'sessions'],
+        ['DELETE', 'sessions'],
+      ]) {
+        const r = await call(m, `/api/users/${su.id}/${p}`);
+        assert.equal(r.status, 404, `${m} ${p} como ADMIN`);
+      }
+      const asSu = { headers: { 'x-test-actor': 'SUPERUSER' } };
+      assert.equal((await call('GET', `/api/users/${su.id}/auth-events`, asSu)).status, 200);
+      assert.equal((await call('GET', `/api/users/${su.id}/sessions`, asSu)).status, 200);
+      assert.equal((await call('DELETE', `/api/users/${su.id}/sessions`, asSu)).status, 200);
+    });
+
+    it('DELETE /api/users/:id/sessions pide escritura de /users; con solo lectura, 403', async () => {
+      const target = await member();
+      const reader = await t.createUser();
+      await t.publicDb.execute(
+        sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role, permissions)
+            VALUES (${crypto.randomUUID()}, ${reader.id}, ${tenantId}, 'USER', ${JSON.stringify({ '/users': { read: true } })})`,
+      );
+      const asReader = { headers: { 'x-test-actor': `user:${reader.id}` } };
+      assert.equal((await call('GET', `/api/users/${target.id}/sessions`, asReader)).status, 200);
+      assert.equal(
+        (await call('DELETE', `/api/users/${target.id}/sessions`, asReader)).status,
+        403,
+      );
+    });
+
+    it('el correo escapa un user agent malicioso', async () => {
+      const u = await member();
+      await login(u, { 'x-keirost-device': 'm0' });
+      await login(u, { 'x-keirost-device': 'm1', 'user-agent': '<img src=x onerror=alert(1)>' });
+      assert.equal(enqueue.mock.callCount(), 1);
+      const mail = (enqueue.mock.calls[0].arguments as any[])[1];
+      assert.ok(!mail.html.includes('<img'));
+      assert.ok(!mail.html.includes('onerror=alert(1)>'));
+    });
+
+    it('la limpieza borra sesiones revocadas o caducadas hace más de 7 días', async () => {
+      const u = await t.createUser();
+      const old = new Date(Date.now() - 10 * 86400_000);
+      const future = new Date(Date.now() + 86400_000);
+      const ins = (id: string, expiresAt: Date, revokedAt: Date | null) =>
+        t.publicDb.execute(
+          sql`INSERT INTO public."UserSession" (id, "userId", "expiresAt", "absoluteExpiresAt", "revokedAt")
+              VALUES (${id}, ${u.id}, ${expiresAt}, ${future}, ${revokedAt})`,
+        );
+      const ids = [
+        's-' + crypto.randomUUID(),
+        's-' + crypto.randomUUID(),
+        's-' + crypto.randomUUID(),
+      ];
+      await ins(ids[0], old, null); // caducada hace tiempo
+      await ins(ids[1], future, old); // revocada hace tiempo
+      await ins(ids[2], future, null); // viva
+      await runAuthCleanup();
+      const rows: any = await t.publicDb.execute(
+        sql`SELECT id FROM public."UserSession" WHERE "userId" = ${u.id}`,
+      );
+      assert.deepEqual(
+        (rows.rows ?? rows).map((r: any) => r.id),
+        [ids[2]],
+      );
     });
 
     it('la limpieza borra eventos de más de 365 días y deja los recientes', async () => {
