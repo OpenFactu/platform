@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import express from 'express';
 import { sql } from 'drizzle-orm';
 import { authTestDatabaseUrl, useAuthTestDb } from './authTestDb';
+import { createChallenge } from '../challenges';
 import authRouter from '../../../api/auth';
 import { approveHandoff, createHandoff, handoffInfo, ipHint, pollHandoff } from '../handoff';
 
@@ -53,6 +54,34 @@ describe('entrega de login entre dispositivos', { skip: !authTestDatabaseUrl }, 
     assert.equal(info?.ipHint, '203.0.x.x');
     assert.equal(ipHint('2001:db8:1:2::1'), '2001:db8:…');
     assert.equal(ipHint('::1'), 'local');
+    assert.equal(ipHint('::ffff:127.0.0.1'), 'local');
+    assert.equal(ipHint(''), 'unknown');
+    assert.equal(ipHint('basura'), 'unknown');
+    assert.equal(ipHint('1.2.3'), 'unknown');
+  });
+
+  it('createHandoff devuelve la caducidad guardada', async () => {
+    const h = await createHandoff(client);
+    const info = await handoffInfo(h.handoffId);
+    assert.equal(h.expiresAt.getTime(), info?.expiresAt.getTime());
+  });
+
+  it('dos sondeos a la vez tras aprobar: solo uno recoge', async () => {
+    const u = await t.createUser();
+    const h = await createHandoff(client);
+    await approveHandoff(h.handoffId, u.id, 'email_code', null);
+    const rs = await Promise.all([
+      pollHandoff(h.handoffId, h.pollSecret),
+      pollHandoff(h.handoffId, h.pollSecret),
+    ]);
+    assert.equal(rs.filter((r) => r.status === 'approved').length, 1);
+    assert.equal(rs.filter((r) => r.status === 'expired').length, 1);
+  });
+
+  it('aprobar un reto de otro tipo da HANDOFF_INVALID', async () => {
+    const u = await t.createUser();
+    const { id } = await createChallenge('mfa', { userId: u.id, ttlMs: 60_000 });
+    await assert.rejects(approveHandoff(id, u.id, 'email_code', null), { code: 'HANDOFF_INVALID' });
   });
 
   it('aprobado se recoge una sola vez', async () => {

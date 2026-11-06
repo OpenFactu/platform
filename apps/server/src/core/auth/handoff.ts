@@ -4,6 +4,7 @@
  * público (`handoffId`); el secreto de sondeo solo lo tiene quien lo creó.
  */
 import crypto from 'crypto';
+import net from 'net';
 import { eq } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { authChallenges } from '../../db/schema';
@@ -33,10 +34,13 @@ export function newConfirmCode(): string {
 /** Pista de la red sin dar la dirección entera. */
 export function ipHint(ip: string): string {
   const v = String(ip || '').replace(/^::ffff:/, '');
-  if (!v || v === '::1' || v === '127.0.0.1') return 'local';
-  if (v.includes(':')) return `${v.split(':').slice(0, 2).join(':')}:…`;
-  const o = v.split('.');
-  return o.length === 4 ? `${o[0]}.${o[1]}.x.x` : 'local';
+  if (v === '::1' || v === '127.0.0.1') return 'local';
+  if (net.isIPv6(v)) return `${v.split(':').slice(0, 2).join(':')}:…`;
+  if (net.isIPv4(v)) {
+    const o = v.split('.');
+    return `${o[0]}.${o[1]}.x.x`;
+  }
+  return 'unknown';
 }
 
 async function load(handoffId: string) {
@@ -61,11 +65,13 @@ export async function createHandoff(client: ClientInfo): Promise<{
       ipHint: ipHint(client.ip),
     },
   });
+  // La fecha guardada, no otra calculada aparte: cliente y base dicen lo mismo.
+  const row = await load(id);
   return {
     handoffId: id,
     pollSecret: secret,
     confirmCode,
-    expiresAt: new Date(Date.now() + HANDOFF_TTL_MS),
+    expiresAt: row!.expiresAt,
   };
 }
 

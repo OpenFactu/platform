@@ -10,7 +10,14 @@ import { ClientFactory } from '../tenant/ClientFactory';
 import { authThrottles, globalUsers } from '../../db/schema';
 import { recordAuthEvent } from './authEvents';
 
-export type ThrottleAction = 'login' | 'mfa' | 'forgot' | 'reset' | 'email_code' | 'handoff';
+export type ThrottleAction =
+  | 'login'
+  | 'mfa'
+  | 'forgot'
+  | 'reset'
+  | 'email_code'
+  | 'handoff'
+  | 'handoff_poll';
 
 export interface ThrottleState {
   failures: number;

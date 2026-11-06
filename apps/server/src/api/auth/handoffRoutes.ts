@@ -42,7 +42,8 @@ router.get('/handoff/:id', async (req, res) => {
 router.post('/handoff/poll', async (req, res) => {
   const { handoffId, pollSecret } = req.body || {};
   try {
-    const gate = await checkThrottle('handoff', { ip: clientInfo(req).ip });
+    // Clave aparte de la de crear: sondear cada pocos segundos no debe bloquearse por crear muchos.
+    const gate = await checkThrottle('handoff_poll', { ip: clientInfo(req).ip });
     if (gate.blocked) return sendThrottled(res, gate.retryAfter);
     const r = await pollHandoff(handoffId, pollSecret);
     if (r.status !== 'approved') return res.json({ status: r.status });
@@ -53,6 +54,10 @@ router.post('/handoff/poll', async (req, res) => {
       .from(schema.globalUsers)
       .where(eq(schema.globalUsers.id, r.userId));
     if (!user) return res.json({ status: 'expired' });
+    // El reto ya está consumido antes de saber si la sesión llega a abrirse: si algo falla
+    // después, el relevo se pierde y hay que pedir otro (falla cerrado, nunca abierto).
+    // Quien llame a `approveHandoff` tiene que haber autenticado antes al que aprueba y pasar
+    // un `mfaDone` honesto: lo que diga se da por bueno aquí y salta el segundo factor.
     // Entra el cliente que sondea: `clientInfo(req)` es el suyo.
     await startMfaOrComplete(req, res, user, {
       method: 'handoff:' + r.method,
