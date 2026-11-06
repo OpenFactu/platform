@@ -184,6 +184,7 @@ export async function verifyRegistration(
     .where(eq(schema.userPasskeys.credentialId, credential.id));
   if (dup) throw new PasskeyError('PASSKEY_EXISTS', 'Esa passkey ya está registrada', 409);
 
+  // Dos altas a la vez de la misma credencial: gana una y la otra cae en el índice único.
   const [created] = await db()
     .insert(schema.userPasskeys)
     .values({
@@ -196,7 +197,13 @@ export async function verifyRegistration(
       rpId: rp.rpId,
       name: (name ?? '').trim().slice(0, 80) || 'Passkey',
     })
-    .returning();
+    .returning()
+    .catch((e: any) => {
+      if ((e?.code ?? e?.cause?.code) === '23505') {
+        throw new PasskeyError('PASSKEY_EXISTS', 'Esa passkey ya está registrada', 409);
+      }
+      throw e;
+    });
   return created;
 }
 
@@ -220,7 +227,15 @@ export async function authenticationOptions(
   const { secret } = await createChallenge('webauthn', {
     userId,
     ttlMs: CHALLENGE_TTL_MS,
-    data: { challenge: options.challenge, rpId: rp.rpId, purpose: 'authenticate' },
+    // El *challenge* de WebAuthn no es un secreto: el cliente lo recibe, y solo vale con la
+    // respuesta firmada por la passkey. Lo que protege es el propósito: 'mfa' (atado a un
+    // usuario, segundo factor) y 'authenticate' (sin usuario, entrar sin contraseña) no se
+    // intercambian.
+    data: {
+      challenge: options.challenge,
+      rpId: rp.rpId,
+      purpose: userId ? 'mfa' : 'authenticate',
+    },
   });
   return { options, challengeSecret: secret };
 }
@@ -229,11 +244,14 @@ export async function verifyAuthentication(
   rp: RelyingParty,
   challengeSecret: string,
   response: AuthenticationResponseJSON,
+  purpose: 'authenticate' | 'mfa',
 ): Promise<{ userId: string; passkeyId: string }> {
   const row =
     typeof challengeSecret === 'string' ? await findChallenge('webauthn', challengeSecret) : null;
   const data = row ? parseData(row) : null;
-  if (!row || data?.purpose !== 'authenticate' || data?.rpId !== rp.rpId) throw invalid();
+  if (!row || data?.purpose !== purpose || data?.rpId !== rp.rpId) throw invalid();
+  // 'authenticate' no tiene usuario; 'mfa' siempre lo tiene.
+  if (purpose === 'authenticate' ? !!row.userId : !row.userId) throw invalid();
   // Se gasta antes de mirar la respuesta: un reto no se prueba dos veces.
   if (!(await consumeChallenge(row.id))) throw invalid();
 

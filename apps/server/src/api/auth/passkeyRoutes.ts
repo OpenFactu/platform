@@ -150,22 +150,34 @@ router.delete('/passkeys/:id', async (req, res) => {
   const session = await requireSession(req, res);
   if (!session) return;
   try {
-    const mine = await db()
-      .select()
-      .from(schema.userPasskeys)
-      .where(eq(schema.userPasskeys.userId, session.userId));
-    const target = mine.find((p) => p.id === req.params.id);
-    if (!target) return res.status(404).json({ error: 'Passkey no encontrada' });
-
-    const user = await loadUser(session.userId);
-    const lastFactor = !user?.totpEnabled && mine.length === 1;
-    if (lastFactor && (await mfaRequiredSomewhere(session.userId))) {
+    // Comprobar y borrar en una transacción que bloquea las passkeys del usuario: dos
+    // borrados a la vez no pueden dejarlo sin factor los dos.
+    const outcome = await db().transaction(async (tx: any) => {
+      const mine = await tx
+        .select()
+        .from(schema.userPasskeys)
+        .where(eq(schema.userPasskeys.userId, session.userId))
+        .for('update');
+      const target = mine.find((p: any) => p.id === req.params.id);
+      if (!target) return { status: 404 as const };
+      const [user] = await tx
+        .select({ totpEnabled: schema.globalUsers.totpEnabled })
+        .from(schema.globalUsers)
+        .where(eq(schema.globalUsers.id, session.userId));
+      if (!user?.totpEnabled && mine.length === 1 && (await mfaRequiredSomewhere(session.userId))) {
+        return { status: 409 as const };
+      }
+      await tx.delete(schema.userPasskeys).where(eq(schema.userPasskeys.id, target.id));
+      return { status: 204 as const, target };
+    });
+    if (outcome.status === 404) return res.status(404).json({ error: 'Passkey no encontrada' });
+    if (outcome.status === 409) {
       return res.status(409).json({
         error: 'Tu empresa exige un segundo factor: es el último que te queda',
         code: 'MFA_REQUIRED_BY_POLICY',
       });
     }
-    await db().delete(schema.userPasskeys).where(eq(schema.userPasskeys.id, target.id));
+    const target = outcome.target;
     await revokeAllForUser(session.userId, 'passkey_removed', session.id);
     await recordAuthEvent({
       userId: session.userId,
@@ -225,7 +237,7 @@ router.post('/passkey/verify', async (req, res) => {
 
     let found: { userId: string; passkeyId: string };
     try {
-      found = await verifyAuthentication(rp, challenge, response);
+      found = await verifyAuthentication(rp, challenge, response, 'authenticate');
     } catch (e) {
       if (e instanceof PasskeyError) await recordAttempt('login', keys, false);
       throw e;

@@ -51,11 +51,11 @@ export async function startMfaOrComplete(
   const blocked = await loginPolicyBlock(user, opts.tenantId, opts.method);
   if (blocked) return rejectByPolicy(req, res, user, opts.method, blocked);
   const db = ClientFactory.getClient('public');
-  const [passkey] = await db
-    .select({ id: schema.userPasskeys.id })
+  const allPasskeys = await db
+    .select({ rpId: schema.userPasskeys.rpId })
     .from(schema.userPasskeys)
-    .where(eq(schema.userPasskeys.userId, user.id))
-    .limit(1);
+    .where(eq(schema.userPasskeys.userId, user.id));
+  const passkey = allPasskeys[0];
 
   if (!user.totpEnabled && !passkey) {
     return completeLogin(req, res, user, {
@@ -72,16 +72,26 @@ export async function startMfaOrComplete(
     maxAttempts: MFA_MAX_ATTEMPTS,
     data: { method: opts.method, tenantId: opts.tenantId ?? null },
   });
+  const methods = [
+    ...(user.totpEnabled ? ['totp', 'backup'] : []),
+    // Solo si tiene alguna passkey de este cliente (la de la web no sirve en el escritorio).
+    ...(hereRp && (await passkeysFor(user.id, hereRp.rpId)).length ? ['passkey'] : []),
+  ];
+  // Sin ningún método usable aquí no se abre sesión: se avisa de dónde están sus passkeys.
+  const elsewhere = methods.length === 0;
   res.json({
     mfaRequired: true,
     // Compatibilidad con la web que aún pregunta por esta clave.
     twoFactorRequired: true,
     challenge: secret,
-    methods: [
-      ...(user.totpEnabled ? ['totp', 'backup'] : []),
-      // Solo si tiene alguna passkey de este cliente (la de la web no sirve en el escritorio).
-      ...(hereRp && (await passkeysFor(user.id, hereRp.rpId)).length ? ['passkey'] : []),
-    ],
+    methods,
+    ...(elsewhere
+      ? {
+          passkeyElsewhere: true,
+          passkeyRpIds: [...new Set(allPasskeys.map((p) => p.rpId))],
+          code: 'MFA_NOT_AVAILABLE_HERE',
+        }
+      : {}),
     user: { name: user.username, email: user.email, avatarImageUrl: user.avatarImageUrl ?? null },
   });
 }
@@ -166,7 +176,7 @@ async function mfaWithPasskey(req: any, res: any, row: any, passkey: any) {
 
   let ok = false;
   try {
-    const found = await verifyAuthentication(rp, passkey?.challenge, passkey?.response);
+    const found = await verifyAuthentication(rp, passkey?.challenge, passkey?.response, 'mfa');
     ok = found.userId === row.userId;
   } catch (e) {
     if (!(e instanceof PasskeyError)) throw e;

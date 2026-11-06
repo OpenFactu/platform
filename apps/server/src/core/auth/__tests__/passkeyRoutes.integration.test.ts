@@ -253,7 +253,12 @@ describe('rutas de passkeys', { skip: !authTestDatabaseUrl }, () => {
     });
     assert.equal(wrong.status, 400);
     assert.equal(wrong.body.code, 'PASSKEY_INVALID');
-    // El reto se gastó con el primer intento.
+    // El reto se gastó con el primer intento: queda consumido en la base.
+    const used: any = await t.publicDb.execute(
+      sql`SELECT status FROM public."AuthChallenge"
+          WHERE kind = 'webauthn' AND data::jsonb->>'challenge' = ${o.body.options.challenge}`,
+    );
+    assert.equal((used.rows ?? used)[0].status, 'consumed');
     const again = await call('POST', '/api/auth/passkey/verify', {
       body: { challenge: o.body.challenge, response: { id: 'no-existe' } },
     });
@@ -276,8 +281,13 @@ describe('rutas de passkeys', { skip: !authTestDatabaseUrl }, () => {
     assert.equal(web.body.mfaRequired, true);
     assert.deepEqual(web.body.methods, ['passkey']);
     // Otro RP (el escritorio): la passkey de la web no sirve ahí.
+    assert.equal(web.body.passkeyElsewhere, undefined);
     const desktop = await login('http://localhost:43123');
     assert.deepEqual(desktop.body.methods, []);
+    assert.equal(desktop.body.mfaRequired, true);
+    assert.equal(desktop.body.passkeyElsewhere, true);
+    assert.deepEqual(desktop.body.passkeyRpIds, ['erp.passkeys-test.example']);
+    assert.equal(desktop.body.code, 'MFA_NOT_AVAILABLE_HERE');
 
     // Opciones atadas al usuario del reto y respuesta falsa.
     const o = await call('POST', '/api/auth/passkey/options', {
@@ -293,5 +303,42 @@ describe('rutas de passkeys', { skip: !authTestDatabaseUrl }, () => {
     });
     assert.equal(fake.status, 401);
     assert.equal(fake.body.code, 'MFA_INVALID');
+  });
+
+  it('un reto de passkey del segundo factor no sirve para entrar sin contraseña', async () => {
+    const u = await t.createUser();
+    await addPasskey(u.id);
+    const web = await call('POST', '/api/auth/login', {
+      body: { email: u.email, password: u.password },
+    });
+    const o = await call('POST', '/api/auth/passkey/options', {
+      body: { challenge: web.body.challenge },
+    });
+    assert.equal(o.status, 200);
+    const r = await call('POST', '/api/auth/passkey/verify', {
+      body: { challenge: o.body.challenge, response: { id: 'cred-x' } },
+    });
+    assert.equal(r.status, 400);
+    assert.equal(r.body.code, 'PASSKEY_INVALID');
+    // Y al revés: un reto sin usuario no cierra un reto MFA.
+    const free = await call('POST', '/api/auth/passkey/options', { body: {} });
+    const m = await call('POST', '/api/auth/mfa', {
+      body: {
+        challenge: web.body.challenge,
+        passkey: { challenge: free.body.challenge, response: { id: 'cred-x' } },
+      },
+    });
+    assert.equal(m.status, 401);
+    assert.equal(m.body.code, 'MFA_INVALID');
+  });
+
+  it('dos borrados a la vez de las dos últimas passkeys no dejan al usuario sin factor', async () => {
+    const u = await withSession({ tenant: true });
+    const a = await addPasskey(u.id);
+    const b = await addPasskey(u.id, 'localhost');
+    const rs = await Promise.all(
+      [a, b].map((id) => call('DELETE', `/api/auth/passkeys/${id}`, { token: u.token })),
+    );
+    assert.deepEqual(rs.map((r) => r.status).sort(), [204, 409]);
   });
 });
