@@ -30,6 +30,8 @@ import passkeyRoutes from './auth/passkeyRoutes';
 import handoffRoutes from './auth/handoffRoutes';
 import emailCodeRoutes from './auth/emailCodeRoutes';
 import methodsRoutes from './auth/methodsRoutes';
+import ssoRoutes from './auth/ssoRoutes';
+import identityRoutes from './auth/identityRoutes';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin, rejectByPolicy } from './auth/completeLogin';
 import {
@@ -53,6 +55,9 @@ router.use(handoffRoutes);
 // Código y enlace por correo, y las formas de entrar disponibles.
 router.use(emailCodeRoutes);
 router.use(methodsRoutes);
+// Google, Microsoft y OIDC, y las cuentas enlazadas del propio usuario.
+router.use(ssoRoutes);
+router.use(identityRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el

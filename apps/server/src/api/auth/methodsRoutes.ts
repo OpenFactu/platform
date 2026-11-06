@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { anyTenantHasSmtp } from '../../core/auth/emailCode';
 import { rpFor } from '../../core/auth/passkeys';
 import { readPolicy } from '../../core/auth/policy';
+import { listEnabledProviders, webOrigin } from '../../core/auth/sso';
 
 const router = Router();
 
@@ -23,8 +24,8 @@ router.get('/methods', async (req, res) => {
       password: true,
       passkey: rpFor(req.headers.origin as string | undefined) !== null && ok('passkey'),
       emailCode,
-      // Lo llena la tarea de SSO.
-      sso: [] as Array<{ id: string; name: string; kind: string }>,
+      // Sin secretos: lo justo para pintar el botón y llamar a `/sso/:id/start`.
+      sso: webOrigin() && ok('sso') ? await listEnabledProviders() : [],
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

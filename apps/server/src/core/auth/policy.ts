@@ -203,8 +203,12 @@ export const PASSWORD_MESSAGES: Record<'PASSWORD_TOO_SHORT' | 'PASSWORD_TOO_COMM
   PASSWORD_TOO_COMMON: 'Esa contraseña es demasiado común: elige otra',
 };
 
-/** ¿Hay algún proveedor SSO activo? Sin ninguno, exigir SSO dejaría a todos fuera. */
+/**
+ * ¿Hay algún proveedor SSO activo? Sin ninguno, exigir SSO dejaría a todos fuera. Sin
+ * `WEB_ORIGIN` tampoco: no hay a dónde volver del proveedor y la web no lo ofrece.
+ */
 export async function hasEnabledSsoProvider(): Promise<boolean> {
+  if (!(process.env.WEB_ORIGIN || '').trim()) return false;
   const db = ClientFactory.getClient('public');
   const [row] = await db
     .select({ id: schema.authProviders.id })

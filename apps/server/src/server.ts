@@ -154,6 +154,7 @@ import replenishmentRouter from './api/replenishment';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
 import { restrictedSession } from './api/middleware/restrictedSession';
 import settingsSecurityRouter from './api/settingsSecurity';
+import authProvidersRouter from './api/authProviders';
 import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
@@ -253,6 +254,13 @@ app.use('/api', hideItemCosts);
 // 2b. Gestión de tokens de API (solo admins).
 mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
 mountApi(app, '/api/settings/security', '/settings/security', settingsSecurityRouter);
+// Proveedores de SSO de la instancia: el router exige un SUPERUSER de la base.
+mountShared(
+  app,
+  '/api/auth-providers',
+  'proveedores de inicio de sesión — solo SUPERUSER de la base, lo comprueba el router',
+  authProvidersRouter,
+);
 
 // 3. Rutas de Plugins, Dev Keys y Negocio
 // `/api/plugins` sirve además los componentes de plugin que carga CUALQUIER

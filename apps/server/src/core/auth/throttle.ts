@@ -18,7 +18,8 @@ export type ThrottleAction =
   | 'email_code'
   | 'email_request'
   | 'handoff'
-  | 'handoff_poll';
+  | 'handoff_poll'
+  | 'sso';
 
 export interface ThrottleState {
   failures: number;

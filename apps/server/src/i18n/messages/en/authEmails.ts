@@ -1,4 +1,4 @@
-/** Correos de seguridad del acceso (`core/auth/newDeviceNotice.ts`). Ver `../../index.ts`. */
+/** Correos y páginas de seguridad del acceso (`newDeviceNotice.ts`, `sso.ts`...). Ver `../../index.ts`. */
 export default {
   'Keirost — Nuevo acceso a tu cuenta': 'Keirost — New sign-in to your account',
   'Nuevo acceso a tu cuenta': 'New sign-in to your account',
@@ -25,4 +25,14 @@ export default {
   'Se está iniciando sesión en tu cuenta desde otro dispositivo. Abre el enlace solo si has sido tú y comprueba que el código que verás coincide con el de ese dispositivo.':
     'Someone is signing in to your account from another device. Open the link only if it was you, and check that the code you will see matches the one on that device.',
   'Revisar la solicitud': 'Review the request',
+  'Keirost — Se ha enlazado una cuenta': 'Keirost — An account was linked',
+  'Se ha enlazado una cuenta': 'An account was linked',
+  'Se ha enlazado tu cuenta de {provider} para entrar en Keirost.':
+    'Your {provider} account was linked to sign in to Keirost.',
+  'Cuenta enlazada': 'Linked account',
+  'Si no has sido tú, desenlázala y cambia la contraseña:':
+    'If it was not you, unlink it and change your password:',
+  'Ya puedes volver a Keirost': 'You can go back to Keirost',
+  'Has entrado correctamente. Cierra esta pestaña y vuelve a la aplicación.':
+    'You have signed in. Close this tab and go back to the app.',
 };

@@ -262,9 +262,14 @@ describe('código y enlace por correo', { skip: !authTestDatabaseUrl }, () => {
   it('methods: refleja passkey, correo y la política de la empresa', async () => {
     const all = await call('GET', '/api/auth/methods');
     assert.equal(all.status, 200);
-    assert.deepEqual(all.body, { password: true, passkey: true, emailCode: true, sso: [] });
+    // `sso` lista los proveedores de la base, que otras pruebas crean a la vez: ver sso.integration.
+    const { sso: allSso, ...allRest } = all.body;
+    assert.ok(Array.isArray(allSso));
+    assert.deepEqual(allRest, { password: true, passkey: true, emailCode: true });
     await writePolicy(tenant.db, { ...DEFAULT_POLICY, allowedMethods: ['sso'] });
     const some = await call('GET', `/api/auth/methods?tenantId=${tenant.tenantId}`);
-    assert.deepEqual(some.body, { password: true, passkey: false, emailCode: false, sso: [] });
+    const { sso: someSso, ...someRest } = some.body;
+    assert.ok(Array.isArray(someSso));
+    assert.deepEqual(someRest, { password: true, passkey: false, emailCode: false });
   });
 });
