@@ -38,6 +38,12 @@ export function normalizeBackupCode(code: string): string {
   return clean.length === 8 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
 }
 
+/** Comprueba el código del alta del 2FA con la misma ventana de ±1 paso que el login. */
+export function verifyEnrollCode(code: string, secret: string, window = 1): boolean {
+  const epoch = Number(authenticator.allOptions().epoch ?? Date.now());
+  return authenticator.clone({ window, epoch }).check(String(code).replace(/\s|-/g, ''), secret);
+}
+
 /**
  * Verifica un código de 2FA contra el secreto TOTP o, si no coincide, contra los
  * códigos de respaldo (consumiéndolo). Devuelve `{ ok, usedBackup }` y, si se usó
@@ -166,7 +172,7 @@ router.post('/enable', async (req: any, res) => {
     } catch {
       return res.status(400).json({ error: 'Configuración de 2FA inválida, reinténtalo' });
     }
-    if (!authenticator.verify({ token: String(code).replace(/\s|-/g, ''), secret })) {
+    if (!verifyEnrollCode(code, secret)) {
       return res.status(400).json({ error: 'Código incorrecto' });
     }
 

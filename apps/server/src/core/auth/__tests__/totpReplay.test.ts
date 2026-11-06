@@ -1,7 +1,7 @@
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { authenticator } from 'otplib';
-import { verifyTwoFactor } from '../../../api/twofa';
+import { verifyEnrollCode, verifyTwoFactor } from '../../../api/twofa';
 import { encryptSecret, hashCode } from '../totpCrypto';
 
 const secret = authenticator.generateSecret();
@@ -62,4 +62,20 @@ describe('TOTP de un solo uso', () => {
       assert.equal(again.ok, false);
     });
   }
+});
+
+describe('alta del 2FA', () => {
+  afterEach(() => {
+    authenticator.options = {};
+  });
+
+  it('acepta el código del paso anterior (frontera de 30 s) y rechaza uno de dos pasos atrás', () => {
+    const prev = tokenAt(at(-1));
+    const old = tokenAt(at(-2));
+    authenticator.options = { epoch: T0 };
+    assert.equal(verifyEnrollCode(prev, secret), true);
+    assert.equal(verifyEnrollCode(old, secret), false);
+    // Antes (ventana 0) el del paso anterior fallaba.
+    assert.equal(verifyEnrollCode(prev, secret, 0), false);
+  });
 });

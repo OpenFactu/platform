@@ -47,6 +47,63 @@ export function rejectByPolicy(
   res.status(403).json({ error, code });
 }
 
+/** Empresa, rol y permisos con los que entra un usuario. */
+export interface LoginTarget {
+  role: string;
+  tenantId: string | null;
+  permissions: string | null;
+}
+
+/** Resolución en 3 niveles: membership exacta, empresa heredada del usuario, o ninguna (`null`: sin acceso). */
+export async function resolveLoginTarget(
+  user: any,
+  selectedTenantId: string | null | undefined,
+): Promise<LoginTarget | null> {
+  const db = ClientFactory.getClient('public');
+  // SUPERUSER bypassa memberships: accede a cualquier tenant
+  if (user.role === 'SUPERUSER') {
+    return {
+      role: user.role,
+      tenantId: selectedTenantId || null,
+      permissions: null,
+    };
+  }
+  if (!selectedTenantId) {
+    // Sin empresa elegida: la heredada (legacy)
+    return {
+      role: user.role,
+      tenantId: user.tenantId ?? null,
+      permissions: user.permissions ?? null,
+    };
+  }
+  // Nivel 1: membership exacta para la empresa seleccionada
+  const [membership] = await db
+    .select()
+    .from(schema.userTenantMemberships)
+    .where(
+      and(
+        eq(schema.userTenantMemberships.userId, user.id),
+        eq(schema.userTenantMemberships.tenantId, selectedTenantId),
+      ),
+    );
+  if (membership) {
+    return {
+      role: membership.role,
+      tenantId: membership.tenantId,
+      permissions: membership.permissions,
+    };
+  }
+  // Nivel 2: fallback legacy — el usuario tiene ese tenant asignado directamente
+  if (user.tenantId === selectedTenantId) {
+    return {
+      role: user.role,
+      tenantId: user.tenantId,
+      permissions: user.permissions ?? null,
+    };
+  }
+  return null;
+}
+
 /**
  * La política de la empresa a la que va a entrar, antes de pedirle el segundo factor.
  * `null` si puede seguir (o si no se puede resolver la empresa: `completeLogin` lo dirá).
@@ -56,29 +113,13 @@ export async function loginPolicyBlock(
   tenantId: string | null | undefined,
   method: string,
 ): Promise<'METHOD_NOT_ALLOWED' | 'SSO_REQUIRED' | null> {
-  let role = user.role;
-  let target: string | null = null;
-  if (user.role !== 'SUPERUSER') {
-    const db = ClientFactory.getClient('public');
-    if (tenantId) {
-      const [m] = await db
-        .select()
-        .from(schema.userTenantMemberships)
-        .where(
-          and(
-            eq(schema.userTenantMemberships.userId, user.id),
-            eq(schema.userTenantMemberships.tenantId, tenantId),
-          ),
-        );
-      if (m) {
-        role = m.role;
-        target = tenantId;
-      } else if (user.tenantId === tenantId) target = tenantId;
-      else return null;
-    } else target = user.tenantId ?? null;
-  } else target = tenantId ?? null;
-  if (!target) return null;
-  const gate = policyGate(await readPolicy(target), { role, hasMfa: true }, method);
+  const target = await resolveLoginTarget(user, tenantId);
+  if (!target?.tenantId) return null;
+  const gate = policyGate(
+    await readPolicy(target.tenantId),
+    { role: target.role, hasMfa: true },
+    method,
+  );
   return gate.allowed ? null : gate.code!;
 }
 
@@ -89,47 +130,15 @@ export async function completeLogin(
   opts: CompleteLoginOpts,
 ): Promise<void> {
   const db = ClientFactory.getClient('public');
-  const selectedTenantId = opts.tenantId;
 
-  // Resolución de tenant/rol/permisos en 3 niveles
-  let finalRole = user.role;
-  let finalTenantId: string | null = null;
-  let finalPermissions: string | null = null;
-
-  if (user.role === 'SUPERUSER') {
-    // SUPERUSER bypassa memberships: accede a cualquier tenant
-    finalTenantId = selectedTenantId || null;
-  } else {
-    // Nivel 1: buscar membership exacta para el tenant seleccionado
-    if (selectedTenantId) {
-      const [membership] = await db
-        .select()
-        .from(schema.userTenantMemberships)
-        .where(
-          and(
-            eq(schema.userTenantMemberships.userId, user.id),
-            eq(schema.userTenantMemberships.tenantId, selectedTenantId),
-          ),
-        );
-
-      if (membership) {
-        finalTenantId = membership.tenantId;
-        finalRole = membership.role;
-        finalPermissions = membership.permissions;
-      } else if (user.tenantId === selectedTenantId) {
-        // Nivel 2: fallback legacy — el usuario tiene ese tenant asignado directamente
-        finalTenantId = user.tenantId;
-        finalPermissions = user.permissions;
-      } else {
-        res.status(403).json({ error: 'No tienes acceso a esta empresa' });
-        return;
-      }
-    } else {
-      // Sin selectedTenantId: usar tenantId legacy
-      finalTenantId = user.tenantId;
-      finalPermissions = user.permissions;
-    }
+  const target = await resolveLoginTarget(user, opts.tenantId);
+  if (!target) {
+    res.status(403).json({ error: 'No tienes acceso a esta empresa' });
+    return;
   }
+  const finalRole = target.role;
+  const finalTenantId = target.tenantId;
+  const finalPermissions = target.permissions;
 
   let tenantName = null;
   if (finalTenantId) {
