@@ -1,7 +1,7 @@
 /** Paso del código del login: casillas, enlaces de método y «No eres tú». */
 import React from 'react';
 import { Alert, Avatar, Button, OtpInput } from '@openfactu/ui';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, KeyRound } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 import { isCodeComplete, useMfaStep, type MfaStepParams, type MfaStepState } from './useMfaStep';
 import type { LoginUserInfo } from './loginApi';
@@ -17,6 +17,9 @@ export const LoginMfaStep: React.FC<Props> = ({
   mode,
   setMode,
   canBackup,
+  canTotp,
+  canPasskey,
+  elsewhere,
   resetKey,
   code,
   setCode,
@@ -24,6 +27,7 @@ export const LoginMfaStep: React.FC<Props> = ({
   submitting,
   lockedFor,
   submit,
+  signInWithPasskey,
 }) => {
   const { t } = useI18n();
   const name = user.name || user.email || '';
@@ -40,9 +44,22 @@ export const LoginMfaStep: React.FC<Props> = ({
         </div>
       </div>
 
-      <p className="text-sm text-fg-muted">
-        {mode === 'totp' ? t('auth.mfa.totpHint') : t('auth.mfa.backupHint')}
-      </p>
+      {elsewhere ? (
+        // Sin método usable aquí: se dice por qué y solo queda volver, no un formulario vacío.
+        <Alert tone="warning" role="status">
+          {elsewhere === 'desktop'
+            ? t('auth.passkey.elsewhereDesktop')
+            : t('auth.passkey.elsewhereDevice')}
+        </Alert>
+      ) : (
+        <p className="text-sm text-fg-muted">
+          {mode === 'totp'
+            ? t('auth.mfa.totpHint')
+            : mode === 'backup'
+              ? t('auth.mfa.backupHint')
+              : t('auth.mfa.passkeyHint')}
+        </p>
+      )}
 
       {lockedFor > 0 && (
         <Alert tone="warning" role="status">
@@ -50,7 +67,26 @@ export const LoginMfaStep: React.FC<Props> = ({
         </Alert>
       )}
 
-      {mode === 'totp' ? (
+      {elsewhere ? null : mode === 'passkey' ? (
+        <>
+          {error && (
+            <Alert tone="danger" role="alert">
+              {error}
+            </Alert>
+          )}
+          <Button
+            type="button"
+            size="lg"
+            className="w-full gap-2"
+            isLoading={submitting}
+            disabled={submitting || lockedFor > 0}
+            onClick={() => void signInWithPasskey()}
+          >
+            {!submitting && <KeyRound size={16} />}
+            {t('auth.passkey.use')}
+          </Button>
+        </>
+      ) : mode === 'totp' ? (
         // La celda se encoge para caber en la columna (320 px de pantalla → 272 px de columna);
         // 44 px como mucho. 58 px son los huecos y el separador.
         <div className="[container-type:inline-size] [&_.k-otp]:[--k-cell:min(44px,calc((100cqw_-_58px)/6))]">
@@ -86,31 +122,54 @@ export const LoginMfaStep: React.FC<Props> = ({
         </div>
       )}
 
-      <Button
-        type="button"
-        size="lg"
-        className="w-full gap-2"
-        isLoading={submitting}
-        disabled={submitting || lockedFor > 0 || !isCodeComplete(mode, code)}
-        onClick={() => submit()}
-      >
-        {t('app.login.verify')}
-        {!submitting && <ArrowRight size={16} />}
-      </Button>
+      {!elsewhere && mode !== 'passkey' && (
+        <Button
+          type="button"
+          size="lg"
+          className="w-full gap-2"
+          isLoading={submitting}
+          disabled={submitting || lockedFor > 0 || !isCodeComplete(mode, code)}
+          onClick={() => submit()}
+        >
+          {t('app.login.verify')}
+          {!submitting && <ArrowRight size={16} />}
+        </Button>
+      )}
 
       <div className="flex flex-col items-start gap-1">
-        {canBackup && (
+        {!elsewhere && canTotp && mode !== 'totp' && (
           <Button
             type="button"
             variant="link"
             size="sm"
             className="px-0"
-            onClick={() => setMode(mode === 'totp' ? 'backup' : 'totp')}
+            onClick={() => setMode('totp')}
           >
-            {mode === 'totp' ? t('auth.mfa.useBackup') : t('auth.mfa.useApp')}
+            {t('auth.mfa.useApp')}
           </Button>
         )}
-        {/* «Usar una passkey»: oculto hasta que exista el inicio con passkey. */}
+        {!elsewhere && canBackup && mode !== 'backup' && (
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="px-0"
+            onClick={() => setMode('backup')}
+          >
+            {t('auth.mfa.useBackup')}
+          </Button>
+        )}
+        {!elsewhere && canPasskey && mode !== 'passkey' && (
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="px-0"
+            onClick={() => setMode('passkey')}
+          >
+            {t('auth.mfa.usePasskey')}
+          </Button>
+        )}
         <Button type="button" variant="link" size="sm" className="px-0" onClick={onNotYou}>
           {t('auth.mfa.notYou')}
         </Button>

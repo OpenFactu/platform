@@ -14,10 +14,11 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { apiClient, ApiError } from '@/shared/http';
 import { login as loginRequest, type LoginResult } from './login/loginApi';
 import { MfaStepContainer } from './login/LoginMfaStep';
+import { usePasskeyLogin } from './login/usePasskeyLogin';
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Avatar, Button, Input, PasswordInput, Select } from '@openfactu/ui';
-import { ArrowRight, Building, Mail } from 'lucide-react';
+import { ArrowRight, Building, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
@@ -48,6 +49,8 @@ export const Login: React.FC = () => {
   const [mfa, setMfa] = useState<{
     challenge: string;
     methods: string[];
+    passkeyElsewhere?: boolean;
+    passkeyRpIds?: string[];
     user: { name?: string; email?: string; avatarImageUrl?: string | null };
   } | null>(null);
   const twoFactorRequired = !!mfa;
@@ -119,10 +122,12 @@ export const Login: React.FC = () => {
   const finishLogin = (data: LoginResult) => {
     // Recordar la cuenta para el acceso rápido (sin contraseña ni token).
     const tenantId = selectedTenant || data.user?.tenantId;
-    if (tenantId) {
+    // Con passkey no se escribió el usuario: se recuerda por el que devuelve el servidor.
+    const accountLogin = email.trim() || data.user?.username || '';
+    if (tenantId && accountLogin) {
       rememberAccount({
-        login: email.trim(),
-        name: data.user?.username || email.trim(),
+        login: accountLogin,
+        name: data.user?.username || accountLogin,
         avatarUrl: data.user?.avatarImageUrl ?? loginAvatarUrl,
         tenantId,
         tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
@@ -135,6 +140,23 @@ export const Login: React.FC = () => {
     login(data.token, data.user as unknown as Parameters<typeof login>[1]);
     navigate('/');
   };
+
+  // Si la respuesta es un reto del segundo paso, lo abre y devuelve true.
+  const openMfaIfNeeded = (data: LoginResult): boolean => {
+    if (!data.challenge) return false;
+    setMfa({
+      challenge: data.challenge,
+      methods: data.methods ?? ['totp'],
+      passkeyElsewhere: data.passkeyElsewhere,
+      passkeyRpIds: data.passkeyRpIds,
+      user: data.user ?? { email },
+    });
+    return true;
+  };
+
+  const passkeyLogin = usePasskeyLogin((data) => {
+    if (!openMfaIfNeeded(data)) finishLogin(data);
+  });
 
   const handleMfaExpired = useCallback(() => {
     setMfa(null);
@@ -155,12 +177,7 @@ export const Login: React.FC = () => {
       const data = await loginRequest({ email, password, selectedTenantId: selectedTenant });
 
       // La contraseña es correcta pero el usuario tiene 2FA: pedimos el código.
-      if (data.challenge) {
-        setMfa({
-          challenge: data.challenge,
-          methods: data.methods ?? ['totp'],
-          user: data.user ?? { email },
-        });
+      if (openMfaIfNeeded(data)) {
         setIsSubmitting(false);
         return;
       }
@@ -227,6 +244,8 @@ export const Login: React.FC = () => {
               <MfaStepContainer
                 challenge={mfa.challenge}
                 methods={mfa.methods}
+                passkeyElsewhere={mfa.passkeyElsewhere}
+                passkeyRpIds={mfa.passkeyRpIds}
                 user={mfa.user}
                 onDone={finishLogin}
                 onExpired={handleMfaExpired}
@@ -343,6 +362,28 @@ export const Login: React.FC = () => {
                 {t('app.login.enter')}
                 {!isSubmitting && <ArrowRight size={16} />}
               </Button>
+            )}
+
+            {!mfa && passkeyLogin.supported && (
+              <div className="space-y-3">
+                {passkeyLogin.error && (
+                  <Alert tone="danger" role="alert">
+                    {passkeyLogin.error}
+                  </Alert>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  className="w-full gap-2"
+                  isLoading={passkeyLogin.busy}
+                  disabled={passkeyLogin.busy || isSubmitting}
+                  onClick={() => void passkeyLogin.start(selectedTenant)}
+                >
+                  {!passkeyLogin.busy && <KeyRound size={16} />}
+                  {t('auth.passkey.signIn')}
+                </Button>
+              </div>
             )}
           </form>
         </div>

@@ -4,6 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
 import { AuthHistoryCard } from '../security/AuthHistoryCard';
+import { PasskeysCard } from '../security/PasskeysCard';
 import { SessionsCard } from '../security/SessionsCard';
 
 /** «Seguridad» de la cuenta: segundo paso y sesiones abiertas. */
@@ -18,6 +19,7 @@ export const AccountSecurity: React.FC = () => {
         size="lg"
       />
       <TwoFactorSettings />
+      <PasskeysCard />
       <SessionsCard />
       <AuthHistoryCard />
     </div>

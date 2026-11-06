@@ -4,6 +4,7 @@ import { LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { useMfaSetup } from '@/shared/auth/useMfaSetup';
+import { PasskeysCard } from '@/modules/settings/security/PasskeysCard';
 import { TwoFactorSettings } from '@/modules/settings/components/TwoFactorSettings';
 
 /**
@@ -36,7 +37,8 @@ export const MfaSetupRequired: React.FC = () => {
 
         <TwoFactorSettings onEnabled={check} />
 
-        {/* Task 13: aquí va «Añadir passkey» (auth.mfaSetup.passkeyTitle), que también cumple la exigencia. */}
+        {/* Añadir la primera passkey también cumple la exigencia: el servidor levanta la restricción. */}
+        <PasskeysCard title={t('auth.mfaSetup.passkeyTitle')} onAdded={check} />
 
         {stillRestricted && (
           <Alert tone="warning" role="alert">
