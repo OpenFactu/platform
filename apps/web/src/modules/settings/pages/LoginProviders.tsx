@@ -202,7 +202,11 @@ export const LoginProviders: React.FC = () => {
             value={form.kind}
             onChange={(v) => patch({ kind: v as ProviderForm['kind'] })}
             disabled={!!editingProvider}
-            options={PROVIDER_KINDS.map((k) => ({ value: k, label: kindLabel(k) }))}
+            options={PROVIDER_KINDS.map((k) => ({
+              value: k,
+              label: kindLabel(k),
+              icon: <ProviderLogo kind={k} size={16} />,
+            }))}
           />
           <Input
             label={t('auth.providers.fields.name')}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, ConfirmDialog, EmptyState, Spinner, useToast } from '@openfactu/ui';
+import { Button, ConfirmDialog, Spinner, useToast } from '@openfactu/ui';
 import { useI18n } from '@/i18n/I18nContext';
 import { userAccessApi } from './api';
 import { AuthHistoryList } from './AuthHistoryCard';
@@ -57,11 +57,11 @@ export const UserAccessSection: React.FC<{ userId: string; canWrite: boolean }> 
       ) : notFound ? (
         <p className="text-sm text-fg-muted">{t('auth.access.unavailable')}</p>
       ) : error ? (
-        <EmptyState title={t('auth.history.error')} hint={error} variant="compact" />
+        <p className="text-sm text-fg-muted">{t('auth.history.error')}</p>
       ) : events.length === 0 ? (
-        <EmptyState title={t('auth.history.empty')} variant="compact" />
+        <p className="text-sm text-fg-muted">{t('auth.history.empty')}</p>
       ) : (
-        <AuthHistoryList events={events} />
+        <AuthHistoryList events={events} flush />
       )}
 
       <ConfirmDialog

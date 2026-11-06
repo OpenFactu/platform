@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
-import {
-  Badge,
-  Button,
-  Card,
-  ConfirmDialog,
-  EmptyState,
-  List,
-  ListItem,
-  Spinner,
-  useToast,
-} from '@openfactu/ui';
-import { Globe, Monitor } from 'lucide-react';
+import { Badge, Button, ConfirmDialog, useToast } from '@openfactu/ui';
+import { Globe, LogOut, Monitor } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 import { intlLocale } from '@/i18n/i18n';
 import { useSessions } from './useSessions';
 import { relativeTime, summarizeUserAgent } from './sessionLabels';
+import {
+  RowAction,
+  SecurityCard,
+  SecurityLoading,
+  SecurityNote,
+  SecurityRow,
+  SecurityRows,
+} from './SecurityCard';
 
 /** «Sesiones abiertas»: dónde está iniciada la cuenta y cerrar las que sobren. */
 export const SessionsCard: React.FC = () => {
@@ -54,14 +52,10 @@ export const SessionsCard: React.FC = () => {
   };
 
   return (
-    <Card className="p-6 space-y-4 border-border-subtle">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle">
-            {t('auth.sessions.title')}
-          </h2>
-          <p className="text-[11px] text-fg-muted max-w-md">{t('auth.sessions.help')}</p>
-        </div>
+    <SecurityCard
+      title={t('auth.sessions.title')}
+      description={t('auth.sessions.help')}
+      action={
         <Button
           variant="secondary"
           size="sm"
@@ -70,47 +64,47 @@ export const SessionsCard: React.FC = () => {
         >
           {t('auth.sessions.closeOthers')}
         </Button>
-      </div>
-
+      }
+    >
       {loading ? (
-        <Spinner />
+        <SecurityLoading />
       ) : error ? (
-        <EmptyState title={t('auth.sessions.error')} hint={error} variant="compact" />
+        <SecurityNote hint={error}>{t('auth.sessions.error')}</SecurityNote>
       ) : (
-        <List aria-label={t('auth.sessions.title')}>
+        <SecurityRows label={t('auth.sessions.title')}>
           {sessions.map((s) => (
-            <ListItem
+            <SecurityRow
               key={s.id}
               icon={
                 s.clientKind.startsWith('desktop') ? <Monitor size={16} /> : <Globe size={16} />
               }
               title={describe(s.userAgent, s.clientKind)}
-              subtitle={[
-                s.ip,
-                t('auth.sessions.activeAgo', { when: relativeTime(s.lastSeenAt, intlLocale()) }),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
               badge={
                 s.current ? (
                   <Badge variant="success">{t('auth.sessions.current')}</Badge>
                 ) : undefined
               }
-              meta={
+              meta={[
+                s.ip,
+                t('auth.sessions.activeAgo', { when: relativeTime(s.lastSeenAt, intlLocale()) }),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              trailing={
                 s.current ? undefined : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <RowAction
+                    label={t('auth.sessions.closeOne')}
+                    danger
                     disabled={busy}
                     onClick={() => void onRevoke(s.id)}
                   >
-                    {t('auth.sessions.close')}
-                  </Button>
+                    <LogOut size={15} />
+                  </RowAction>
                 )
               }
             />
           ))}
-        </List>
+        </SecurityRows>
       )}
 
       <ConfirmDialog
@@ -122,6 +116,6 @@ export const SessionsCard: React.FC = () => {
         onCancel={() => setConfirmOthers(false)}
         onConfirm={() => void onRevokeOthers()}
       />
-    </Card>
+    </SecurityCard>
   );
 };

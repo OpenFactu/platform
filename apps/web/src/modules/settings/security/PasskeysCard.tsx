@@ -1,22 +1,19 @@
 import React, { useState } from 'react';
-import {
-  Badge,
-  Button,
-  Card,
-  ConfirmDialog,
-  EmptyState,
-  Input,
-  List,
-  ListItem,
-  Modal,
-  Spinner,
-  useToast,
-} from '@openfactu/ui';
-import { KeyRound, Pencil, Plus } from 'lucide-react';
+import { Badge, Button, ConfirmDialog, Input, Modal, useToast } from '@openfactu/ui';
+import { KeyRound, Pencil, Plus, Trash2 } from 'lucide-react';
+import { getClientKind } from '@/shared/auth/clientKind';
 import { useI18n } from '@/i18n/I18nContext';
 import { intlLocale } from '@/i18n/i18n';
 import { usePasskeys, proposePasskeyName } from './usePasskeys';
 import { relativeTime } from './sessionLabels';
+import {
+  RowAction,
+  SecurityCard,
+  SecurityLoading,
+  SecurityNote,
+  SecurityRow,
+  SecurityRows,
+} from './SecurityCard';
 
 type Dialog = { mode: 'add' } | { mode: 'rename'; id: string } | null;
 
@@ -84,16 +81,17 @@ export const PasskeysCard: React.FC<{ onAdded?: () => void; title?: string }> = 
       ? t('auth.passkey.lastUsed', { when: relativeTime(iso, intlLocale()) })
       : t('auth.passkey.neverUsed');
 
+  // La llave sirve donde se creó: en la web o en la app de escritorio. Solo se marca la que no
+  // sirve aquí; la de aquí no necesita etiqueta.
+  const onlyElsewhere =
+    getClientKind() === 'desktop' ? t('auth.passkey.onlyWeb') : t('auth.passkey.onlyDesktop');
+
   return (
-    <Card className="p-6 space-y-4 border-border-subtle">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle">
-            {title ?? t('auth.passkey.title')}
-          </h2>
-          <p className="text-[11px] text-fg-muted max-w-md">{t('auth.passkey.help')}</p>
-        </div>
-        {supported && (
+    <SecurityCard
+      title={title ?? t('auth.passkey.title')}
+      description={t('auth.passkey.help')}
+      action={
+        supported && (
           <Button
             variant="secondary"
             size="sm"
@@ -103,55 +101,48 @@ export const PasskeysCard: React.FC<{ onAdded?: () => void; title?: string }> = 
           >
             <Plus size={14} /> {t('auth.passkey.add')}
           </Button>
-        )}
-      </div>
-
-      {!supported && <p className="text-xs text-fg-muted">{t('auth.passkey.unsupported')}</p>}
+        )
+      }
+    >
+      {!supported && <SecurityNote>{t('auth.passkey.unsupported')}</SecurityNote>}
 
       {loading ? (
-        <Spinner />
+        <SecurityLoading />
       ) : error ? (
-        <EmptyState title={t('auth.passkey.error')} hint={error} variant="compact" />
+        <SecurityNote hint={error}>{t('auth.passkey.error')}</SecurityNote>
       ) : items.length === 0 ? (
-        <EmptyState title={t('auth.passkey.empty')} variant="compact" />
+        supported && <SecurityNote>{t('auth.passkey.empty')}</SecurityNote>
       ) : (
-        <List aria-label={t('auth.passkey.title')}>
+        <SecurityRows label={t('auth.passkey.title')}>
           {items.map((p) => (
-            <ListItem
+            <SecurityRow
               key={p.id}
               icon={<KeyRound size={16} />}
               title={p.name}
-              subtitle={[
-                p.here ? t('auth.passkey.here') : t('auth.passkey.elsewhere'),
-                lastUse(p.lastUsedAt),
-              ].join(' · ')}
-              badge={
-                p.here ? <Badge variant="success">{t('auth.passkey.hereBadge')}</Badge> : undefined
-              }
-              meta={
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+              badge={p.here ? undefined : <Badge variant="neutral">{onlyElsewhere}</Badge>}
+              meta={lastUse(p.lastUsedAt)}
+              trailing={
+                <>
+                  <RowAction
+                    label={t('auth.passkey.rename')}
                     disabled={busy}
-                    aria-label={t('auth.passkey.rename')}
                     onClick={() => openRename(p.id, p.name)}
                   >
-                    <Pencil size={14} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                    <Pencil size={15} />
+                  </RowAction>
+                  <RowAction
+                    label={t('auth.passkey.remove')}
+                    danger
                     disabled={busy}
                     onClick={() => setToRemove(p.id)}
                   >
-                    {t('auth.passkey.remove')}
-                  </Button>
-                </div>
+                    <Trash2 size={15} />
+                  </RowAction>
+                </>
               }
             />
           ))}
-        </List>
+        </SecurityRows>
       )}
 
       <Modal
@@ -194,6 +185,6 @@ export const PasskeysCard: React.FC<{ onAdded?: () => void; title?: string }> = 
         onCancel={() => setToRemove(null)}
         onConfirm={() => void onRemove()}
       />
-    </Card>
+    </SecurityCard>
   );
 };

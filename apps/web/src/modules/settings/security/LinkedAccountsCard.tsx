@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  ConfirmDialog,
-  EmptyState,
-  List,
-  ListItem,
-  Spinner,
-  useToast,
-} from '@openfactu/ui';
+import { Alert, Button, ConfirmDialog, useToast } from '@openfactu/ui';
+import { Unlink } from 'lucide-react';
 import { ProviderLogo } from '@/components/login/ProviderLogo';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
@@ -17,6 +8,15 @@ import { formatDate } from '@/i18n/format';
 import { ssoErrorKey } from '@/pages/login/ssoModel';
 import { consumeSecurityNotice, peekSecurityNotice } from '@/shared/auth/securityNotice';
 import { useIdentities } from './useIdentities';
+import {
+  RowAction,
+  SecurityBody,
+  SecurityCard,
+  SecurityLoading,
+  SecurityNote,
+  SecurityRow,
+  SecurityRows,
+} from './SecurityCard';
 
 /** «Cuentas enlazadas»: entrar con Google, Microsoft u otro proveedor; enlazar y desenlazar. */
 export const LinkedAccountsCard: React.FC = () => {
@@ -63,60 +63,56 @@ export const LinkedAccountsCard: React.FC = () => {
   };
 
   return (
-    <Card className="p-6 space-y-4 border-border-subtle">
-      <div>
-        <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle">
-          {t('auth.sso.linkedTitle')}
-        </h2>
-        <p className="text-[11px] text-fg-muted max-w-md">{t('auth.sso.linkedHelp')}</p>
-      </div>
-
-      {returnedShown && returned.linked && (
-        <Alert tone="success" role="status" onDismiss={() => setReturnedShown(false)}>
-          {t('auth.sso.linked')}
-        </Alert>
-      )}
-      {returnedShown && returned.errorCode && (
-        <Alert tone="danger" role="alert" onDismiss={() => setReturnedShown(false)}>
-          {t(ssoErrorKey(returned.errorCode))}
-        </Alert>
+    <SecurityCard title={t('auth.sso.linkedTitle')} description={t('auth.sso.linkedHelp')}>
+      {returnedShown && (returned.linked || returned.errorCode) && (
+        <SecurityBody>
+          {returned.errorCode ? (
+            <Alert tone="danger" role="alert" onDismiss={() => setReturnedShown(false)}>
+              {t(ssoErrorKey(returned.errorCode))}
+            </Alert>
+          ) : (
+            <Alert tone="success" role="status" onDismiss={() => setReturnedShown(false)}>
+              {t('auth.sso.linked')}
+            </Alert>
+          )}
+        </SecurityBody>
       )}
 
       {loading ? (
-        <Spinner />
+        <SecurityLoading />
       ) : error ? (
-        <EmptyState title={t('auth.sso.error')} hint={error} variant="compact" />
+        <SecurityNote hint={error}>{t('auth.sso.error')}</SecurityNote>
       ) : (
         <>
           {items.length === 0 ? (
-            <EmptyState title={t('auth.sso.noneLinked')} variant="compact" />
+            <SecurityNote>{t('auth.sso.noneLinked')}</SecurityNote>
           ) : (
-            <List aria-label={t('auth.sso.linkedTitle')}>
+            <SecurityRows label={t('auth.sso.linkedTitle')}>
               {items.map((i) => (
-                <ListItem
+                <SecurityRow
                   key={i.id}
-                  icon={<ProviderLogo kind={i.kind} />}
+                  icon={<ProviderLogo kind={i.kind} size={16} />}
                   title={i.providerName}
-                  subtitle={[i.email, t('auth.sso.linkedOn', { date: formatDate(i.linkedAt) })]
+                  meta={[i.email, t('auth.sso.linkedOn', { date: formatDate(i.linkedAt) })]
                     .filter(Boolean)
                     .join(' · ')}
-                  meta={
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                  trailing={
+                    <RowAction
+                      label={t('auth.sso.unlink')}
+                      danger
                       disabled={busy}
                       onClick={() => setToUnlink(i.id)}
                     >
-                      {t('auth.sso.unlink')}
-                    </Button>
+                      <Unlink size={15} />
+                    </RowAction>
                   }
                 />
               ))}
-            </List>
+            </SecurityRows>
           )}
 
           {available.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+            <div className="flex flex-col gap-2 border-t border-border-subtle px-6 py-4 sm:flex-row sm:flex-wrap">
               {available.map((p) => (
                 <Button
                   key={p.id}
@@ -144,6 +140,6 @@ export const LinkedAccountsCard: React.FC = () => {
         onCancel={() => setToUnlink(null)}
         onConfirm={() => void onUnlink()}
       />
-    </Card>
+    </SecurityCard>
   );
 };
