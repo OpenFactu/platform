@@ -11,6 +11,8 @@ import {
   touchSession,
   type SessionRow,
 } from '../../core/auth/sessions';
+import { recordAuthEvent } from '../../core/auth/authEvents';
+import { clientInfo } from '../../core/auth/clientInfo';
 
 /**
  * Devuelve la sesión del llamante, o responde 401 (500 si la base falla) y devuelve `null`.
@@ -65,6 +67,12 @@ router.post('/logout', async (req: Request, res: Response) => {
   if (!session) return;
   try {
     await revokeSession(session.id, 'logout');
+    await recordAuthEvent({
+      userId: session.userId,
+      kind: 'logout',
+      ok: true,
+      client: clientInfo(req),
+    });
     res.status(204).end();
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });
@@ -135,6 +143,13 @@ router.delete('/sessions', async (req: Request, res: Response) => {
   }
   try {
     const revoked = await revokeAllForUser(session.userId, 'revoked_by_user', session.id);
+    await recordAuthEvent({
+      userId: session.userId,
+      kind: 'revoke',
+      ok: true,
+      client: clientInfo(req),
+      detail: { others: true, revoked },
+    });
     res.json({ revoked });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });
@@ -149,6 +164,13 @@ router.delete('/sessions/:id', async (req: Request, res: Response) => {
     const own = (await listSessions(session.userId)).find((s) => s.id === req.params.id);
     if (!own) return res.status(404).json({ error: 'Sesión no encontrada' });
     await revokeSession(own.id, 'revoked_by_user');
+    await recordAuthEvent({
+      userId: session.userId,
+      kind: 'revoke',
+      ok: true,
+      client: clientInfo(req),
+      detail: { sessionId: own.id },
+    });
     res.status(204).end();
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });

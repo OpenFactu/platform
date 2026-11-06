@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { AuthService } from '../core/auth/AuthService';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { listAuthEvents, recordAuthEvent } from '../core/auth/authEvents';
+import { listSessions, revokeAllForUser } from '../core/auth/sessions';
+import { clientInfo } from '../core/auth/clientInfo';
 
 const router = Router();
 
@@ -20,6 +23,88 @@ function uniqueViolationMessage(error: any): string | null {
   if (constraint.includes('username')) return 'Ya existe un usuario con ese nombre de usuario';
   return 'Ya existe un registro con ese valor único';
 }
+
+/**
+ * ¿Es `userId` de la empresa de quien pregunta? Por pertenencia, o por la empresa heredada de
+ * `GlobalUser`; un SUPERUSER ve a cualquiera. Mismo aislamiento que el resto del router: lo que
+ * no es de la empresa no existe (404).
+ */
+async function inCallerCompany(req: any, userId: string): Promise<boolean> {
+  if (req.user?.role === 'SUPERUSER') return true;
+  if (!req.tenantId) return false;
+  const db = ClientFactory.getClient('public');
+  const [m] = await db
+    .select({ id: schema.userTenantMemberships.id })
+    .from(schema.userTenantMemberships)
+    .where(
+      and(
+        eq(schema.userTenantMemberships.userId, userId),
+        eq(schema.userTenantMemberships.tenantId, req.tenantId),
+      ),
+    )
+    .limit(1);
+  if (m) return true;
+  const [u] = await db
+    .select({ tenantId: schema.globalUsers.tenantId })
+    .from(schema.globalUsers)
+    .where(eq(schema.globalUsers.id, userId));
+  return !!u && u.tenantId === req.tenantId;
+}
+
+/** GET /api/users/:id/auth-events — historial de accesos de un usuario de la empresa. */
+router.get('/:id/auth-events', async (req: any, res) => {
+  try {
+    if (!(await inCallerCompany(req, req.params.id))) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ events: await listAuthEvents(req.params.id, Number(req.query.limit) || 50) });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** GET /api/users/:id/sessions — sesiones abiertas de un usuario de la empresa. */
+router.get('/:id/sessions', async (req: any, res) => {
+  try {
+    if (!(await inCallerCompany(req, req.params.id))) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const rows = await listSessions(req.params.id);
+    res.json({
+      sessions: rows.map((s) => ({
+        id: s.id,
+        createdAt: s.createdAt,
+        lastSeenAt: s.lastSeenAt,
+        clientKind: s.clientKind,
+        userAgent: s.userAgent,
+        ip: s.ip,
+        method: s.method,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** DELETE /api/users/:id/sessions — cierra todas las sesiones de un usuario de la empresa. */
+router.delete('/:id/sessions', async (req: any, res) => {
+  try {
+    if (!(await inCallerCompany(req, req.params.id))) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const revoked = await revokeAllForUser(req.params.id, 'revoked_by_admin');
+    await recordAuthEvent({
+      userId: req.params.id,
+      kind: 'revoke',
+      ok: true,
+      client: clientInfo(req),
+      detail: { byAdmin: req.user?.id, revoked },
+    });
+    res.json({ revoked });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * GET /api/users

@@ -8,6 +8,8 @@ import { ClientFactory } from '../../core/tenant/ClientFactory';
 import * as schema from '../../db/schema';
 import { createSession, issueToken } from '../../core/auth/sessions';
 import { clientInfo } from '../../core/auth/clientInfo';
+import { hasPreviousLogin, isKnownDevice, recordAuthEvent } from '../../core/auth/authEvents';
+import { maybeNotifyNewDevice } from '../../core/auth/newDeviceNotice';
 
 export interface CompleteLoginOpts {
   method: string;
@@ -85,13 +87,30 @@ export async function completeLogin(
         ? JSON.parse(finalPermissions)
         : {};
 
+  const client = clientInfo(req);
+  // Antes de apuntar este login: lo que cuenta es lo que había hasta ahora.
+  let newDevice = false;
+  try {
+    newDevice = !(await isKnownDevice(user.id, client)) && (await hasPreviousLogin(user.id));
+  } catch (e: any) {
+    console.error('[auth] No se pudo comprobar el dispositivo:', e?.message);
+  }
   const session = await createSession({
     userId: user.id,
     tenantId: finalTenantId,
     method: opts.method,
     mfa: opts.mfa,
-    client: clientInfo(req),
+    client,
   });
+  await recordAuthEvent({
+    userId: user.id,
+    kind: 'login',
+    ok: true,
+    method: opts.method,
+    client,
+    detail: { mfa: opts.mfa, sessionId: session.id },
+  });
+  if (newDevice) await maybeNotifyNewDevice(user, client, finalTenantId);
   const token = issueToken(session, {
     id: user.id,
     email: user.email,

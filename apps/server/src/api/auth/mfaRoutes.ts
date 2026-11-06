@@ -18,6 +18,7 @@ import {
 import { checkThrottle, recordAttempt, sendThrottled } from '../../core/auth/throttle';
 import { clientInfo } from '../../core/auth/clientInfo';
 import { completeLogin } from './completeLogin';
+import { recordAuthEvent } from '../../core/auth/authEvents';
 
 const router = Router();
 
@@ -166,6 +167,13 @@ router.post('/mfa', async (req, res) => {
     const used = await consumeUserCode(user, code);
     if (!used.ok) {
       await recordAttempt('mfa', keys, false);
+      await recordAuthEvent({
+        userId: user.id,
+        kind: 'mfa',
+        ok: false,
+        method: 'totp',
+        client: clientInfo(req),
+      });
       // El intento ya está contado; si era el último, el reto se agota.
       await failChallenge(row.id);
       return res.status(401).json({ error: 'Código no válido', code: 'MFA_INVALID' });

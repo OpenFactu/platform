@@ -5,9 +5,10 @@
  *
  * Las fechas se calculan siempre en JS: las columnas son `timestamp` sin zona con hora UTC.
  */
-import { inArray, eq } from 'drizzle-orm';
+import { inArray, eq, or, sql } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
-import { authThrottles } from '../../db/schema';
+import { authThrottles, globalUsers } from '../../db/schema';
+import { recordAuthEvent } from './authEvents';
 
 export type ThrottleAction = 'login' | 'mfa' | 'forgot' | 'reset' | 'email_code' | 'handoff';
 
@@ -100,11 +101,13 @@ export async function checkThrottle(
   return { blocked: false };
 }
 
-async function apply(key: string, ok: boolean, rule: Rule, now: Date): Promise<void> {
+/** Devuelve `true` si este fallo es el que bloquea la clave. */
+async function apply(key: string, ok: boolean, rule: Rule, now: Date): Promise<boolean> {
   if (ok) {
     await db().delete(authThrottles).where(eq(authThrottles.key, key));
-    return;
+    return false;
   }
+  let locked = false;
   await db().transaction(async (tx: any) => {
     // La fila tiene que existir para poder bloquearla; el estado real lo pone `step`.
     await tx
@@ -128,6 +131,45 @@ async function apply(key: string, ok: boolean, rule: Rule, now: Date): Promise<v
         lockCount: next.lockCount,
       })
       .where(eq(authThrottles.key, key));
+    locked = next.lockCount > row.lockCount;
+  });
+  return locked;
+}
+
+/** Deja constancia del bloqueo; con `account` de usuario o de login se intenta atribuirlo. */
+async function recordLockout(
+  action: ThrottleAction,
+  scope: 'account' | 'ip',
+  keys: { account?: string; ip: string },
+): Promise<void> {
+  let userId: string | undefined;
+  if (scope === 'account' && keys.account) {
+    try {
+      const acct = normalizeAccount(keys.account);
+      if (action === 'mfa') userId = keys.account;
+      else {
+        const [u] = await db()
+          .select({ id: globalUsers.id })
+          .from(globalUsers)
+          .where(
+            or(
+              eq(sql`lower(${globalUsers.email})`, acct),
+              eq(sql`lower(${globalUsers.username})`, acct),
+            ),
+          )
+          .limit(1);
+        userId = u?.id;
+      }
+    } catch {
+      // sin atribuir
+    }
+  }
+  await recordAuthEvent({
+    userId,
+    kind: 'lockout',
+    ok: false,
+    client: { ip: keys.ip, userAgent: '', clientKind: 'web' },
+    detail: { action, scope },
   });
 }
 
@@ -139,8 +181,10 @@ export async function recordAttempt(
 ): Promise<void> {
   const k = keysOf(action, keys);
   const now = new Date();
-  if (k.account) await apply(k.account, ok, RULES.account, now);
-  if (!ok) await apply(k.ip, false, RULES.ip, now);
+  if (k.account && (await apply(k.account, ok, RULES.account, now))) {
+    await recordLockout(action, 'account', keys);
+  }
+  if (!ok && (await apply(k.ip, false, RULES.ip, now))) await recordLockout(action, 'ip', keys);
 }
 
 export function sendThrottled(res: any, retryAfter: number) {

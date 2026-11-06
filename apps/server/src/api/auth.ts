@@ -15,6 +15,8 @@ import {
 } from '../core/auth/sessions';
 import { clientInfo } from '../core/auth/clientInfo';
 import sessionRoutes, { requireSession } from './auth/sessionRoutes';
+import eventRoutes from './auth/eventRoutes';
+import { recordAuthEvent } from '../core/auth/authEvents';
 import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
 import { completeLogin } from './auth/completeLogin';
 import {
@@ -28,6 +30,7 @@ const router = Router();
 
 // logout, refresh y sesiones abiertas.
 router.use(sessionRoutes);
+router.use(eventRoutes);
 // Segundo factor con reto.
 router.use(mfaRoutes);
 
@@ -109,6 +112,15 @@ router.post('/login', async (req, res) => {
       : (await bcrypt.compare(String(password ?? ''), DUMMY_HASH), false);
     if (!user || !isMatch) {
       await recordAttempt('login', keys, false);
+      if (user) {
+        await recordAuthEvent({
+          userId: user.id,
+          kind: 'login',
+          ok: false,
+          method: 'password',
+          client: clientInfo(req),
+        });
+      }
       return res.status(401).json(BAD_CREDENTIALS);
     }
     await recordAttempt('login', keys, true);
@@ -121,7 +133,16 @@ router.post('/login', async (req, res) => {
       if (mfaGate.blocked) return sendThrottled(res, mfaGate.retryAfter);
       const used = await consumeUserCode(user, String(totpCode));
       await recordAttempt('mfa', mfaKeys, used.ok);
-      if (!used.ok) return res.status(401).json({ error: 'Código 2FA inválido' });
+      if (!used.ok) {
+        await recordAuthEvent({
+          userId: user.id,
+          kind: 'mfa',
+          ok: false,
+          method: 'totp',
+          client: clientInfo(req),
+        });
+        return res.status(401).json({ error: 'Código 2FA inválido' });
+      }
       return completeLogin(req, res, user, {
         method: 'password',
         mfa: used.mfa,
@@ -451,6 +472,14 @@ router.post('/reset-password', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(schema.globalUsers.id, user.id));
+
+    await recordAuthEvent({
+      userId: user.id,
+      kind: 'password_change',
+      ok: true,
+      method: 'reset',
+      client: clientInfo(req),
+    });
 
     res.json({ ok: true });
   } catch (error: any) {

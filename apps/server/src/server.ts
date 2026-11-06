@@ -156,6 +156,7 @@ import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
+import { startAuthCleanupCron } from './core/auth/authCleanupCron';
 import { startCarrierTrackingCron } from './core/cron/carrierTrackingCron';
 import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
@@ -638,6 +639,7 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+    startAuthCleanupCron();
     startCarrierTrackingCron();
 
     // Avisos del CRM (presupuestos caducados, recordatorios…) — solo empresas con el CRM activo.

@@ -16,6 +16,8 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { revokeAllForUser } from '../core/auth/sessions';
+import { recordAuthEvent } from '../core/auth/authEvents';
+import { clientInfo } from '../core/auth/clientInfo';
 import {
   encryptSecret,
   decryptSecret,
@@ -178,6 +180,13 @@ router.post('/enable', async (req: any, res) => {
       })
       .where(eq(schema.globalUsers.id, userId));
 
+    await recordAuthEvent({
+      userId,
+      kind: 'mfa_change',
+      ok: true,
+      client: clientInfo(req),
+      detail: { enabled: true },
+    });
     res.json({ enabled: true, backupCodes });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });
@@ -225,6 +234,13 @@ router.post('/disable', async (req: any, res) => {
     // Sin segundo factor, las demás sesiones dejan de ser de confianza; la actual sigue.
     await revokeAllForUser(userId, 'mfa_disabled', req.session?.id);
 
+    await recordAuthEvent({
+      userId,
+      kind: 'mfa_change',
+      ok: true,
+      client: clientInfo(req),
+      detail: { enabled: false },
+    });
     res.json({ enabled: false });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });
